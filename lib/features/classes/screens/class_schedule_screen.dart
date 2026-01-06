@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../data/models/class_session.dart';
+import '../../../data/repositories/class_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
+import 'add_class_screen.dart';
+import 'class_detail_screen.dart';
 
 class ClassScheduleScreen extends StatefulWidget {
   const ClassScheduleScreen({super.key});
@@ -11,23 +15,94 @@ class ClassScheduleScreen extends StatefulWidget {
 }
 
 class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
+  final _repository = ClassRepository();
   DateTime _selectedDate = DateTime.now();
+  List<ClassSession> _classes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    setState(() => _isLoading = true);
+    
+    // Set range to full day
+    final startOfDay = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      0, 0, 0
+    );
+    final endOfDay = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      23, 59, 59
+    );
+
+    try {
+      final classes = await _repository.getSessions(startOfDay, endOfDay);
+      if (mounted) {
+        setState(() {
+          _classes = classes;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _onDateSelected(DateTime date) async {
+    setState(() => _selectedDate = date);
+    await _loadClasses();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: Stack(
+        children: [
+          // Background Logo
+          Positioned.fill(
+            child: Align(
+              alignment: const Alignment(0, 0.3),
+              child: Opacity(
+                opacity: 0.1,
+                child: Image.asset(
+                  'assets/images/pt_logo.png',
+                  width: 300,
+                ),
+              ),
+            ),
+          ),
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
             // Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Dersler',
-                    style: AppTextStyles.largeTitle,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Dersler',
+                        style: AppTextStyles.largeTitle,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: AppColors.primaryYellow),
+                        onPressed: _loadClasses,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   // Date Selector
@@ -35,18 +110,14 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
                     height: 80,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: 7,
+                      itemCount: 14, // Show 2 weeks
                       separatorBuilder: (context, index) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final date = DateTime.now().add(Duration(days: index));
                         final isSelected = _isSameDay(date, _selectedDate);
                         
                         return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedDate = date;
-                            });
-                          },
+                          onTap: () => _onDateSelected(date),
                           child: Container(
                             width: 60,
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -94,26 +165,121 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
             ),
             // Classes List
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: 0, // Will be populated from database
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return const SizedBox.shrink();
-                },
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _classes.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _classes.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) => _buildClassItem(_classes[index]),
+                        ),
             ),
           ],
         ),
       ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Navigate to add class screen
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddClassScreen(initialDate: _selectedDate),
+            ),
+          );
+          if (result == true) {
+            _loadClasses();
+          }
         },
         backgroundColor: AppColors.primaryYellow,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_rounded),
         label: Text('Ders Ekle', style: AppTextStyles.headline),
+      ),
+    );
+  }
+
+  Widget _buildClassItem(ClassSession session) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ClassDetailScreen(session: session)),
+        );
+        if (result == true) {
+          _loadClasses();
+        }
+      },
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Column(
+              children: [
+                Text(
+                  _formatTime(session.startTime),
+                  style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow),
+                ),
+                Text(
+                  '${session.durationMinutes} dk',
+                  style: AppTextStyles.caption1,
+                ),
+              ],
+            ),
+            Container(
+              height: 40,
+              width: 1,
+              color: AppColors.glassBorder,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.title,
+                    style: AppTextStyles.headline,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_outline, size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Kapasite: ${session.capacity}',
+                        style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textSecondary, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.calendar_today_rounded, size: 64, color: AppColors.textSecondary.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            'Bu tarihte ders yok',
+            style: AppTextStyles.headline.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Yeni bir ders eklemek için "+" butonuna basın',
+            style: AppTextStyles.caption1,
+          ),
+        ],
       ),
     );
   }
@@ -125,5 +291,9 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
   String _getDayName(int weekday) {
     const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     return days[weekday - 1];
+  }
+
+  String _formatTime(DateTime date) {
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

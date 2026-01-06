@@ -10,6 +10,7 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final BorderRadius? borderRadius;
   final BoxBorder? border;
+  final EdgeInsetsGeometry? margin;
 
   const GlassCard({
     super.key,
@@ -20,6 +21,7 @@ class GlassCard extends StatelessWidget {
     this.onTap,
     this.borderRadius,
     this.border,
+    this.margin,
   });
 
   @override
@@ -44,6 +46,19 @@ class GlassCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (margin != null) {
+      return Padding(
+        padding: margin!,
+        child: onTap != null
+            ? InkWell(
+                onTap: onTap,
+                borderRadius: borderRadius ?? BorderRadius.circular(16),
+                child: content,
+              )
+            : content,
+      );
+    }
 
     if (onTap != null) {
       return InkWell(

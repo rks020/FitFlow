@@ -1,176 +1,110 @@
-import '../local/database_helper.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/class_session.dart';
+import '../models/class_enrollment.dart';
 
 class ClassRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final SupabaseClient _client = Supabase.instance.client;
 
-  // Create
-  Future<void> create(ClassSession classSession) async {
-    final db = await _dbHelper.database;
-    await db.insert('class_sessions', classSession.toMap());
-  }
+  // --- Sessions ---
 
-  // Get all classes
-  Future<List<ClassSession>> getAll() async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'class_sessions',
-      orderBy: 'dateTime DESC',
-    );
-    return List.generate(maps.length, (i) => ClassSession.fromMap(maps[i]));
-  }
-
-  // Get upcoming classes
-  Future<List<ClassSession>> getUpcoming() async {
-    final db = await _dbHelper.database;
-    final now = DateTime.now().toIso8601String();
-    final List<Map<String, dynamic>> maps = await db.query(
-      'class_sessions',
-      where: 'dateTime >= ?',
-      whereArgs: [now],
-      orderBy: 'dateTime ASC',
-    );
-    return List.generate(maps.length, (i) => ClassSession.fromMap(maps[i]));
-  }
-
-  // Get classes for a specific date
-  Future<List<ClassSession>> getByDate(DateTime date) async {
-    final db = await _dbHelper.database;
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+  // Get sessions within a date range
+  Future<List<ClassSession>> getSessions(DateTime start, DateTime end) async {
+    final response = await _client
+        .from('class_sessions')
+        .select()
+        .gte('start_time', start.toIso8601String())
+        .lte('end_time', end.toIso8601String())
+        .order('start_time', ascending: true);
     
-    final List<Map<String, dynamic>> maps = await db.query(
-      'class_sessions',
-      where: 'dateTime >= ? AND dateTime <= ?',
-      whereArgs: [
-        startOfDay.toIso8601String(),
-        endOfDay.toIso8601String(),
-      ],
-      orderBy: 'dateTime ASC',
-    );
-    return List.generate(maps.length, (i) => ClassSession.fromMap(maps[i]));
+    return (response as List)
+        .map((json) => ClassSession.fromSupabaseMap(json))
+        .toList();
   }
 
-  // Get classes by date range
-  Future<List<ClassSession>> getByDateRange({
-    required DateTime startDate,
-    required DateTime endDate,
-  }) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'class_sessions',
-      where: 'dateTime >= ? AND dateTime <= ?',
-      whereArgs: [
-        startDate.toIso8601String(),
-        endDate.toIso8601String(),
-      ],
-      orderBy: 'dateTime ASC',
-    );
-    return List.generate(maps.length, (i) => ClassSession.fromMap(maps[i]));
+  // Create a new session
+  Future<ClassSession> createSession(ClassSession session) async {
+    final response = await _client
+        .from('class_sessions')
+        .insert(session.toSupabaseMap())
+        .select()
+        .single();
+    
+    return ClassSession.fromSupabaseMap(response);
   }
 
-  // Get class by ID
-  Future<ClassSession?> getById(String id) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'class_sessions',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    if (maps.isEmpty) return null;
-    return ClassSession.fromMap(maps.first);
+  // Update session
+  Future<void> updateSession(ClassSession session) async {
+    await _client
+        .from('class_sessions')
+        .update(session.toSupabaseMap())
+        .eq('id', session.id!);
   }
 
-  // Get classes for a member
-  Future<List<ClassSession>> getByMemberId(String memberId) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.rawQuery(
-      '''
-      SELECT * FROM class_sessions 
-      WHERE enrolledMemberIds LIKE ? 
-      ORDER BY dateTime DESC
-      ''',
-      ['%$memberId%'],
-    );
-    return List.generate(maps.length, (i) => ClassSession.fromMap(maps[i]));
+  // Cancel/Delete session
+  Future<void> deleteSession(String id) async {
+    await _client.from('class_sessions').delete().eq('id', id);
   }
 
-  // Update
-  Future<void> update(ClassSession classSession) async {
-    final db = await _dbHelper.database;
-    await db.update(
-      'class_sessions',
-      classSession.toMap(),
-      where: 'id = ?',
-      whereArgs: [classSession.id],
-    );
+  // --- Enrollments ---
+
+  // Get enrollments for a specific class
+  Future<List<ClassEnrollment>> getEnrollments(String classId) async {
+    final response = await _client
+        .from('class_enrollments')
+        .select('*, members(*)') // Fetch member details
+        .eq('class_id', classId)
+        .order('created_at', ascending: true);
+    
+    return (response as List)
+        .map((json) => ClassEnrollment.fromSupabaseMap(json))
+        .toList();
   }
 
-  // Delete
-  Future<void> delete(String id) async {
-    final db = await _dbHelper.database;
-    await db.delete(
-      'class_sessions',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  // Enroll member
+  // Enroll a member
   Future<void> enrollMember(String classId, String memberId) async {
-    final classSession = await getById(classId);
-    if (classSession == null) return;
-    
-    if (!classSession.enrolledMemberIds.contains(memberId)) {
-      final updatedClass = classSession.copyWith(
-        enrolledMemberIds: [...classSession.enrolledMemberIds, memberId],
-      );
-      await update(updatedClass);
-    }
+    await _client.from('class_enrollments').insert({
+      'class_id': classId,
+      'member_id': memberId,
+      'status': 'booked',
+    });
   }
 
-  // Unenroll member
-  Future<void> unenrollMember(String classId, String memberId) async {
-    final classSession = await getById(classId);
-    if (classSession == null) return;
-    
-    final updatedEnrolled = classSession.enrolledMemberIds
-        .where((id) => id != memberId)
-        .toList();
-    final updatedAttended = classSession.attendedMemberIds
-        .where((id) => id != memberId)
-        .toList();
-    
-    final updatedClass = classSession.copyWith(
-      enrolledMemberIds: updatedEnrolled,
-      attendedMemberIds: updatedAttended,
-    );
-    await update(updatedClass);
+  // Update enrollment status (attended, cancelled, etc.)
+  Future<void> updateEnrollmentStatus(String enrollmentId, String status) async {
+    await _client
+        .from('class_enrollments')
+        .update({'status': status})
+        .eq('id', enrollmentId);
   }
 
-  // Mark attendance
-  Future<void> markAttendance(String classId, String memberId, bool attended) async {
-    final classSession = await getById(classId);
-    if (classSession == null) return;
-    
-    List<String> updatedAttended = [...classSession.attendedMemberIds];
-    
-    if (attended && !updatedAttended.contains(memberId)) {
-      updatedAttended.add(memberId);
-    } else if (!attended) {
-      updatedAttended.remove(memberId);
-    }
-    
-    final updatedClass = classSession.copyWith(
-      attendedMemberIds: updatedAttended,
-    );
-    await update(updatedClass);
+  // Remove enrollment
+  Future<void> removeEnrollment(String enrollmentId) async {
+    await _client.from('class_enrollments').delete().eq('id', enrollmentId);
   }
 
-  // Get today's classes count
-  Future<int> getTodayCount() async {
-    final today = DateTime.now();
-    final classes = await getByDate(today);
-    return classes.length;
+  // Check capacity
+  Future<int> getEnrollmentCount(String classId) async {
+    final response = await _client
+        .from('class_enrollments')
+        .select('*')
+        .eq('class_id', classId)
+        .count();
+    return response.count;
+  }
+
+  // Get count of sessions for today
+  Future<int> getTodaySessionCount() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final response = await _client
+        .from('class_sessions')
+        .select('*')
+        .gte('start_time', startOfDay.toIso8601String())
+        .lte('end_time', endOfDay.toIso8601String())
+        .count();
+        
+    return response.count;
   }
 }

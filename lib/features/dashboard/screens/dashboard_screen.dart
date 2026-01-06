@@ -8,8 +8,10 @@ import '../../classes/screens/class_schedule_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../widgets/stat_card.dart';
 import '../../../shared/widgets/glass_card.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/member_repository.dart';
 import '../../../data/repositories/measurement_repository.dart';
+import '../../../data/repositories/class_repository.dart';
 import '../../members/screens/add_edit_member_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -100,28 +102,66 @@ class _DashboardHomeState extends State<_DashboardHome> {
   int _totalMembers = 0;
   int _activeMembers = 0;
   int _totalMeasurements = 0;
+  int _todayClasses = 0;
   bool _isLoading = true;
+  RealtimeChannel? _monitorChannel;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
+    _setupRealtimeSubscription();
+  }
+
+  void _setupRealtimeSubscription() {
+    _monitorChannel = Supabase.instance.client.channel('dashboard_stats');
+    _monitorChannel
+      ?.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'members',
+        callback: (payload) => _loadStats(),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'measurements',
+        callback: (payload) => _loadStats(),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'class_sessions',
+        callback: (payload) => _loadStats(),
+      )
+      .subscribe();
+  }
+
+  @override
+  void dispose() {
+    if (_monitorChannel != null) {
+      Supabase.instance.client.removeChannel(_monitorChannel!);
+    }
+    super.dispose();
   }
 
   Future<void> _loadStats() async {
     try {
       final memberRepo = MemberRepository();
       final measurementRepo = MeasurementRepository();
+      final classRepo = ClassRepository();
 
       final totalMembers = await memberRepo.getCount();
       final activeMembers = await memberRepo.getActiveCount();
       final totalMeasurements = await measurementRepo.getCount();
+      final todayClasses = await classRepo.getTodaySessionCount();
 
       if (mounted) {
         setState(() {
           _totalMembers = totalMembers;
           _activeMembers = activeMembers;
           _totalMeasurements = totalMeasurements;
+          _todayClasses = todayClasses;
           _isLoading = false;
         });
       }
@@ -151,68 +191,100 @@ class _DashboardHomeState extends State<_DashboardHome> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center, // Align center vertically with the text row effectively?
+                      // Wait, if I use start, it aligns with top.
+                      // If the user wants it opposite "Change" which is in the title...
+                      // The title is the top element.
+                      // But the text might have line height.
+                      // Let's try aligning it with the text baseline? No, Row doesn't support that easily for blocks.
+                      // Let's try creating a Row for just the Title and the Button?
+                      // No, the layout is Column(Title, Subtitle) | Button.
+                      // If I want Button opposite Title, I should put Button INSIDE the first Layout?
+                      // Or just use CrossAxisAlignment.start.
+                      // But the button has 44 height. The text might be 30.
+                      // Center might be better if I only check the Title.
+                      // But the Column includes Subtitle.
+                      
+                      // Better approach: Move the subtitle OUT of the Row?
+                      // Structure:
+                      // Column(
+                      //   Row(Title, Button),
+                      //   Subtitle
+                      // )
+                      // THIS IS IT!
+                      // This guarantees the button is purely aligned with the Title.
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            RichText(
-                              text: TextSpan(
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  TextSpan(
-                                    text: 'PT',
-                                    style: GoogleFonts.graduate(
-                                      textStyle: AppTextStyles.largeTitle.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.primaryYellow,
-                                      ),
+                                  RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: 'PT',
+                                          style: GoogleFonts.graduate(
+                                            textStyle: AppTextStyles.largeTitle.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.primaryYellow,
+                                              fontSize: 28, // Reduced from largeTitle (~34)
+                                            ),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: ' Body Change',
+                                          style: GoogleFonts.graduate(
+                                            textStyle: AppTextStyles.largeTitle.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 28, // Reduced
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  TextSpan(
-                                    text: ' Body Change',
-                                    style: GoogleFonts.graduate(
-                                      textStyle: AppTextStyles.largeTitle.copyWith(
-                                        fontWeight: FontWeight.bold,
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => const ProfileScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 40, // Slightly smaller button too? maybe. User didn't ask but visual balance.
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryYellow.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.primaryYellow,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'PT',
+                                          style: AppTextStyles.headline.copyWith(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Sporcu Takip Sistemi',
-                              style: AppTextStyles.subheadline,
-                            ),
-                          ],
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const ProfileScreen(),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Sporcu Takip Sistemi',
+                                style: AppTextStyles.subheadline.copyWith(fontSize: 14),
                               ),
-                            );
-                          },
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryYellow.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.primaryYellow,
-                                width: 2,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'PT',
-                                style: AppTextStyles.headline.copyWith(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
@@ -245,9 +317,9 @@ class _DashboardHomeState extends State<_DashboardHome> {
                     icon: Icons.person_rounded,
                     color: AppColors.accentGreen,
                   ),
-                  const StatCard(
+                  StatCard(
                     title: 'Bugünkü Dersler',
-                    value: '0', // Placeholder for now
+                    value: '$_todayClasses',
                     icon: Icons.fitness_center_rounded,
                     color: AppColors.primaryYellow,
                   ),
