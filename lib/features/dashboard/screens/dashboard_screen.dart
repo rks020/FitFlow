@@ -13,6 +13,7 @@ import '../../../data/repositories/member_repository.dart';
 import '../../../data/repositories/measurement_repository.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../members/screens/add_edit_member_screen.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../core/services/presence_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -367,12 +368,20 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       subtitle: 'Sisteme yeni sporcu kaydet',
                       color: AppColors.accentBlue,
                       onTap: () async {
-                        await Navigator.of(context).push(
+                        final result = await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const AddEditMemberScreen(),
                           ),
                         );
-                        _loadStats(); // Reload stats after return
+                        if (result == true) {
+                          if (context.mounted) {
+                            CustomSnackBar.showSuccess(
+                              context, 
+                              'Üye başarıyla eklendi',
+                            );
+                          }
+                          _loadStats();
+                        }
                       },
                     ),
                     const SizedBox(height: 12),
