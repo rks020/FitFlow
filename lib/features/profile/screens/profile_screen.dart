@@ -10,6 +10,7 @@ import '../../../data/repositories/profile_repository.dart';
 import '../../auth/screens/login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'signature_log_screen.dart';
+import 'trainer_schedule_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -214,6 +215,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onTap: () {},
                             ),
                           ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      const SizedBox(height: 16),
+
+                      // Trainer Schedule Entry
+                      GlassCard(
+                        child: _ProfileOption(
+                          icon: Icons.calendar_month_rounded,
+                          title: 'Eğitmen Programı',
+                          onTap: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => const TrainerScheduleScreen(),
+                               ),
+                             );
+                          },
                         ),
                       ),
 

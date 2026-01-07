@@ -27,7 +27,7 @@ class ClassRepository {
   Future<List<ClassSession>> getSessions(DateTime start, DateTime end) async {
     final response = await _client
         .from('class_sessions')
-        .select()
+        .select('*, profiles(first_name, last_name)')
         .gte('start_time', start.toIso8601String())
         .lte('end_time', end.toIso8601String())
         .order('start_time', ascending: true);
