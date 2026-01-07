@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/colors.dart';
@@ -26,7 +27,8 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final data = await _repository.getCompletedHistoryWithDetails();
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final data = await _repository.getCompletedHistoryWithDetails(trainerId: userId);
       if (mounted) {
         setState(() {
           _sessions = data;

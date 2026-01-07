@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.ptbodychange.pt_body_change"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

@@ -365,12 +365,14 @@ class _DashboardHomeState extends State<_DashboardHome> {
                     value: '$_totalMembers',
                     icon: Icons.people_rounded,
                     color: AppColors.accentBlue,
+                    onTap: () => widget.onNavigate(1), // Navigate to Members
                   ),
                   StatCard(
                     title: 'Aktif Üye',
                     value: '$_activeMembers',
                     icon: Icons.person_rounded,
                     color: AppColors.accentGreen,
+                    onTap: () => widget.onNavigate(1), // Navigate to Members
                   ),
                   StatCard(
                     title: 'Bugünkü Dersler',
@@ -439,11 +441,9 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       color: AppColors.accentOrange,
                       onTap: () {
                         widget.onNavigate(1);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Lütfen ölçüm eklemek istediğiniz üyeyi seçin.'),
-                            duration: Duration(seconds: 2),
-                          ),
+                        CustomSnackBar.showError(
+                          context,
+                          'Lütfen ölçüm eklemek istediğiniz üyeyi seçin.',
                         );
                       },
                     ),

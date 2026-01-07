@@ -208,12 +208,17 @@ class ClassRepository {
   }
 
   // Get completed history with enrollments
-  Future<List<Map<String, dynamic>>> getCompletedHistoryWithDetails() async {
-    final response = await _client
+  Future<List<Map<String, dynamic>>> getCompletedHistoryWithDetails({String? trainerId}) async {
+    var query = _client
         .from('class_sessions')
         .select('*, class_enrollments(*, members(name, photo_url))')
-        .eq('status', 'completed')
-        .order('start_time', ascending: false);
+        .eq('status', 'completed');
+
+    if (trainerId != null) {
+      query = query.eq('trainer_id', trainerId);
+    }
+
+    final response = await query.order('start_time', ascending: false);
     
     return List<Map<String, dynamic>>.from(response);
   }

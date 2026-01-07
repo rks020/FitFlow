@@ -4,6 +4,8 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/class_session.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 import 'add_class_screen.dart';
 import 'class_detail_screen.dart';
 
@@ -204,6 +206,14 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
   Widget _buildClassItem(ClassSession session) {
     return GestureDetector(
       onTap: () async {
+        final currentUser = Supabase.instance.client.auth.currentUser;
+        
+        // Ownership check
+        if (session.trainerId != null && currentUser?.id != session.trainerId) {
+          CustomSnackBar.showError(context, 'Lütfen Eğitmen ile iletişime geçin');
+          return;
+        }
+
         final result = await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ClassDetailScreen(session: session)),
