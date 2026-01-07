@@ -88,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back_rounded),
+                            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                             onPressed: () => Navigator.pop(context),
                           ),
                           const SizedBox(width: 8),
