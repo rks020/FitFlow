@@ -9,6 +9,7 @@ import '../../../data/repositories/class_repository.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../widgets/conflict_warning_dialog.dart';
 
 class CreateScheduleScreen extends StatefulWidget {
   final Member member;
@@ -53,6 +54,9 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
     setState(() => _isLoading = true);
     int createdCount = 0;
     int conflictCount = 0;
+    int trainerConflicts = 0;
+    int memberConflicts = 0;
+    bool userCancelled = false;
 
     try {
       final int remainingRights = widget.member.sessionCount ?? 0;
@@ -80,11 +84,93 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
 
           final endDateTime = startDateTime.add(Duration(minutes: _durationMinutes));
 
-          // Check conflict
-          final conflicts = await _repository.findConflictingSessions(startDateTime, endDateTime);
+          // Check conflict with details
+          final currentTrainerId = Supabase.instance.client.auth.currentUser?.id;
+          final conflicts = await _repository.findConflictsWithDetails(
+            startDateTime,
+            endDateTime,
+            excludeTrainerId: currentTrainerId,
+          );
+
           if (conflicts.isNotEmpty) {
+            // Check if member has conflicting enrollment
+            bool hasMemberConflict = false;
+            for (final conflict in conflicts) {
+              final enrollments = conflict['class_enrollments'] as List<dynamic>? ?? [];
+              for (final enrollment in enrollments) {
+                if (enrollment['member_id'] == widget.member.id) {
+                  hasMemberConflict = true;
+                  break;
+                }
+              }
+              if (hasMemberConflict) break;
+            }
+
+            if (hasMemberConflict) {
+              memberConflicts++;
+            } else {
+              trainerConflicts++;
+            }
+
+            // Find smart alternative
+            DateTime? alternativeStart;
+            DateTime? alternativeEnd;
+            try {
+              alternativeStart = await _repository.findNextAvailableSlot(
+                startDateTime, 
+                _durationMinutes
+              );
+              if (alternativeStart != null) {
+                alternativeEnd = alternativeStart.add(Duration(minutes: _durationMinutes));
+              }
+            } catch (_) {}
+
+            // Show conflict dialog with alternative
+            final action = await showDialog<ConflictAction>(
+              context: context,
+              builder: (context) => ConflictWarningDialog(
+                conflicts: conflicts,
+                proposedStartTime: startDateTime,
+                proposedEndTime: endDateTime,
+                alternativeStartTime: alternativeStart,
+                alternativeEndTime: alternativeEnd,
+              ),
+            );
+
+            if (action == ConflictAction.acceptAlternative && alternativeStart != null) {
+               // Update time for this day to the alternative time
+               if (mounted) {
+                 final newTime = TimeOfDay.fromDateTime(alternativeStart);
+                 setState(() {
+                   _dayTimes[d.weekday] = newTime;
+                 });
+                 // Retry with new time - go back one day to reprocess
+                 d = d.subtract(const Duration(days: 1));
+                 continue;
+               }
+            } else if (action == ConflictAction.modifyTime) {
+              // Show time picker for this day
+              if (mounted) {
+                final newTime = await showTimePicker(
+                  context: context,
+                  initialTime: time,
+                );
+                if (newTime != null) {
+                  setState(() {
+                    _dayTimes[d.weekday] = newTime;
+                  });
+                  // Retry with new time - go back one day to reprocess
+                  d = d.subtract(const Duration(days: 1));
+                  continue;
+                }
+              }
+            } else if (action == ConflictAction.cancel) {
+              userCancelled = true;
+              break;
+            }
+            // If skip, just continue to next iteration
             conflictCount++;
-            continue; // Skip this session
+            continue;
           }
 
           // Create
@@ -107,12 +193,17 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
       }
 
       if (mounted) {
-        if (createdCount > 0) {
+        if (userCancelled) {
+          CustomSnackBar.showWarning(context, 'Program oluşturma iptal edildi.');
+        } else if (createdCount > 0) {
           String msg = '$createdCount ders oluşturuldu.';
           if (createdCount >= remainingRights) {
-            msg += ' (Paket limiti dolduğu için durduruldu)';
+            msg += ' (Paket limiti doldu)';
           } else if (conflictCount > 0) {
-            msg += ' ($conflictCount çakışma atlandı)';
+            List<String> conflicts = [];
+            if (trainerConflicts > 0) conflicts.add('$trainerConflicts antrenör');
+            if (memberConflicts > 0) conflicts.add('$memberConflicts üye');
+            msg += ' (${conflicts.join(", ")} çakışması atlandı)';
           }
           CustomSnackBar.showSuccess(context, msg);
           Navigator.pop(context, true);

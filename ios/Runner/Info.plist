@@ -49,5 +49,20 @@
 	<string>Profil fotoğrafı çekmek için kameraya erişim izni gerekiyor.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Video kaydı için mikrofona erişim izni gerekiyor.</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>tr</string>
+		<string>en</string>
+	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Fotoğraf kaydetmek için galeriye erişim izni gerekiyor.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Yerel ağ bağlantıları için izin gerekiyor.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartobservatory._tcp</string>
+	</array>
 </dict>
 </plist>

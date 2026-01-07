@@ -10,7 +10,11 @@ class PresenceService {
     await _channel?.subscribe((status, error) async {
       if (status == RealtimeSubscribeStatus.subscribed) {
         // Track the user presence
-        await _channel?.track({'user_id': userId, 'online_at': DateTime.now().toIso8601String()});
+        await _channel?.track({
+          'user_id': userId, 
+          'online_at': DateTime.now().toIso8601String(),
+          'status': 'online',
+        });
       }
     });
   }

@@ -9,6 +9,7 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String? subtitle;
+  final VoidCallback? onTap;
 
   const StatCard({
     super.key,
@@ -17,11 +18,13 @@ class StatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(10),
       child: LayoutBuilder(
         builder: (context, constraints) {

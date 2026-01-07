@@ -433,8 +433,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     });
                   },
                   icon: Icons.calendar_month_rounded,
-                  backgroundColor: AppColors.primaryYellow,
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.accentOrange,
                   width: double.infinity,
                 ),
                 const SizedBox(height: 12),
@@ -478,7 +477,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   },
                   isOutlined: true,
                   icon: Icons.show_chart_rounded,
-                  foregroundColor: AppColors.primaryYellow,
+                  foregroundColor: AppColors.accentOrange,
                   width: double.infinity,
                 ),
               ],

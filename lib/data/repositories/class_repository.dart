@@ -233,4 +233,92 @@ class ClassRepository {
     
     return List<Map<String, dynamic>>.from(response);
   }
+
+  // Get conflict details with trainer and member information
+  Future<List<Map<String, dynamic>>> findConflictsWithDetails(
+    DateTime start, 
+    DateTime end,
+    {String? excludeTrainerId}
+  ) async {
+    final startStr = start.toUtc().toIso8601String();
+    final endStr = end.toUtc().toIso8601String();
+
+    // Query sessions with trainer profile and enrollments
+    var query = _client
+        .from('class_sessions')
+        .select('''
+          *,
+          profiles!trainer_id(first_name, last_name),
+          class_enrollments(
+            id,
+            member_id,
+            members(name)
+          )
+        ''')
+        .neq('status', 'cancelled')
+        .lt('start_time', endStr)
+        .gt('end_time', startStr);
+
+    // Exclude current trainer's sessions if provided
+    if (excludeTrainerId != null) {
+      query = query.neq('trainer_id', excludeTrainerId);
+    }
+
+    final response = await query;
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // Find next available slot for a given day
+  Future<DateTime?> findNextAvailableSlot(DateTime date, int durationMinutes) async {
+    // Search between 09:00 and 22:00
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    var searchTime = startOfDay.add(const Duration(hours: 9)); 
+    final endLimit = startOfDay.add(const Duration(hours: 22));
+
+    // Get all sessions for that day
+    final response = await _client
+        .from('class_sessions')
+        .select('start_time, end_time')
+        .neq('status', 'cancelled')
+        .lt('start_time', startOfDay.add(const Duration(days: 1)).toIso8601String())
+        .gte('end_time', startOfDay.toIso8601String())
+        .order('start_time');
+
+    final sessions = List<Map<String, dynamic>>.from(response);
+
+    while (searchTime.add(Duration(minutes: durationMinutes)).isBefore(endLimit)) {
+      final potentialEnd = searchTime.add(Duration(minutes: durationMinutes));
+      bool hasConflict = false;
+
+      for (final session in sessions) {
+        final SessionStart = DateTime.parse(session['start_time']).toLocal();
+        final SessionEnd = DateTime.parse(session['end_time']).toLocal();
+
+        if (searchTime.isBefore(SessionEnd) && potentialEnd.isAfter(SessionStart)) {
+          hasConflict = true;
+          // Jump to end of conflicting session to optimize search
+          if (SessionEnd.isAfter(searchTime)) {
+             searchTime = SessionEnd;
+          }
+          break;
+        }
+      }
+
+      if (!hasConflict) {
+        return searchTime;
+      }
+      
+      // If we didn't jump, move forward by 30 mins
+      if (hasConflict) {
+         // Determine next check time (round to next 30 min)
+         final minutes = searchTime.minute;
+         final remainder = minutes % 30;
+         final addMinutes = 30 - remainder;
+         searchTime = searchTime.add(Duration(minutes: addMinutes));
+      }
+    }
+
+    return null;
+  }
 }
+

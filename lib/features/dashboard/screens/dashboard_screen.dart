@@ -16,6 +16,7 @@ import '../../../data/repositories/profile_repository.dart';
 import '../../members/screens/add_edit_member_screen.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../core/services/presence_service.dart';
+import 'trainers_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -106,6 +107,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
   int _activeMembers = 0;
   int _totalMeasurements = 0;
   int _todayClasses = 0;
+  int _onlineTrainersCount = 0;
   bool _isLoading = true;
   bool _isOnline = false;
   String _userInitials = 'PT';
@@ -196,15 +198,22 @@ class _DashboardHomeState extends State<_DashboardHome> {
 
       final totalMembers = await memberRepo.getCount();
       final activeMembers = await memberRepo.getActiveCount();
-      final totalMeasurements = await measurementRepo.getCount();
+      // final totalMeasurements = await measurementRepo.getCount(); // Not used
       final todayClasses = await classRepo.getTodaySessionCount();
+
+      // Get count of profiles/trainers
+      final trainersCount = await Supabase.instance.client
+          .from('profiles')
+          .count(CountOption.exact);
 
       if (mounted) {
         setState(() {
           _totalMembers = totalMembers;
           _activeMembers = activeMembers;
-          _totalMeasurements = totalMeasurements;
+          _activeMembers = activeMembers;
+          // _totalMeasurements = totalMeasurements;
           _todayClasses = todayClasses;
+          _onlineTrainersCount = trainersCount;
           _isLoading = false;
         });
       }
@@ -368,12 +377,20 @@ class _DashboardHomeState extends State<_DashboardHome> {
                     value: '$_todayClasses',
                     icon: Icons.fitness_center_rounded,
                     color: AppColors.primaryYellow,
+                    onTap: () => widget.onNavigate(3), // Navigate to Classes
                   ),
                   StatCard(
-                    title: 'Ölçümler',
-                    value: '$_totalMeasurements',
-                    icon: Icons.straighten_rounded,
+                    title: 'Eğitmenler',
+                    value: '$_onlineTrainersCount',
+                    icon: Icons.people_alt_rounded,
                     color: AppColors.accentOrange,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const TrainersListScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ]),
               ),
