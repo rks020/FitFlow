@@ -9,6 +9,8 @@ import '../../../data/repositories/member_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
+import '../../../shared/widgets/signature_dialog.dart';
+import 'dart:typed_data';
 
 class ClassDetailScreen extends StatefulWidget {
   final ClassSession session;
@@ -53,6 +55,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     final members = widget.session.trainerId != null 
         ? await _memberRepository.getActiveByTrainer(widget.session.trainerId!)
         : await _memberRepository.getActive();
+    
+    // Filter out already enrolled members
     
     // Filter out already enrolled members
     final enrolledIds = _enrollments.map((e) => e.memberId).toSet();
@@ -131,12 +135,57 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   Future<void> _toggleAttendance(ClassEnrollment enrollment) async {
-    final newStatus = enrollment.status == 'attended' ? 'booked' : 'attended';
+    // Cycle: booked -> attended -> absent -> booked
+    String newStatus;
+    if (enrollment.status == 'booked') {
+      newStatus = 'attended';
+    } else if (enrollment.status == 'attended') {
+      newStatus = 'absent';
+    } else {
+      newStatus = 'booked';
+    }
+
     try {
       await _classRepository.updateEnrollmentStatus(enrollment.id!, newStatus);
       _loadEnrollments();
     } catch (e) {
       CustomSnackBar.showError(context, 'Güncelleme hatası: $e');
+    }
+  }
+
+  Future<void> _signStudent(ClassEnrollment enrollment) async {
+    final Uint8List? signature = await showDialog<Uint8List>(
+      context: context,
+      builder: (context) => SignatureDialog(title: '${enrollment.member?.name} İmzası'),
+    );
+
+    if (signature != null) {
+      try {
+        final url = await _classRepository.uploadSignature(signature);
+        await _classRepository.updateEnrollmentSignature(enrollment.id!, url);
+        CustomSnackBar.showSuccess(context, 'İmza kaydedildi');
+        _loadEnrollments();
+      } catch (e) {
+        CustomSnackBar.showError(context, 'İmza hatası: $e');
+      }
+    }
+  }
+
+  Future<void> _completeClass() async {
+    final Uint8List? signature = await showDialog<Uint8List>(
+      context: context,
+      builder: (context) => const SignatureDialog(title: 'Eğitmen İmzası'),
+    );
+
+    if (signature != null) {
+      try {
+        final url = await _classRepository.uploadSignature(signature);
+        await _classRepository.completeSession(widget.session.id!, url);
+        CustomSnackBar.showSuccess(context, 'Ders tamamlandı');
+        if (mounted) Navigator.pop(context, true);
+      } catch (e) {
+        CustomSnackBar.showError(context, 'Hata: $e');
+      }
     }
   }
 
@@ -166,71 +215,110 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
             icon: const Icon(Icons.delete_outline, color: AppColors.accentRed),
             onPressed: () => _showDeleteConfirmation(context),
           ),
+          IconButton(
+            icon: const Icon(Icons.access_time_filled_rounded, color: AppColors.primaryYellow),
+            tooltip: 'Rötar',
+            onPressed: _showDelayDialog,
+          ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Class Info Card
-          GlassCard(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(widget.session.title, style: AppTextStyles.title2.copyWith(color: AppColors.primaryYellow)),
-                    Chip(
-                      label: Text('${_enrollments.length}/${widget.session.capacity}', style: AppTextStyles.caption1.copyWith(color: Colors.black)),
-                      backgroundColor: AppColors.primaryYellow,
-                    ),
-                  ],
+           // Background Logo
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.center,
+              child: Opacity(
+                opacity: 0.1, // Subtle opacity
+                child: Image.asset(
+                  'assets/images/pt_logo.png',
+                  width: 300,
                 ),
-                const SizedBox(height: 12),
-                _buildInfoRow(Icons.calendar_today_rounded, '${widget.session.startTime.day}.${widget.session.startTime.month}.${widget.session.startTime.year}'),
-                const SizedBox(height: 8),
-                _buildInfoRow(Icons.access_time_rounded, '${_formatTime(widget.session.startTime)} - ${_formatTime(widget.session.endTime)}'),
-                if (widget.session.description != null) ...[
-                  const SizedBox(height: 12),
-                  Text(widget.session.description!, style: AppTextStyles.caption1),
-                ],
-              ],
+              ),
             ),
           ),
-          
-          Expanded(
-            child: GlassCard(
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Content
+          Column(
+            children: [
+              // Class Info Card
+              GlassCard(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.session.title,
+                            style: AppTextStyles.title2.copyWith(color: AppColors.primaryYellow),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text('${_enrollments.length}/${widget.session.capacity}', style: AppTextStyles.caption1.copyWith(color: Colors.black)),
+                          backgroundColor: AppColors.primaryYellow,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(Icons.calendar_today_rounded, '${widget.session.startTime.day}.${widget.session.startTime.month}.${widget.session.startTime.year}'),
+                    const SizedBox(height: 8),
+                    _buildInfoRow(Icons.access_time_rounded, '${_formatTime(widget.session.startTime)} - ${_formatTime(widget.session.endTime)}'),
+                    if (widget.session.description != null) ...[
+                      const SizedBox(height: 12),
+                      Text(widget.session.description!, style: AppTextStyles.caption1),
+                    ],
+                  ],
+                ),
+              ),
+              
+              Expanded(
+                child: GlassCard(
+                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Katılımcılar', style: AppTextStyles.headline),
-                      IconButton(
-                        icon: const Icon(Icons.person_add_rounded, color: AppColors.primaryYellow),
-                        onPressed: _enrollMember,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Katılımcılar', style: AppTextStyles.headline),
+                          IconButton(
+                            icon: const Icon(Icons.person_add_rounded, color: AppColors.primaryYellow),
+                            onPressed: _enrollMember,
+                          ),
+                        ],
+                      ),
+                      const Divider(color: AppColors.glassBorder),
+                      Expanded(
+                        child: _isLoading 
+                            ? const Center(child: CircularProgressIndicator())
+                            : _enrollments.isEmpty 
+                                ? Center(child: Text('Henüz katılımcı yok', style: AppTextStyles.caption1))
+                                : ListView.separated(
+                                    itemCount: _enrollments.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                    itemBuilder: (context, index) => _buildEnrollmentItem(_enrollments[index]),
+                                  ),
                       ),
                     ],
                   ),
-                  const Divider(color: AppColors.glassBorder),
-                  Expanded(
-                    child: _isLoading 
-                        ? const Center(child: CircularProgressIndicator())
-                        : _enrollments.isEmpty 
-                            ? Center(child: Text('Henüz katılımcı yok', style: AppTextStyles.caption1))
-                            : ListView.separated(
-                                itemCount: _enrollments.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                itemBuilder: (context, index) => _buildEnrollmentItem(_enrollments[index]),
-                              ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              if (widget.session.status != 'completed')
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: CustomButton(
+                    text: 'Dersi Tamamla',
+                    onPressed: _completeClass,
+                    icon: Icons.check_circle_outline_rounded,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -274,9 +362,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               child: Text(enrollment.member!.name, style: AppTextStyles.body),
             ),
             IconButton(
+              tooltip: 'İmza',
               icon: Icon(
-                isAttended ? Icons.check_circle : Icons.check_circle_outline,
-                color: isAttended ? AppColors.accentGreen : AppColors.textSecondary,
+                Icons.draw_rounded,
+                color: enrollment.studentSignatureUrl != null ? AppColors.primaryYellow : AppColors.textSecondary,
+              ),
+              onPressed: () => _signStudent(enrollment),
+            ),
+            IconButton(
+              tooltip: enrollment.status == 'absent' ? 'Gelmedi' : (isAttended ? 'Geldi' : 'Bekliyor'),
+              icon: Icon(
+                enrollment.status == 'absent' 
+                    ? Icons.cancel 
+                    : (isAttended ? Icons.check_circle : Icons.check_circle_outline),
+                color: enrollment.status == 'absent' 
+                    ? AppColors.accentRed 
+                    : (isAttended ? AppColors.accentGreen : AppColors.textSecondary),
               ),
               onPressed: () => _toggleAttendance(enrollment),
             ),
@@ -321,7 +422,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surfaceDark,
         title: const Text('Dersi Sil', style: TextStyle(color: Colors.white)),
-        content: const Text('Bu dersi ve tüm kayıtları silmek istediğinize emin misiniz?', style: TextStyle(color: Colors.white70)),
+        content: const Text(
+          'Bu işlemi nasıl uygulamak istersiniz?',
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -329,14 +433,69 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              await _classRepository.deleteSession(widget.session.id!);
-              if (mounted) Navigator.pop(context, true); // Close screen
+              Navigator.pop(context);
+              if (widget.session.id != null) {
+                await _classRepository.deleteSession(widget.session.id!);
+                if (mounted) Navigator.pop(context, true);
+              }
             },
-            child: const Text('Sil', style: TextStyle(color: AppColors.accentRed)),
+            child: const Text('Sadece Bu Dersi', style: TextStyle(color: AppColors.accentRed)),
           ),
+          if (widget.session.trainerId != null)
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _classRepository.deleteSeries(
+                  widget.session.title,
+                  widget.session.trainerId!,
+                );
+                if (mounted) Navigator.pop(context, true);
+              },
+              child: const Text('Tüm Programı', style: TextStyle(color: AppColors.accentRed, fontWeight: FontWeight.bold)),
+            ),
         ],
       ),
     );
+  }
+  Future<void> _showDelayDialog() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(widget.session.startTime),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.primaryYellow,
+              onPrimary: Colors.black,
+              surface: AppColors.surfaceDark,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && mounted) {
+      final newStart = DateTime(
+        widget.session.startTime.year,
+        widget.session.startTime.month,
+        widget.session.startTime.day,
+        picked.hour,
+        picked.minute,
+      );
+      
+      // Calculate original duration to preserve it
+      final duration = widget.session.durationMinutes;
+      final newEnd = newStart.add(Duration(minutes: duration));
+
+      try {
+        await _classRepository.updateSessionTime(widget.session.id!, newStart, newEnd);
+        CustomSnackBar.showSuccess(context, 'Ders saati güncellendi');
+        if (mounted) Navigator.pop(context, true); // Close and refresh
+      } catch (e) {
+        CustomSnackBar.showError(context, 'Güncelleme hatası: $e');
+      }
+    }
   }
 }

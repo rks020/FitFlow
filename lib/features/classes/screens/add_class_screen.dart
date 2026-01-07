@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/class_session.dart';
@@ -33,6 +34,7 @@ class _AddClassScreenState extends State<AddClassScreen> {
   void initState() {
     super.initState();
     _selectedDate = widget.initialDate ?? DateTime.now();
+    _startTime = TimeOfDay.now();
   }
 
 
@@ -58,13 +60,64 @@ class _AddClassScreenState extends State<AddClassScreen> {
         _startTime.minute,
       );
 
+      if (startDateTime.isBefore(DateTime.now())) {
+        if (mounted) {
+          CustomSnackBar.showError(context, 'Geçmiş bir zamana ders planlanamaz.');
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final endDateTime = startDateTime.add(Duration(minutes: _durationMinutes));
+
+      // Check for conflicts
+      final conflicts = await _repository.findConflictingSessions(startDateTime, endDateTime);
+      if (conflicts.isNotEmpty) {
+         if (mounted) {
+           final conflictMessages = conflicts.map((c) {
+             final title = c['title'] ?? 'Ders';
+             final time = DateTime.parse(c['start_time']).toLocal();
+             final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+             return '• $timeStr - $title';
+           }).join('\n');
+
+           final bool? confirm = await showDialog<bool>(
+             context: context,
+             builder: (context) => AlertDialog(
+               backgroundColor: AppColors.surfaceDark,
+               title: Text('Çakışan Ders Uyarısı', style: AppTextStyles.title3.copyWith(color: AppColors.accentRed)),
+               content: SingleChildScrollView(
+                 child: Text(
+                   'Bu saatte aşağıdaki dersler mevcut:\n\n$conflictMessages\n\nYine de eklemek ister misiniz?',
+                   style: AppTextStyles.body,
+                 ),
+               ),
+               actions: [
+                 TextButton(
+                   onPressed: () => Navigator.pop(context, false),
+                   child: Text('İptal', style: AppTextStyles.callout),
+                 ),
+                 TextButton(
+                   onPressed: () => Navigator.pop(context, true),
+                   child: Text('Evet, Ekle', style: AppTextStyles.callout.copyWith(color: AppColors.primaryYellow)),
+                 ),
+               ],
+             ),
+           );
+
+           if (confirm != true) {
+             setState(() => _isLoading = false);
+             return;
+           }
+         }
+      }
 
       final session = ClassSession(
         title: _titleController.text,
         startTime: startDateTime,
         endTime: endDateTime,
         capacity: int.parse(_capacityController.text),
+        trainerId: Supabase.instance.client.auth.currentUser?.id,
       );
 
       await _repository.createSession(session);

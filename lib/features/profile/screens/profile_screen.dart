@@ -9,6 +9,7 @@ import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../auth/screens/login_screen.dart';
 import 'edit_profile_screen.dart';
+import 'signature_log_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -213,6 +214,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onTap: () {},
                             ),
                           ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Signature Log Entry
+                      GlassCard(
+                        child: _ProfileOption(
+                          icon: Icons.history_edu_rounded,
+                          title: 'İmza Defteri',
+                          onTap: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => const SignatureLogScreen(),
+                               ),
+                             );
+                          },
                         ),
                       ),
                       

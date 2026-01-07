@@ -19,6 +19,7 @@ class MemberRepository {
       'notes': member.notes,
       'trainer_id': _client.auth.currentUser?.id,
       'subscription_package': member.subscriptionPackage,
+      'session_count': member.sessionCount,
     });
   }
 
@@ -99,6 +100,7 @@ class MemberRepository {
       'notes': member.notes,
       'updated_at': DateTime.now().toIso8601String(),
       'subscription_package': member.subscriptionPackage,
+      'session_count': member.sessionCount,
     }).eq('id', member.id);
   }
 
@@ -126,12 +128,19 @@ class MemberRepository {
     return response.count;
   }
 
-  // Get members who have measurements
+  // Get members who have measurements (Filtered by Trainer)
   Future<List<Member>> getMembersWithMeasurements() async {
-    final response = await _client
+    final userId = _client.auth.currentUser?.id;
+    
+    var query = _client
         .from('members')
-        .select('*, measurements!inner(id)')
-        .order('name', ascending: true);
+        .select('*, measurements!inner(id)');
+
+    if (userId != null) {
+      query = query.eq('trainer_id', userId);
+    }
+    
+    final response = await query.order('name', ascending: true);
     
     return (response as List)
         .map((json) => Member.fromSupabaseMap(json))

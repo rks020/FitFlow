@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/member.dart';
@@ -59,8 +60,11 @@ class _MembersListScreenState extends State<MembersListScreen> {
     
     setState(() {
       _filteredMembers = _members.where((member) {
-        // Apply active filter
-        if (_showActiveOnly && !member.isActive) return false;
+        // Apply "My Members" filter (formerly active)
+        if (_showActiveOnly) {
+           final userId = Supabase.instance.client.auth.currentUser?.id;
+           if (member.trainerId != userId) return false;
+        }
         
         // Apply search filter
         if (query.isEmpty) return true;
@@ -167,7 +171,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'Aktif',
+                              'Benim Üyelerim',
                               textAlign: TextAlign.center,
                               style: AppTextStyles.callout.copyWith(
                                 color: _showActiveOnly

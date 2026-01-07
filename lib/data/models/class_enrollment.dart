@@ -7,6 +7,7 @@ class ClassEnrollment {
   final String status; // 'booked', 'attended', 'cancelled'
   final DateTime? createdAt;
   final Member? member; // For joined data
+  final String? studentSignatureUrl;
 
   ClassEnrollment({
     this.id,
@@ -15,6 +16,7 @@ class ClassEnrollment {
     this.status = 'booked',
     this.createdAt,
     this.member,
+    this.studentSignatureUrl,
   });
 
   Map<String, dynamic> toSupabaseMap() {
@@ -23,6 +25,7 @@ class ClassEnrollment {
       'class_id': classId,
       'member_id': memberId,
       'status': status,
+      'student_signature_url': studentSignatureUrl,
     };
   }
 
@@ -38,6 +41,7 @@ class ClassEnrollment {
       member: map['members'] != null 
           ? Member.fromSupabaseMap(map['members'] as Map<String, dynamic>) 
           : null,
+      studentSignatureUrl: map['student_signature_url'] as String?,
     );
   }
 }

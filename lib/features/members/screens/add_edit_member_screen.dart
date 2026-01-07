@@ -23,7 +23,9 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
   final _phoneController = TextEditingController();
   final _emergencyContactController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
+
   final _notesController = TextEditingController();
+  final _sessionCountController = TextEditingController();
   
   String? _selectedPackage;
   final List<String> _packages = ['Standard (8 Ders)', 'Pro (10 Ders)'];
@@ -42,6 +44,16 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
       _emergencyPhoneController.text = widget.member!.emergencyPhone ?? '';
       _notesController.text = widget.member!.notes ?? '';
       _selectedPackage = widget.member!.subscriptionPackage;
+      _sessionCountController.text = widget.member!.sessionCount?.toString() ?? '';
+      
+      // Auto-fill session count if missing but package is selected
+      if (_sessionCountController.text.isEmpty && _selectedPackage != null) {
+         final match = RegExp(r'\((\d+)\s+Ders\)').firstMatch(_selectedPackage!);
+         if (match != null) {
+            _sessionCountController.text = match.group(1)!;
+         }
+      }
+
       _isActive = widget.member!.isActive;
     }
   }
@@ -71,6 +83,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
             ? null
             : _notesController.text.trim(),
         subscriptionPackage: _selectedPackage,
+        sessionCount: int.tryParse(_sessionCountController.text.trim()),
       );
 
       final repository = MemberRepository();
@@ -174,8 +187,24 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                 onChanged: (value) {
                   setState(() {
                     _selectedPackage = value;
+                    if (value != null) {
+                      // Extract number from package string e.g "Standard (8 Ders)" -> 8
+                      final match = RegExp(r'\((\d+)\s+Ders\)').firstMatch(value);
+                      if (match != null) {
+                         _sessionCountController.text = match.group(1)!;
+                      }
+                    }
                   });
                 },
+
+              ),
+              const SizedBox(height: 20),
+              CustomTextField(
+                label: 'Kalan Ders Hakkı',
+                hint: '10',
+                controller: _sessionCountController,
+                keyboardType: TextInputType.number,
+                prefixIcon: const Icon(Icons.confirmation_number_rounded),
               ),
               const SizedBox(height: 24),
               Text(
@@ -250,6 +279,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
     _emergencyContactController.dispose();
     _emergencyPhoneController.dispose();
     _notesController.dispose();
+    _sessionCountController.dispose();
     super.dispose();
   }
 }

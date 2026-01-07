@@ -10,6 +10,9 @@ import 'add_edit_member_screen.dart';
 import '../../measurements/screens/add_measurement_screen.dart';
 import '../../measurements/screens/member_measurements_screen.dart';
 import '../../measurements/screens/progress_charts_screen.dart';
+import '../../../data/repositories/class_repository.dart';
+import '../../../data/models/class_session.dart';
+import '../../classes/screens/create_schedule_screen.dart';
 
 class MemberDetailScreen extends StatefulWidget {
   final Member member;
@@ -178,8 +181,158 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                       ),
                     ),
                   ],
+                  if (_currentMember.sessionCount != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceDark,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.glassBorder),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.confirmation_number_rounded, size: 16, color: AppColors.primaryYellow),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_currentMember.sessionCount} Ders Hakkı',
+                            style: AppTextStyles.subheadline.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
+            ),
+            const SizedBox(height: 32),
+
+            // Upcoming Classes
+            Text(
+              'Ders Bilgisi',
+              style: AppTextStyles.title3,
+            ),
+             const SizedBox(height: 12),
+            FutureBuilder<List<ClassSession>>(
+              future: ClassRepository().getMemberUpcomingClasses(_currentMember.id),
+              builder: (context, snapshot) {
+                 if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                 }
+                 if (snapshot.hasError) {
+                   return Text('Hata: ${snapshot.error}', style: TextStyle(color: Colors.red));
+                 }
+                 
+                 final classes = snapshot.data ?? [];
+                   // if (classes.isEmpty) ... removed to always show remaining sessions
+
+                 return SizedBox(
+                   height: 120,
+                   child: ListView.builder(
+
+                     scrollDirection: Axis.horizontal,
+                     itemCount: classes.length + 1,
+                     itemBuilder: (context, index) {
+                       // 1. First Item: Remaining Sessions Card
+                       if (index == 0) {
+                         return Container(
+                           width: 140, // Slightly narrower
+                           margin: const EdgeInsets.only(right: 12),
+                           decoration: BoxDecoration(
+                             color: AppColors.surfaceDark,
+                             borderRadius: BorderRadius.circular(16),
+                             border: Border.all(color: AppColors.glassBorder),
+                           ),
+                           padding: const EdgeInsets.all(12),
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                             children: [
+                               Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Text(
+                                     'Kalan Ders',
+                                     style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow, fontSize: 16),
+                                   ),
+                                   const SizedBox(height: 8),
+                                   Text(
+                                     '${_currentMember.sessionCount ?? 0}',
+                                     style: AppTextStyles.title1.copyWith(color: Colors.white, fontSize: 32, height: 1.0),
+                                   ),
+                                 ],
+                               ),
+                               Row(
+                                 children: [
+                                   Icon(Icons.confirmation_number_outlined, size: 12, color: AppColors.textSecondary),
+                                   const SizedBox(width: 4),
+                                   Text(
+                                      'Adet',
+                                      style: AppTextStyles.caption1,
+                                   ),
+                                 ],
+                               )
+                             ],
+                           ),
+                         );
+                       }
+
+                       // 2. Class Items
+                       final session = classes[index - 1]; // Shift index
+                       return Container(
+                         width: 170, // Increased width to prevent overflow
+                         margin: const EdgeInsets.only(right: 12),
+                         decoration: BoxDecoration(
+                           color: AppColors.surfaceDark,
+                           borderRadius: BorderRadius.circular(16),
+                           border: Border.all(color: AppColors.glassBorder),
+                         ),
+                         padding: const EdgeInsets.all(12),
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                           children: [
+                             Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text(
+                                   'Gelecek Ders',
+                                   style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow, fontSize: 16),
+                                   maxLines: 1,
+                                   overflow: TextOverflow.ellipsis,
+                                 ),
+                                 const SizedBox(height: 8),
+                                 Text(
+                                   DateFormat('dd MMM HH:mm', 'tr_TR').format(session.startTime),
+                                   style: AppTextStyles.title1.copyWith(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                 ),
+                               ],
+                             ),
+
+                              Row(
+                                children: [
+                                  Icon(Icons.person_outline_rounded, size: 12, color: AppColors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      session.title, // Trainer Name
+                                       style: AppTextStyles.caption1,
+                                       maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              )
+                           ],
+                         ),
+                       );
+                     },
+                   ),
+                 );
+              },
             ),
             const SizedBox(height: 32),
 
@@ -268,6 +421,23 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             // Action Buttons
             Column(
               children: [
+                CustomButton(
+                  text: 'Program Oluştur',
+                  onPressed: () {
+                     Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => CreateScheduleScreen(member: _currentMember),
+                      ),
+                    ).then((_) {
+                       setState(() {}); // Refresh logic if needed
+                    });
+                  },
+                  icon: Icons.calendar_month_rounded,
+                  backgroundColor: AppColors.primaryYellow,
+                  foregroundColor: Colors.black,
+                  width: double.infinity,
+                ),
+                const SizedBox(height: 12),
                 CustomButton(
                   text: 'Ölçüm Ekle',
                   onPressed: () {

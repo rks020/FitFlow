@@ -8,6 +8,9 @@ class ClassSession {
   final int capacity;
   final bool isCancelled;
   final DateTime? createdAt;
+  final String status; // 'scheduled', 'completed', 'cancelled'
+  final String? trainerSignatureUrl;
+  final String? trainerName;
   
   // Extension for calculating duration
   int get durationMinutes => endTime.difference(startTime).inMinutes;
@@ -22,6 +25,9 @@ class ClassSession {
     this.capacity = 10,
     this.isCancelled = false,
     this.createdAt,
+    this.status = 'scheduled',
+    this.trainerSignatureUrl,
+    this.trainerName,
   });
 
   Map<String, dynamic> toSupabaseMap() {
@@ -34,6 +40,8 @@ class ClassSession {
       'end_time': endTime.toUtc().toIso8601String(),
       'capacity': capacity,
       'is_cancelled': isCancelled,
+      'status': status,
+      'trainer_signature_url': trainerSignatureUrl,
     };
   }
 
@@ -49,6 +57,11 @@ class ClassSession {
       isCancelled: map['is_cancelled'] as bool? ?? false,
       createdAt: map['created_at'] != null 
           ? DateTime.parse(map['created_at'] as String).toLocal() 
+          : null,
+      status: map['status'] as String? ?? 'scheduled',
+      trainerSignatureUrl: map['trainer_signature_url'] as String?,
+      trainerName: map['profiles'] != null
+          ? '${map['profiles']['first_name'] ?? ''} ${map['profiles']['last_name'] ?? ''}'.trim()
           : null,
     );
   }

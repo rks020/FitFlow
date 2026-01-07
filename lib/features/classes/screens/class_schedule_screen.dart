@@ -110,7 +110,7 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
                     height: 80,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: 14, // Show 2 weeks
+                      itemCount: 90, // Show 3 months
                       separatorBuilder: (context, index) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final date = DateTime.now().add(Duration(days: index));
@@ -213,6 +213,9 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
         }
       },
       child: GlassCard(
+        backgroundColor: session.status == 'completed' 
+            ? AppColors.accentGreen.withOpacity(0.2) 
+            : null,
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
@@ -242,6 +245,19 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
                     session.title,
                     style: AppTextStyles.headline,
                   ),
+                  if (session.trainerName != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.person, size: 14, color: AppColors.primaryYellow),
+                        const SizedBox(width: 4),
+                        Text(
+                          session.trainerName!,
+                          style: AppTextStyles.caption1.copyWith(color: AppColors.primaryYellow),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     children: [
