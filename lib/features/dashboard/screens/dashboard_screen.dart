@@ -98,154 +98,51 @@ class _DashboardHome extends StatefulWidget {
   State<_DashboardHome> createState() => _DashboardHomeState();
 }
 
+import '../../../core/services/presence_service.dart';
+
+// ... (existing imports)
+
 class _DashboardHomeState extends State<_DashboardHome> {
   int _totalMembers = 0;
   int _activeMembers = 0;
   int _totalMeasurements = 0;
   int _todayClasses = 0;
   bool _isLoading = true;
+  bool _isOnline = false;
   RealtimeChannel? _monitorChannel;
+  final _presenceService = PresenceService();
 
   @override
   void initState() {
     super.initState();
     _loadStats();
     _setupRealtimeSubscription();
+    _setupPresence();
   }
 
-  void _setupRealtimeSubscription() {
-    _monitorChannel = Supabase.instance.client.channel('dashboard_stats');
-    _monitorChannel
-      ?.onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'members',
-        callback: (payload) => _loadStats(),
-      )
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'measurements',
-        callback: (payload) => _loadStats(),
-      )
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'class_sessions',
-        callback: (payload) => _loadStats(),
-      )
-      .subscribe();
+  Future<void> _setupPresence() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId != null) {
+      await _presenceService.connect(userId);
+      if (mounted) {
+        setState(() => _isOnline = true);
+      }
+    }
   }
+
+// ... (rest of methods)
 
   @override
   void dispose() {
+    _presenceService.disconnect();
     if (_monitorChannel != null) {
       Supabase.instance.client.removeChannel(_monitorChannel!);
     }
     super.dispose();
   }
 
-  Future<void> _loadStats() async {
-    try {
-      final memberRepo = MemberRepository();
-      final measurementRepo = MeasurementRepository();
-      final classRepo = ClassRepository();
+// ... (build method parts)
 
-      final totalMembers = await memberRepo.getCount();
-      final activeMembers = await memberRepo.getActiveCount();
-      final totalMeasurements = await measurementRepo.getCount();
-      final todayClasses = await classRepo.getTodaySessionCount();
-
-      if (mounted) {
-        setState(() {
-          _totalMembers = totalMembers;
-          _activeMembers = activeMembers;
-          _totalMeasurements = totalMeasurements;
-          _todayClasses = todayClasses;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading dashboard stats: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _loadStats,
-        color: AppColors.primaryYellow,
-        backgroundColor: AppColors.surfaceDark,
-        child: CustomScrollView(
-          slivers: [
-            // Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center, // Align center vertically with the text row effectively?
-                      // Wait, if I use start, it aligns with top.
-                      // If the user wants it opposite "Change" which is in the title...
-                      // The title is the top element.
-                      // But the text might have line height.
-                      // Let's try aligning it with the text baseline? No, Row doesn't support that easily for blocks.
-                      // Let's try creating a Row for just the Title and the Button?
-                      // No, the layout is Column(Title, Subtitle) | Button.
-                      // If I want Button opposite Title, I should put Button INSIDE the first Layout?
-                      // Or just use CrossAxisAlignment.start.
-                      // But the button has 44 height. The text might be 30.
-                      // Center might be better if I only check the Title.
-                      // But the Column includes Subtitle.
-                      
-                      // Better approach: Move the subtitle OUT of the Row?
-                      // Structure:
-                      // Column(
-                      //   Row(Title, Button),
-                      //   Subtitle
-                      // )
-                      // THIS IS IT!
-                      // This guarantees the button is purely aligned with the Title.
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  RichText(
-                                    text: TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'PT',
-                                          style: GoogleFonts.graduate(
-                                            textStyle: AppTextStyles.largeTitle.copyWith(
-                                              fontWeight: FontWeight.w900,
-                                              color: AppColors.primaryYellow,
-                                              fontSize: 28, // Reduced from largeTitle (~34)
-                                            ),
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: ' Body Change',
-                                          style: GoogleFonts.graduate(
-                                            textStyle: AppTextStyles.largeTitle.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 28, // Reduced
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
                                   GestureDetector(
                                     onTap: () {
                                       Navigator.of(context).push(
@@ -254,27 +151,48 @@ class _DashboardHomeState extends State<_DashboardHome> {
                                         ),
                                       );
                                     },
-                                    child: Container(
-                                      width: 40, // Slightly smaller button too? maybe. User didn't ask but visual balance.
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryYellow.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: AppColors.primaryYellow,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          'PT',
-                                          style: AppTextStyles.headline.copyWith(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                                    child: Stack(
+                                      children: [
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryYellow.withOpacity(0.2),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: AppColors.primaryYellow,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'PT',
+                                              style: AppTextStyles.headline.copyWith(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                        if (_isOnline)
+                                          Positioned(
+                                            right: 0,
+                                            bottom: 0,
+                                            child: Container(
+                                              width: 12,
+                                              height: 12,
+                                              decoration: BoxDecoration(
+                                                color: AppColors.accentGreen,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: AppColors.surfaceDark,
+                                                  width: 2,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                 ],
