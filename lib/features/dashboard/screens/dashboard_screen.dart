@@ -13,6 +13,7 @@ import '../../../data/repositories/member_repository.dart';
 import '../../../data/repositories/measurement_repository.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../members/screens/add_edit_member_screen.dart';
+import '../../../core/services/presence_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -98,7 +99,7 @@ class _DashboardHome extends StatefulWidget {
   State<_DashboardHome> createState() => _DashboardHomeState();
 }
 
-import '../../../core/services/presence_service.dart';
+
 
 // ... (existing imports)
 
