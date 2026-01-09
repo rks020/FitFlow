@@ -319,6 +319,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                                 Row(
                                   children: [
                                     Stack(
+                                      clipBehavior: Clip.none,
                                       children: [
                                         GestureDetector(
                                           onTap: () {
@@ -347,8 +348,8 @@ class _DashboardHomeState extends State<_DashboardHome> {
                                         ),
                                         if (_unreadMessageCount > 0)
                                           Positioned(
-                                            right: 8,
-                                            top: 8,
+                                            right: -4,
+                                            top: -4,
                                             child: Container(
                                               padding: const EdgeInsets.all(4),
                                               decoration: const BoxDecoration(
@@ -356,8 +357,8 @@ class _DashboardHomeState extends State<_DashboardHome> {
                                                 shape: BoxShape.circle,
                                               ),
                                               constraints: const BoxConstraints(
-                                                minWidth: 16,
-                                                minHeight: 16,
+                                                minWidth: 18,
+                                                minHeight: 18,
                                               ),
                                               child: Text(
                                                 '$_unreadMessageCount',
