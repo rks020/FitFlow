@@ -320,14 +320,30 @@ class _DashboardHomeState extends State<_DashboardHome> {
                                   children: [
                                     Stack(
                                       children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.mail_outline_rounded, color: AppColors.primaryYellow),
-                                          onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(builder: (context) => const InboxScreen()),
-                                              ).then((_) => _loadUnreadCount());
+                                        GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(builder: (context) => const InboxScreen()),
+                                            ).then((_) => _loadUnreadCount());
                                           },
+                                          child: Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryYellow.withOpacity(0.2),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: AppColors.primaryYellow,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.mail_outline_rounded,
+                                              color: AppColors.primaryYellow,
+                                              size: 20,
+                                            ),
+                                          ),
                                         ),
                                         if (_unreadMessageCount > 0)
                                           Positioned(
