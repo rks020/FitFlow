@@ -29,6 +29,13 @@ class NotificationService {
     const initSettings = fln.InitializationSettings(android: androidSettings, iOS: iosSettings);
     await _localNotifications.initialize(initSettings);
 
+    // 0.2 Request Android Permissions (Android 13+)
+    if (Platform.isAndroid) {
+      final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<fln.AndroidFlutterLocalNotificationsPlugin>();
+      await androidImplementation?.requestNotificationsPermission();
+      await androidImplementation?.requestExactAlarmsPermission();
+      await _createNotificationChannel();
+    }
 
     // Listen for Auth Changes to save token when user logs in
     _supabase.auth.onAuthStateChange.listen((data) async {
@@ -76,6 +83,19 @@ class NotificationService {
     }
   }
 
+  Future<void> _createNotificationChannel() async {
+    const androidNotificationChannel = fln.AndroidNotificationChannel(
+      'class_reminders', // id
+      'Class Reminders', // title
+      description: 'Reminders for upcoming classes', // description
+      importance: fln.Importance.max,
+      playSound: true,
+    );
+    
+    final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<fln.AndroidFlutterLocalNotificationsPlugin>();
+    await androidImplementation?.createNotificationChannel(androidNotificationChannel);
+  }
+
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     final android = message.notification?.android;
@@ -101,9 +121,11 @@ class NotificationService {
 
   Future<void> scheduleClassReminder(int id, String title, DateTime classTime) async {
     // 5 minutes before
-    final scheduledDate = classTime.subtract(const Duration(minutes: 5));
+    // 5 minutes before (Ensure classTime is treated as Local)
+    final localClassTime = classTime.toLocal();
+    final scheduledDate = localClassTime.subtract(const Duration(minutes: 5));
     
-    debugPrint('Scheduling notification for class "$title" at $scheduledDate (Local)');
+    debugPrint('Scheduling notification for class "$title" at $scheduledDate (Local) / ${scheduledDate.toUtc()} (UTC)');
     
     // Don't schedule if already past
     if (scheduledDate.isBefore(DateTime.now())) {

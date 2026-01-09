@@ -189,9 +189,10 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
           if (createdSession.id != null) {
             await _repository.enrollMember(createdSession.id!, widget.member.id);
             // Schedule Notification to 5 minutes before
-            // Use hashCode of session ID string as notification ID (simple way)
+            // Safe 32-bit ID for Android
+            final safeId = (createdSession.id.hashCode.abs() % 2147483647);
             await NotificationService().scheduleClassReminder(
-              createdSession.id.hashCode,
+              safeId,
               _titleController.text,
               createdSession.startTime,
             );

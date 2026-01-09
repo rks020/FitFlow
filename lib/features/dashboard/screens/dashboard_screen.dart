@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../members/screens/members_list_screen.dart';
-import '../../measurements/screens/measurements_main_screen.dart';
 import '../../classes/screens/class_schedule_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../chat/screens/inbox_screen.dart';
@@ -40,8 +39,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Widget> _screens = [
       _DashboardHome(onNavigate: switchToTab),
       const MembersListScreen(),
-      const MeasurementsMainScreen(),
       const ClassScheduleScreen(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -81,12 +80,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               label: 'Üyeler',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.straighten_rounded),
-              label: 'Ölçümler',
-            ),
-            BottomNavigationBarItem(
               icon: Icon(Icons.fitness_center_rounded),
               label: 'Dersler',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'Profil',
             ),
           ],
         ),
@@ -458,7 +457,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                     value: '$_todayClasses',
                     icon: Icons.fitness_center_rounded,
                     color: AppColors.primaryYellow,
-                    onTap: () => widget.onNavigate(3), // Navigate to Classes
+                    onTap: () => widget.onNavigate(2), // Navigate to Classes
                   ),
                   StatCard(
                     title: 'Eğitmenler',
@@ -533,7 +532,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       subtitle: 'Yeni ders programı ekle',
                       color: AppColors.primaryYellow,
                       onTap: () {
-                        widget.onNavigate(3);
+                        widget.onNavigate(2);
                       },
                     ),
                   ],
