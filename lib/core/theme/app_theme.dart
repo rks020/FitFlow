@@ -106,6 +106,15 @@ class AppTheme {
         space: 1,
       ),
       
+      // Page Transitions
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
+
       // Text Theme
       textTheme: const TextTheme(
         displayLarge: AppTextStyles.largeTitle,

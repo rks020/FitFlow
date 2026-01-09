@@ -89,20 +89,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     children: [
                       // Header
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
+                      Center(
+                        child: Text(
+                          'Profil',
+                          style: AppTextStyles.title1.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Profil',
-                            style: AppTextStyles.title1.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 40),
                       
