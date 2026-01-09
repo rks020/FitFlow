@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/message.dart';
+import '../models/profile.dart'; // Ensure this model exists
+import '../../core/services/push_notification_sender.dart';
 
 class MessageRepository {
   final SupabaseClient _client = Supabase.instance.client;
@@ -33,6 +35,27 @@ class MessageRepository {
       'attachment_url': attachmentUrl,
       'attachment_type': attachmentType,
     });
+
+    // Send Push Notification
+    final senderProfile = await _getSenderProfile(myId);
+    final senderName = senderProfile != null 
+        ? '${senderProfile.firstName} ${senderProfile.lastName}' 
+        : 'Yeni Mesaj';
+
+    await PushNotificationSender().sendPush(
+      receiverId: receiverId,
+      title: senderName,
+      body: content.isNotEmpty ? content : 'Fotoğraf gönderdi 📷',
+    );
+  }
+
+  Future<Profile?> _getSenderProfile(String userId) async {
+    try {
+      final data = await _client.from('profiles').select().eq('id', userId).single();
+      return Profile.fromSupabase(data);
+    } catch (_) {
+      return null;
+    }
   }
 
   // Upload attachment

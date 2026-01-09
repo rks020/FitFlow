@@ -98,9 +98,8 @@ class NotificationService {
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
-    final android = message.notification?.android;
 
-    if (notification != null && android != null) {
+    if (notification != null) {
       await _localNotifications.show(
         notification.hashCode,
         notification.title,
@@ -113,7 +112,11 @@ class NotificationService {
             importance: fln.Importance.max,
             priority: fln.Priority.high,
           ),
-          iOS: const fln.DarwinNotificationDetails(),
+          iOS: const fln.DarwinNotificationDetails(
+             presentAlert: true,
+             presentBadge: true,
+             presentSound: true,
+          ),
         ),
       );
     }

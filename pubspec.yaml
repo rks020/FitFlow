@@ -44,6 +44,7 @@ dependencies:
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
   flutter_timezone: ^4.1.1
+  googleapis_auth: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -66,3 +67,4 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/service_account.json

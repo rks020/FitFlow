@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../members/screens/members_list_screen.dart';
@@ -444,6 +445,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                     icon: Icons.people_rounded,
                     color: AppColors.accentBlue,
                     onTap: () => widget.onNavigate(1), // Navigate to Members
+                    backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
                   ),
                   StatCard(
                     title: 'Aktif Üye',
@@ -451,13 +453,15 @@ class _DashboardHomeState extends State<_DashboardHome> {
                     icon: Icons.person_rounded,
                     color: AppColors.accentGreen,
                     onTap: () => widget.onNavigate(1), // Navigate to Members
+                    backgroundImage: 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?q=80&w=1469&auto=format&fit=crop',
                   ),
-                  StatCard(
+                   StatCard(
                     title: 'Bugünkü Dersler',
                     value: '$_todayClasses',
                     icon: Icons.fitness_center_rounded,
                     color: AppColors.primaryYellow,
                     onTap: () => widget.onNavigate(2), // Navigate to Classes
+                    backgroundImage: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2669&auto=format&fit=crop',
                   ),
                   StatCard(
                     title: 'Eğitmenler',
@@ -471,6 +475,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                         ),
                       );
                     },
+                    backgroundImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1470&auto=format&fit=crop',
                   ),
                 ]),
               ),
@@ -494,6 +499,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       title: 'Yeni Üye Ekle',
                       subtitle: 'Sisteme yeni sporcu kaydet',
                       color: AppColors.accentBlue,
+                      backgroundImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1470&auto=format&fit=crop',
                       onTap: () async {
                         final result = await Navigator.of(context).push(
                           MaterialPageRoute(
@@ -517,6 +523,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       title: 'Ölçüm Yap',
                       subtitle: 'Sporcunun ölçümlerini kaydet',
                       color: AppColors.accentOrange,
+                      backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
                       onTap: () {
                         widget.onNavigate(1);
                         CustomSnackBar.showError(
@@ -531,6 +538,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       title: 'Ders Oluştur',
                       subtitle: 'Yeni ders programı ekle',
                       color: AppColors.primaryYellow,
+                      backgroundImage: 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?q=80&w=1450&auto=format&fit=crop',
                       onTap: () {
                         widget.onNavigate(2);
                       },
@@ -552,6 +560,7 @@ class _QuickActionButton extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final String? backgroundImage;
 
   const _QuickActionButton({
     required this.icon,
@@ -559,48 +568,85 @@ class _QuickActionButton extends StatelessWidget {
     required this.subtitle,
     required this.color,
     required this.onTap,
+    this.backgroundImage,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
       onTap: onTap,
-      child: Row(
+      padding: EdgeInsets.zero,
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.headline,
-                  overflow: TextOverflow.ellipsis,
+          // Background Image
+          if (backgroundImage != null)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: CachedNetworkImage(
+                  imageUrl: backgroundImage!,
+                  fit: BoxFit.cover,
+                  color: Colors.black.withOpacity(0.7),
+                  colorBlendMode: BlendMode.darken,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.subheadline,
-                  overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: backgroundImage != null 
+                        ? Colors.white.withOpacity(0.1) 
+                        : color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: backgroundImage != null
+                        ? Border.all(color: Colors.white.withOpacity(0.2))
+                        : null,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: backgroundImage != null ? Colors.white : color,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.headline.copyWith(
+                          color: backgroundImage != null ? Colors.white : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: AppTextStyles.subheadline.copyWith(
+                           color: backgroundImage != null 
+                              ? Colors.white.withOpacity(0.7) 
+                              : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: backgroundImage != null 
+                      ? Colors.white.withOpacity(0.5) 
+                      : AppColors.textSecondary,
                 ),
               ],
             ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textSecondary,
           ),
         ],
       ),
