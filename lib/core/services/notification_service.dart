@@ -37,49 +37,54 @@ class NotificationService {
       await _createNotificationChannel();
     }
 
-    // Listen for Auth Changes to save token when user logs in
-    _supabase.auth.onAuthStateChange.listen((data) async {
-      if (data.session?.user != null) {
+    // SKIP FCM ON iOS - Only use local notifications
+    if (Platform.isAndroid) {
+      // Listen for Auth Changes to save token when user logs in
+      _supabase.auth.onAuthStateChange.listen((data) async {
+        if (data.session?.user != null) {
+          final token = await _fcm.getToken();
+          if (token != null) {
+            await _saveToken(token);
+          }
+        }
+      });
+
+      // 1. Request Permission (FCM)
+      final settings = await _fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('User granted permission');
+        
+        // 2. Get Token (Initial check if already logged in)
         final token = await _fcm.getToken();
         if (token != null) {
           await _saveToken(token);
         }
+
+        // 3. Listen for token refresh
+        _fcm.onTokenRefresh.listen(_saveToken);
+
+        // 4. Handle Foreground Messages
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint('Got a message whilst in the foreground!');
+          debugPrint('Message data: ${message.data}');
+
+          if (message.notification != null) {
+            debugPrint('Message also contained a notification: ${message.notification}');
+            // Ensure we show it locally if app is in foreground
+            _showForegroundNotification(message);
+          }
+        });
+      } else {
+        debugPrint('User declined or has not accepted permission');
       }
-    });
-
-    // 1. Request Permission (FCM)
-    final settings = await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('User granted permission');
-      
-      // 2. Get Token (Initial check if already logged in)
-      final token = await _fcm.getToken();
-      if (token != null) {
-        await _saveToken(token);
-      }
-
-      // 3. Listen for token refresh
-      _fcm.onTokenRefresh.listen(_saveToken);
-
-      // 4. Handle Foreground Messages
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Got a message whilst in the foreground!');
-        debugPrint('Message data: ${message.data}');
-
-        if (message.notification != null) {
-          debugPrint('Message also contained a notification: ${message.notification}');
-          // Ensure we show it locally if app is in foreground
-          _showForegroundNotification(message);
-        }
-      });
     } else {
-      debugPrint('User declined or has not accepted permission');
+      debugPrint('iOS: Skipping FCM, using local notifications only');
     }
   }
 

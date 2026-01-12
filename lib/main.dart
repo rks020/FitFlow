@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'dart:io';
 import 'core/theme/app_theme.dart';
 import 'core/constants/supabase_config.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -18,13 +19,23 @@ Future<void> main() async {
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
   
-  // Initialize Firebase (for Notifications)
+  // Initialize Firebase (for Notifications) - ANDROID ONLY
+  if (Platform.isAndroid) {
+    try {
+      await Firebase.initializeApp();
+      debugPrint('✅ Firebase initialized for Android');
+    } catch (e) {
+      debugPrint('Firebase init error: $e');
+    }
+  } else {
+    debugPrint('ℹ️ Skipping Firebase on iOS');
+  }
+
+  // Initialize Notification Service (handles platform internally)
   try {
-    await Firebase.initializeApp();
-    // Start Notification Service
     await NotificationService().initialize();
   } catch (e) {
-    debugPrint('Firebase init error: $e');
+    debugPrint('Notification service error: $e');
   }
 
   await initializeDateFormatting('tr_TR', null);

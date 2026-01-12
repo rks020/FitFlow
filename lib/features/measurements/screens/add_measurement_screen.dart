@@ -82,10 +82,48 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage(String position) async {
+  Future<void> _showImageSourceDialog(String position) async {
+    if (!mounted) return;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: AppColors.primaryYellow),
+                title: const Text('Kamera', style: AppTextStyles.body),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(position, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: AppColors.primaryYellow),
+                title: const Text('Galeri', style: AppTextStyles.body),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(position, ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(String position, ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 70,
       );
 
@@ -105,7 +143,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         });
       }
     } catch (e) {
-      CustomSnackBar.showError(context, 'Fotoğraf seçilirken hata oluştu: $e');
+      if (mounted) {
+        CustomSnackBar.showError(context, 'Fotoğraf seçilirken hata oluştu: $e');
+      }
     }
   }
 
@@ -415,7 +455,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   Widget _buildPhotoPicker(String label, File? photo, String position) {
     return GestureDetector(
-      onTap: () => _pickImage(position),
+      onTap: () => _showImageSourceDialog(position),
       child: AspectRatio(
         aspectRatio: 3/4,
         child: Container(
