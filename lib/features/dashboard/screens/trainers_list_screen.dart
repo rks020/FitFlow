@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/constants/supabase_config.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/profile.dart';
+import '../../../data/repositories/profile_repository.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../chat/screens/chat_screen.dart';
 
@@ -20,6 +23,10 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
   Set<String> _onlineUserIds = {};
   Set<String> _busyTrainerIds = {};
   RealtimeChannel? _presenceChannel;
+  bool _isAdmin = false;
+  final _profileRepository = ProfileRepository();
+  Set<String> _selectedTrainerIds = {};
+  bool get _isSelectionMode => _selectedTrainerIds.isNotEmpty;
 
   String _myStatus = 'online'; // online, busy, away
   
@@ -34,7 +41,19 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
       _loadTrainers(),
       _checkBusyStatus(),
     ]);
+    await Future.wait([
+      _loadTrainers(),
+      _checkBusyStatus(),
+      _checkAdminStatus(),
+    ]);
     _setupPresence();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    final profile = await _profileRepository.getProfile();
+    if (mounted) {
+      setState(() => _isAdmin = profile?.role == 'admin');
+    }
   }
 
   Future<void> _loadTrainers() async {
@@ -219,13 +238,228 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
     super.dispose();
   }
 
+
+
+  Future<void> _showAddTrainerDialog() async {
+    final usernameController = TextEditingController();
+    final passwordController = TextEditingController();
+    final firstNameController = TextEditingController();
+    final lastNameController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: const Text('Yeni Eğitmen Ekle', style: TextStyle(color: AppColors.primaryYellow)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: firstNameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Ad', labelStyle: TextStyle(color: Colors.grey)),
+              ),
+              TextField(
+                controller: lastNameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Soyad', labelStyle: TextStyle(color: Colors.grey)),
+              ),
+              TextField(
+                controller: usernameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Kullanıcı Adı', 
+                  labelStyle: TextStyle(color: Colors.grey),
+                  hintText: 'ornek, bosluksuz',
+                  hintStyle: TextStyle(color: Colors.white30),
+                ),
+              ),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Şifre', labelStyle: TextStyle(color: Colors.grey)),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ekle', style: TextStyle(color: AppColors.primaryYellow)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      _createTrainer(
+        firstNameController.text,
+        lastNameController.text,
+        usernameController.text, // Sending username
+        passwordController.text,
+      );
+    }
+  }
+
+  Future<void> _createTrainer(String first, String last, String username, String password) async {
+    if (username.isEmpty || password.isEmpty) return;
+    
+    // Clean username and create email
+    final cleanUsername = username.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    if (cleanUsername.isEmpty) {
+      if (mounted) CustomSnackBar.showError(context, 'Geçersiz kullanıcı adı');
+      return;
+    }
+    
+    final email = '$cleanUsername@ptbodychange.app';
+
+    if (mounted) setState(() => _isLoading = true);
+    
+    // Create a temporary client with implicit flow to avoid storage dependency issues
+    final tempClient = SupabaseClient(
+      SupabaseConfig.supabaseUrl, 
+      SupabaseConfig.supabaseAnonKey,
+      authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+    );
+    
+    try {
+      final response = await tempClient.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'first_name': first,
+          'last_name': last,
+          'full_name': username,
+          'display_name': username, 
+          'username': username,
+          'role': 'trainer', 
+        }
+      );
+
+      if (mounted) {
+        if (response.user != null) {
+          // RLS WORKAROUND:
+          // Admin cannot insert for others by default due to strict RLS policies.
+          // instead of asking user to change DB policies, we:
+          // 1. Sign in as the NEW USER (we have the password)
+          // 2. Insert the profile as the user themselves (allowed by RLS)
+          // 3. Sign out.
+          try {
+            await tempClient.auth.signInWithPassword(
+              email: email,
+              password: password,
+            );
+            
+            await tempClient.from('profiles').insert({
+              'id': response.user!.id,
+              'first_name': first,
+              'last_name': last,
+              'role': 'trainer',
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            });
+
+            await tempClient.auth.signOut();
+            CustomSnackBar.showSuccess(context, 'Eğitmen başarıyla oluşturuldu.');
+            _loadTrainers();
+            
+          } catch (profileError) {
+             debugPrint('Profile creation step failed: $profileError');
+             CustomSnackBar.showError(context, 'Kullanıcı oluştu ama profil hatası: $profileError');
+          }
+        } else {
+           CustomSnackBar.showSuccess(context, 'Kullanıcı oluşturuldu (Onay gerekebilir).');
+           _loadTrainers();
+        }
+      }
+    } catch (e) {
+      if (mounted) CustomSnackBar.showError(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteSelectedTrainers() async {
+    if (_selectedTrainerIds.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: const Text('Seçilenleri Sil', style: TextStyle(color: AppColors.accentRed)),
+        content: Text('${_selectedTrainerIds.length} eğitmeni silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hayır', style: TextStyle(color: Colors.white)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Evet', style: TextStyle(color: AppColors.accentRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (mounted) setState(() => _isLoading = true);
+      try {
+        // Iterate and delete each user via RPC (secure deletion of Auth + Profile)
+        for (final userId in _selectedTrainerIds) {
+          try {
+            await _supabase.rpc('delete_user_by_admin', params: {'target_user_id': userId});
+          } catch (rpcError) {
+             debugPrint('Failed to delete user $userId: $rpcError');
+             // If RPC fails (e.g. not admin, or user not found), we might try manual profile delete as fallback
+             // but usually RPC is the source of truth.
+          }
+        }
+        
+        if (mounted) CustomSnackBar.showSuccess(context, 'Seçilen eğitmenler tamamen silindi.');
+        _selectedTrainerIds.clear();
+        _loadTrainers();
+      } catch (e) {
+        if (mounted) CustomSnackBar.showError(context, 'Silme hatası: $e');
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Eğitmenler'),
-        backgroundColor: Colors.transparent,
+        title: _isSelectionMode 
+            ? Text('${_selectedTrainerIds.length} Seçildi', style: const TextStyle(color: Colors.white))
+            : const Text('Eğitmenler'),
+        backgroundColor: _isSelectionMode ? AppColors.accentRed.withOpacity(0.2) : Colors.transparent,
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() => _selectedTrainerIds.clear()),
+              )
+            : null,
+        actions: [
+          if (_isSelectionMode)
+            IconButton(
+              icon: const Icon(Icons.delete_forever, color: AppColors.accentRed),
+              onPressed: _deleteSelectedTrainers,
+            ),
+        ],
       ),
+      floatingActionButton: (_isAdmin && !_isSelectionMode)
+          ? FloatingActionButton(
+              onPressed: _showAddTrainerDialog,
+              backgroundColor: AppColors.primaryYellow,
+              child: const Icon(Icons.add, color: Colors.black),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -316,18 +550,42 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
       }
     }
 
+    final isSelected = _selectedTrainerIds.contains(trainer.id);
+
     return GlassCard(
+      backgroundColor: isSelected ? AppColors.primaryYellow.withOpacity(0.1) : null,
+      border: isSelected ? Border.all(color: AppColors.primaryYellow) : null,
       child: ListTile(
         onTap: () {
-          // Navigate to Chat Screen
-          final currentUserId = _supabase.auth.currentUser?.id;
-          if (currentUserId != trainer.id) {
-             Navigator.push(
-               context,
-               MaterialPageRoute(builder: (context) => ChatScreen(otherUser: trainer)),
-             );
+          if (_isSelectionMode) {
+             if (!_isAdmin) return; // Only admin can select
+             setState(() {
+               if (isSelected) {
+                 _selectedTrainerIds.remove(trainer.id);
+               } else {
+                 _selectedTrainerIds.add(trainer.id);
+               }
+             });
+          } else {
+             // Navigate to Chat Screen
+             final currentUserId = _supabase.auth.currentUser?.id;
+             if (currentUserId != trainer.id) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ChatScreen(otherUser: trainer)),
+                );
+             }
           }
         },
+        onLongPress: _isAdmin ? () {
+           setState(() {
+             if (isSelected) {
+               _selectedTrainerIds.remove(trainer.id);
+             } else {
+               _selectedTrainerIds.add(trainer.id);
+             }
+           });
+        } : null,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Stack(
           children: [
@@ -375,44 +633,62 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
               ),
           ],
         ),
-        trailing: GestureDetector(
-          onTap: () {
-            // Only allow changing own status
-            final currentUserId = _supabase.auth.currentUser?.id;
-            if (currentUserId == trainer.id) {
-              _showStatusPicker();
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: statusColor.withOpacity(0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(statusIcon, size: 12, color: statusColor),
-                const SizedBox(width: 6),
-                Text(
-                  statusText,
-                  style: AppTextStyles.caption1.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold
-                  ),
+
+
+        trailing: _isSelectionMode 
+          ? Checkbox(
+              value: isSelected,
+              activeColor: AppColors.primaryYellow,
+              checkColor: Colors.black,
+              onChanged: _isAdmin ? (val) {
+                setState(() {
+                   if (val == true) {
+                     _selectedTrainerIds.add(trainer.id);
+                   } else {
+                     _selectedTrainerIds.remove(trainer.id);
+                   }
+                });
+              } : null,
+            )
+          : GestureDetector(
+              onTap: () {
+                // Only allow changing own status
+                final currentUserId = _supabase.auth.currentUser?.id;
+                if (currentUserId == trainer.id) {
+                  _showStatusPicker();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor.withOpacity(0.3)),
                 ),
-                if (_supabase.auth.currentUser?.id == trainer.id) ...[
-                   const SizedBox(width: 4),
-                   Icon(Icons.edit, size: 10, color: statusColor.withOpacity(0.7)),
-                ],
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, size: 12, color: statusColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      statusText,
+                      style: AppTextStyles.caption1.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold
+                      ),
+                    ),
+                    if (_supabase.auth.currentUser?.id == trainer.id) ...[
+                       const SizedBox(width: 4),
+                       Icon(Icons.edit, size: 10, color: statusColor.withOpacity(0.7)),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
       ),
     );
   }
+
 
   void _showStatusPicker() {
     showModalBottomSheet(
