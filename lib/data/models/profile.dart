@@ -6,6 +6,7 @@ class Profile {
   final int? age;
   final String? hobbies;
   final String? avatarUrl;
+  final String? role;
   final DateTime? updatedAt;
 
   Profile({
@@ -16,6 +17,7 @@ class Profile {
     this.age,
     this.hobbies,
     this.avatarUrl,
+    this.role,
     this.updatedAt,
   });
 
@@ -28,6 +30,7 @@ class Profile {
       age: map['age'],
       hobbies: map['hobbies'],
       avatarUrl: map['avatar_url'],
+      role: map['role'],
       updatedAt: map['updated_at'] != null 
           ? DateTime.parse(map['updated_at']).toLocal() 
           : null,
@@ -42,6 +45,8 @@ class Profile {
       'age': age,
       'hobbies': hobbies,
       'avatar_url': avatarUrl,
+      // role is usually not updatable by user here, but if needed:
+      // 'role': role, 
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
   }

@@ -43,12 +43,12 @@ class CustomSnackBar {
     );
   }
 
-  static void showSuccess(BuildContext context, String message) {
-    show(context, message: message, isError: false);
+  static void showSuccess(BuildContext context, String message, {Duration duration = const Duration(seconds: 3)}) {
+    show(context, message: message, isError: false, duration: duration);
   }
 
-  static void showError(BuildContext context, String message) {
-    show(context, message: message, isError: true);
+  static void showError(BuildContext context, String message, {Duration duration = const Duration(seconds: 3)}) {
+    show(context, message: message, isError: true, duration: duration);
   }
 
   static void showWarning(BuildContext context, String message) {

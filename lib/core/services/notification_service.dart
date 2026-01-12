@@ -1,5 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart' as fln;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -9,8 +9,8 @@ import 'dart:io';
 
 class NotificationService {
   final _supabase = Supabase.instance.client;
-  final _fcm = FirebaseMessaging.instance;
-  final _localNotifications = fln.FlutterLocalNotificationsPlugin();
+  // _fcm removed to prevent static access before init on iOS
+  final _localNotifications = FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
     // 0. Initialize Timezone
@@ -20,18 +20,18 @@ class NotificationService {
     debugPrint('NotificationService initialized with timezone: $timeZoneName');
 
     // 0.1 Initialize Local Notifications
-    const androidSettings = fln.AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = fln.DarwinInitializationSettings(
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    const initSettings = fln.InitializationSettings(android: androidSettings, iOS: iosSettings);
+    const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
     await _localNotifications.initialize(initSettings);
 
     // 0.2 Request Android Permissions (Android 13+)
     if (Platform.isAndroid) {
-      final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<fln.AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       await androidImplementation?.requestNotificationsPermission();
       await androidImplementation?.requestExactAlarmsPermission();
       await _createNotificationChannel();
@@ -42,7 +42,7 @@ class NotificationService {
       // Listen for Auth Changes to save token when user logs in
       _supabase.auth.onAuthStateChange.listen((data) async {
         if (data.session?.user != null) {
-          final token = await _fcm.getToken();
+          final token = await FirebaseMessaging.instance.getToken();
           if (token != null) {
             await _saveToken(token);
           }
@@ -50,7 +50,9 @@ class NotificationService {
       });
 
       // 1. Request Permission (FCM)
-      final settings = await _fcm.requestPermission(
+      final fcm = FirebaseMessaging.instance;
+      
+      final settings = await fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -61,13 +63,13 @@ class NotificationService {
         debugPrint('User granted permission');
         
         // 2. Get Token (Initial check if already logged in)
-        final token = await _fcm.getToken();
+        final token = await fcm.getToken();
         if (token != null) {
           await _saveToken(token);
         }
 
         // 3. Listen for token refresh
-        _fcm.onTokenRefresh.listen(_saveToken);
+        fcm.onTokenRefresh.listen(_saveToken);
 
         // 4. Handle Foreground Messages
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -89,15 +91,15 @@ class NotificationService {
   }
 
   Future<void> _createNotificationChannel() async {
-    const androidNotificationChannel = fln.AndroidNotificationChannel(
+    const androidNotificationChannel = AndroidNotificationChannel(
       'class_reminders', // id
       'Class Reminders', // title
       description: 'Reminders for upcoming classes', // description
-      importance: fln.Importance.max,
+      importance: Importance.max,
       playSound: true,
     );
     
-    final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<fln.AndroidFlutterLocalNotificationsPlugin>();
+    final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidImplementation?.createNotificationChannel(androidNotificationChannel);
   }
 
@@ -109,15 +111,15 @@ class NotificationService {
         notification.hashCode,
         notification.title,
         notification.body,
-        fln.NotificationDetails(
-          android: fln.AndroidNotificationDetails(
+        NotificationDetails(
+          android: AndroidNotificationDetails(
             'high_importance_channel',
             'High Importance Notifications',
             channelDescription: 'This channel is used for important notifications.',
-            importance: fln.Importance.max,
-            priority: fln.Priority.high,
+            importance: Importance.max,
+            priority: Priority.high,
           ),
-          iOS: const fln.DarwinNotificationDetails(
+          iOS: const DarwinNotificationDetails(
              presentAlert: true,
              presentBadge: true,
              presentSound: true,
@@ -146,17 +148,21 @@ class NotificationService {
       'Ders Hatırlatıcı',
       '$title dersiniz 5 dakika içinde başlayacak.',
       tz.TZDateTime.from(scheduledDate, tz.local),
-      fln.NotificationDetails(
-        android: fln.AndroidNotificationDetails(
+      NotificationDetails(
+        android: AndroidNotificationDetails(
           'class_reminders',
           'Class Reminders',
           channelDescription: 'Reminders for upcoming classes',
-          importance: fln.Importance.max,
-          priority: fln.Priority.high,
+          importance: Importance.max,
+          priority: Priority.high,
         ),
-        iOS: const fln.DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
-      androidScheduleMode: fln.AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 

@@ -6,6 +6,9 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/class_session.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../data/repositories/profile_repository.dart';
+import '../../../data/models/profile.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 
 class TrainerScheduleScreen extends StatefulWidget {
   const TrainerScheduleScreen({super.key});
@@ -25,12 +28,22 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
   Map<DateTime, List<ClassSession>> _events = {};
   List<ClassSession> _selectedDaySessions = [];
   bool _isLoading = true;
+  Profile? _currentProfile;
+  final _profileRepository = ProfileRepository();
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     _selectedDay = _focusedDay;
     _loadMonthSessions(_focusedDay);
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final profile = await _profileRepository.getProfile();
+    if (mounted) {
+      setState(() => _currentProfile = profile);
+    }
   }
 
   Future<void> _loadMonthSessions(DateTime month) async {
@@ -100,6 +113,7 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
               firstDay: DateTime.utc(2024, 1, 1),
               lastDay: DateTime.utc(2030, 12, 31),
               focusedDay: _focusedDay,
+              startingDayOfWeek: StartingDayOfWeek.monday,
               calendarFormat: _calendarFormat,
               selectedDayPredicate: (day) {
                 return isSameDay(_selectedDay, day);
@@ -184,69 +198,140 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
   }
 
   Widget _buildSessionItem(ClassSession session) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Time Column
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                DateFormat('HH:mm').format(session.startTime),
-                style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                DateFormat('HH:mm').format(session.endTime),
-                style: AppTextStyles.caption2,
-              ),
-            ],
-          ),
-          Container(
-            height: 40,
-            width: 1,
-            color: AppColors.glassBorder,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: () => _showSessionOptions(session),
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Time Column
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  session.title,
-                  style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+                  DateFormat('HH:mm').format(session.startTime),
+                  style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.person, size: 14, color: AppColors.accentBlue),
-                    const SizedBox(width: 4),
-                    Text(
-                      'PT: ${session.trainerName ?? "-"}',
-                      style: AppTextStyles.caption1.copyWith(color: AppColors.accentBlue),
-                    ),
-                  ],
+                Text(
+                  DateFormat('HH:mm').format(session.endTime),
+                  style: AppTextStyles.caption2,
                 ),
-                if (session.status == 'completed') ...[
-                   const SizedBox(height: 4),
-                   Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline, size: 14, color: AppColors.accentGreen),
-                      const SizedBox(width: 4),
-                       Text(
-                        'Tamamlandı',
-                        style: AppTextStyles.caption2.copyWith(color: AppColors.accentGreen),
-                      ),
-                    ],
-                   ),
-                ]
               ],
             ),
+            Container(
+              height: 40,
+              width: 1,
+              color: AppColors.glassBorder,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.title,
+                    style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.person, size: 14, color: AppColors.accentBlue),
+                      const SizedBox(width: 4),
+                      Text(
+                        'PT: ${session.trainerName ?? "-"}',
+                        style: AppTextStyles.caption1.copyWith(color: AppColors.accentBlue),
+                      ),
+                    ],
+                  ),
+                  if (session.status == 'completed') ...[
+                     const SizedBox(height: 4),
+                     Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 14, color: AppColors.accentGreen),
+                        const SizedBox(width: 4),
+                         Text(
+                          'Tamamlandı',
+                          style: AppTextStyles.caption2.copyWith(color: AppColors.accentGreen),
+                        ),
+                      ],
+                     ),
+                  ]
+                ],
+              ),
+            ),
+            // Edit Indicator (only if allowed)
+            if (_canEdit(session))
+              const Icon(Icons.more_vert, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _canEdit(ClassSession session) {
+    if (_currentProfile == null) return false;
+    // Allow if Admin OR if Trainer owns the session
+    if (_currentProfile!.role == 'admin') return true;
+    return session.trainerId == _currentProfile!.id;
+  }
+
+  Future<void> _showSessionOptions(ClassSession session) async {
+    if (!_canEdit(session)) return;
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.accentRed),
+              title: const Text('Dersi İptal Et', style: TextStyle(color: AppColors.accentRed)),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (action == 'delete') {
+      _deleteSession(session);
+    }
+  }
+
+  Future<void> _deleteSession(ClassSession session) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: const Text('Dersi İptal Et', style: AppTextStyles.title3),
+        content: const Text('Bu dersi silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hayır', style: AppTextStyles.body),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Evet', style: TextStyle(color: AppColors.accentRed)),
           ),
         ],
       ),
     );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        await _repository.deleteSession(session.id!);
+        await _loadMonthSessions(_focusedDay); // Reload
+        if (mounted) CustomSnackBar.showSuccess(context, 'Ders iptal edildi.');
+      } catch (e) {
+        if (mounted) CustomSnackBar.showError(context, 'Hata: $e');
+        setState(() => _isLoading = false);
+      }
+    }
   }
 }

@@ -7,7 +7,10 @@ import '../../../shared/widgets/glass_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import 'add_class_screen.dart';
+import 'add_class_screen.dart';
 import 'class_detail_screen.dart';
+import '../../../data/models/profile.dart';
+import '../../../data/repositories/profile_repository.dart';
 
 class ClassScheduleScreen extends StatefulWidget {
   const ClassScheduleScreen({super.key});
@@ -18,14 +21,24 @@ class ClassScheduleScreen extends StatefulWidget {
 
 class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
   final _repository = ClassRepository();
+  final _profileRepository = ProfileRepository();
   DateTime _selectedDate = DateTime.now();
   List<ClassSession> _classes = [];
   bool _isLoading = true;
+  Profile? _currentProfile;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     _loadClasses();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final profile = await _profileRepository.getProfile();
+    if (mounted) {
+      setState(() => _currentProfile = profile);
+    }
   }
 
   Future<void> _loadClasses() async {
@@ -208,10 +221,16 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
       onTap: () async {
         final currentUser = Supabase.instance.client.auth.currentUser;
         
-        // Ownership check
-        if (session.trainerId != null && currentUser?.id != session.trainerId) {
+        // Ownership check (bypass for admin)
+        final isAdmin = _currentProfile?.role == 'admin';
+        if (!isAdmin && session.trainerId != null && currentUser?.id != session.trainerId) {
           CustomSnackBar.showError(context, 'Lütfen Eğitmen ile iletişime geçin');
           return;
+        }
+
+        if (isAdmin && currentUser?.id != session.trainerId) {
+          CustomSnackBar.showSuccess(context, 'Admin yetkisi ile giriş yapıldı', duration: const Duration(seconds: 2));
+          await Future.delayed(const Duration(milliseconds: 500));
         }
 
         final result = await Navigator.push(

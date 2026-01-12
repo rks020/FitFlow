@@ -57,7 +57,7 @@ class ProfileRepository {
           );
 
       final imageUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
-      return imageUrl;
+      return '$imageUrl?v=${DateTime.now().millisecondsSinceEpoch}';
     } catch (e) {
       // Handle upload error
       return null;
