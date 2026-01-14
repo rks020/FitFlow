@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "499880508509",
-    "project_id": "fitflow-3f6ff",
-    "storage_bucket": "fitflow-3f6ff.firebasestorage.app"
+    "project_number": "431063576237",
+    "project_id": "fitflow-bec76",
+    "storage_bucket": "fitflow-bec76.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:499880508509:android:4be93b9e2735c529d761b4",
+        "mobilesdk_app_id": "1:431063576237:android:e3f7be24be74d6e4d32024",
         "android_client_info": {
           "package_name": "com.fitflow.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyADcWUuXwc8P-63euEsUoUA8wAj5wz9H7U"
+          "current_key": "AIzaSyC0A4qX5-YUjX-SDkwVwB3FmSUFxaUM5Mg"
         }
       ],
       "services": {

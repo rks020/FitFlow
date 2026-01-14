@@ -236,6 +236,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                           padding: const EdgeInsets.only(bottom: 16),
                           child: GlassCard(
                             padding: const EdgeInsets.all(16),
+                            backgroundColor: AppColors.surfaceLight.withOpacity(0.4),
+                            border: Border.all(color: AppColors.primaryYellow.withOpacity(0.3), width: 1),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

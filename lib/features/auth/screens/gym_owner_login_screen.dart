@@ -161,10 +161,43 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
   Future<void> _handleGoogleSignIn() async {
      setState(() => _isLoading = true);
      try {
-       // Setup Google Sign In logic here (requires configured Google Cloud Console)
-       // For now, placeholder
-       await Future.delayed(const Duration(seconds: 1));
-       CustomSnackBar.showError(context, 'Google Sign-In henüz yapılandırılmadı (geliştirme aşamasında)');
+       // 1. Web Client ID (from Supabase Auth Settings -> Google)
+       // 2. iOS Client ID (from Google Cloud Console)
+       const webClientId = '763178042993-oogl3ur576s2nqt2q4qilvre6ettftu5.apps.googleusercontent.com';
+       const iosClientId = '763178042993-j0ni4gerolse2h9nt0uidvnku14nlscg.apps.googleusercontent.com';
+
+       final GoogleSignIn googleSignIn = GoogleSignIn(
+         serverClientId: webClientId,
+         clientId: iosClientId,
+       );
+
+       final googleUser = await googleSignIn.signIn();
+       final googleAuth = await googleUser?.authentication;
+
+       if (googleAuth == null) {
+         throw 'Google girişi iptal edildi.';
+       }
+
+       final accessToken = googleAuth.accessToken;
+       final idToken = googleAuth.idToken;
+
+       if (idToken == null) {
+         throw 'Google ID Token bulunamadı.';
+       }
+
+       final response = await _supabase.auth.signInWithIdToken(
+         provider: OAuthProvider.google,
+         idToken: idToken,
+         accessToken: accessToken,
+       );
+
+        if (mounted && response.session != null) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            (route) => false,
+          );
+        }
+
      } catch (e) {
         if (mounted) CustomSnackBar.showError(context, 'Google Giriş Hatası: $e');
      } finally {
