@@ -9,6 +9,7 @@ import '../../../shared/widgets/glass_card.dart';
 import 'add_measurement_screen.dart';
 import 'measurement_comparison_screen.dart';
 import 'measurement_detail_screen.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class MemberMeasurementsScreen extends StatefulWidget {
   final Member member;
@@ -91,6 +92,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(_isSelectionMode 
             ? '${_selectedMeasurementIds.length} Seçildi' 
@@ -142,7 +144,8 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
               icon: const Icon(Icons.compare_arrows_rounded, color: Colors.black),
             )
           : null,
-      body: _isLoading
+      body: AmbientBackground(
+        child: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
           : _measurements == null || _measurements!.isEmpty
               ? Center(
@@ -159,7 +162,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.only(top: kToolbarHeight + 30, left: 20, right: 20, bottom: 20),
                   itemCount: _measurements!.length,
                   itemBuilder: (context, index) {
                     final measurement = _measurements![index];
@@ -255,6 +258,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
                     );
                   },
                 ),
+      ),
     );
   }
 

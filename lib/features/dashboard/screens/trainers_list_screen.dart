@@ -8,6 +8,7 @@ import '../../../data/repositories/profile_repository.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../chat/screens/chat_screen.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class TrainersListScreen extends StatefulWidget {
   const TrainersListScreen({super.key});
@@ -52,7 +53,7 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
   Future<void> _checkAdminStatus() async {
     final profile = await _profileRepository.getProfile();
     if (mounted) {
-      setState(() => _isAdmin = profile?.role == 'admin');
+      setState(() => _isAdmin = profile?.role == 'admin' || profile?.role == 'owner');
     }
   }
 
@@ -241,7 +242,8 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
 
 
   Future<void> _showAddTrainerDialog() async {
-    final usernameController = TextEditingController();
+    final usernameController = TextEditingController(); // Keeping for display/username
+    final emailController = TextEditingController();
     final passwordController = TextEditingController();
     final firstNameController = TextEditingController();
     final lastNameController = TextEditingController();
@@ -266,12 +268,23 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
                 decoration: const InputDecoration(labelText: 'Soyad', labelStyle: TextStyle(color: Colors.grey)),
               ),
               TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'E-posta Adresi', 
+                  labelStyle: TextStyle(color: Colors.grey),
+                  hintText: 'ornek@email.com',
+                  hintStyle: TextStyle(color: Colors.white30),
+                ),
+              ),
+              TextField(
                 controller: usernameController,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Kullanıcı Adı', 
                   labelStyle: TextStyle(color: Colors.grey),
-                  hintText: 'ornek, bosluksuz',
+                  hintText: 'ornek, bosluksuz (Opsiyonel)',
                   hintStyle: TextStyle(color: Colors.white30),
                 ),
               ),
@@ -287,7 +300,7 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('İptal'),
+            child: const Text('İptal', style: TextStyle(color: Colors.white)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -301,83 +314,68 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
       _createTrainer(
         firstNameController.text,
         lastNameController.text,
-        usernameController.text, // Sending username
+        usernameController.text,
+        emailController.text,
         passwordController.text,
       );
     }
   }
 
-  Future<void> _createTrainer(String first, String last, String username, String password) async {
-    if (username.isEmpty || password.isEmpty) return;
-    
-    // Clean username and create email
-    final cleanUsername = username.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-    if (cleanUsername.isEmpty) {
-      if (mounted) CustomSnackBar.showError(context, 'Geçersiz kullanıcı adı');
+  Future<void> _createTrainer(String first, String last, String username, String email, String password) async {
+    if (email.isEmpty || password.isEmpty) {
+      if (mounted) CustomSnackBar.showError(context, 'E-posta ve şifre zorunludur');
       return;
     }
     
-    final email = '$cleanUsername@ptbodychange.app';
-
     if (mounted) setState(() => _isLoading = true);
-    
-    // Create a temporary client with implicit flow to avoid storage dependency issues
-    final tempClient = SupabaseClient(
-      SupabaseConfig.supabaseUrl, 
-      SupabaseConfig.supabaseAnonKey,
-      authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-    );
-    
+
     try {
+      // 1. Get current admin's profile to retrieve organization_id FIRST
+      final adminProfile = await _profileRepository.getProfile();
+      final orgId = adminProfile?.organizationId;
+
+      if (orgId == null) {
+        throw Exception("Salon sahibi bir organizasyona sahip değil.");
+      }
+
+      // If username is empty, derive from email or name
+      String finalUsername = username;
+      if (finalUsername.isEmpty) {
+        finalUsername = email.split('@')[0];
+      }
+      final cleanUsername = finalUsername.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    
+      // Create a temporary client with implicit flow
+      final tempClient = SupabaseClient(
+        SupabaseConfig.supabaseUrl, 
+        SupabaseConfig.supabaseAnonKey,
+        authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+      );
+    
       final response = await tempClient.auth.signUp(
         email: email,
         password: password,
         data: {
           'first_name': first,
           'last_name': last,
-          'full_name': username,
-          'display_name': username, 
-          'username': username,
-          'role': 'trainer', 
+          'full_name': '$first $last'.trim(),
+          'display_name': '$first $last'.trim(), 
+          'username': cleanUsername,
+          'role': 'trainer',
+          'organization_id': orgId, // Passed to Trigger
         }
       );
 
       if (mounted) {
         if (response.user != null) {
-          // RLS WORKAROUND:
-          // Admin cannot insert for others by default due to strict RLS policies.
-          // instead of asking user to change DB policies, we:
-          // 1. Sign in as the NEW USER (we have the password)
-          // 2. Insert the profile as the user themselves (allowed by RLS)
-          // 3. Sign out.
-          try {
-            await tempClient.auth.signInWithPassword(
-              email: email,
-              password: password,
-            );
-            
-            await tempClient.from('profiles').insert({
-              'id': response.user!.id,
-              'first_name': first,
-              'last_name': last,
-              'role': 'trainer',
-              'updated_at': DateTime.now().toUtc().toIso8601String(),
-            });
-
-            await tempClient.auth.signOut();
-            CustomSnackBar.showSuccess(context, 'Eğitmen başarıyla oluşturuldu.');
-            _loadTrainers();
-            
-          } catch (profileError) {
-             debugPrint('Profile creation step failed: $profileError');
-             CustomSnackBar.showError(context, 'Kullanıcı oluştu ama profil hatası: $profileError');
-          }
-        } else {
-           CustomSnackBar.showSuccess(context, 'Kullanıcı oluşturuldu (Onay gerekebilir).');
+           CustomSnackBar.showSuccess(context, 'Kayıt başarılı! Eğitmene onay maili gönderildi.');
+           // Give a small delay for trigger to finish before reloading
+           await Future.delayed(const Duration(seconds: 1)); 
            _loadTrainers();
-        }
+        } 
       }
     } catch (e) {
+      debugPrint('Error creating trainer: $e');
       if (mounted) CustomSnackBar.showError(context, 'Hata: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -434,11 +432,13 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: _isSelectionMode 
             ? Text('${_selectedTrainerIds.length} Seçildi', style: const TextStyle(color: Colors.white))
             : const Text('Eğitmenler'),
-        backgroundColor: _isSelectionMode ? AppColors.accentRed.withOpacity(0.2) : Colors.transparent,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: _isSelectionMode
             ? IconButton(
                 icon: const Icon(Icons.close),
@@ -460,7 +460,8 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
               child: const Icon(Icons.add, color: Colors.black),
             )
           : null,
-      body: _isLoading
+      body: AmbientBackground(
+        child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () async {
@@ -470,7 +471,7 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
               color: AppColors.accentOrange,
               backgroundColor: AppColors.surfaceDark,
               child: ListView.separated(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.only(top: kToolbarHeight + 40, left: 20, right: 20, bottom: 20),
                 itemCount: _trainers.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
@@ -479,6 +480,7 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
                 },
               ),
             ),
+      ),
     );
   }
 
@@ -597,7 +599,7 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
                   : null,
               child: trainer.avatarUrl == null
                   ? Text(
-                      (trainer.firstName?[0] ?? '') + (trainer.lastName?[0] ?? ''),
+                      ((trainer.firstName?[0] ?? '') + (trainer.lastName?[0] ?? '')).toUpperCase(),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     )
                   : null,

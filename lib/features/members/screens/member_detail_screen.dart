@@ -6,6 +6,7 @@ import '../../../data/models/member.dart';
 import '../../../data/repositories/member_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
+import '../../../shared/widgets/ambient_background.dart';
 import 'add_edit_member_screen.dart';
 import '../../measurements/screens/add_measurement_screen.dart';
 import '../../measurements/screens/member_measurements_screen.dart';
@@ -93,8 +94,12 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Üye Detayı'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_rounded),
@@ -106,8 +111,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: ListView(
+      body: AmbientBackground(
+        child: SafeArea(
+          child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
             // ... (keeping previous content references intact by replacing whole block if needed or carefully targeting)
@@ -596,6 +602,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           ],
         ),
       ),
+    ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(

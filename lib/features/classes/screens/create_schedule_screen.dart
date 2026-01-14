@@ -11,6 +11,7 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../widgets/conflict_warning_dialog.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class CreateScheduleScreen extends StatefulWidget {
   final Member member;
@@ -71,6 +72,8 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
       if (_selectedDays.contains(d.weekday)) {
         final time = _dayTimes[d.weekday] ?? const TimeOfDay(hour: 10, minute: 0);
         final startDateTime = DateTime(d.year, d.month, d.day, time.hour, time.minute);
+        
+        // Explicitly allowing past times for creating retrospective schedules
         // if (startDateTime.isBefore(DateTime.now())) continue; 
 
         proposedSessions.add({
@@ -270,9 +273,10 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
         if (userCancelled) {
           CustomSnackBar.showWarning(context, 'Program oluşturma iptal edildi.');
         } else if (createdCount > 0) {
-          String msg = '$createdCount ders oluşturuldu.';
+          final firstDate = DateFormat('d MMM HH:mm', 'tr_TR').format(proposedSessions.first['start']);
+          String msg = '$createdCount ders oluşturuldu. (Başlangıç: $firstDate)';
           if (createdCount >= remainingRights) {
-            msg += ' (Paket limiti doldu)';
+            msg += ' (Paket doldu)';
           } else if (conflictCount > 0) {
             List<String> conflicts = [];
             if (trainerConflicts > 0) conflicts.add('$trainerConflicts antrenör');
@@ -299,18 +303,22 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: const Text('Program Oluştur'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryYellow),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
+      body: AmbientBackground(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: kToolbarHeight + 20),
             Text('Öğrenci: ${widget.member.name}', style: AppTextStyles.headline),
             const SizedBox(height: 24),
 
@@ -429,7 +437,8 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
               isLoading: _isLoading,
             ),
           ],
-        ),
+      ),
+      ),
       ),
     );
   }

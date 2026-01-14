@@ -28,8 +28,8 @@ class ClassRepository {
     final response = await _client
         .from('class_sessions')
         .select('*, profiles(first_name, last_name)')
-        .gte('start_time', start.toIso8601String())
-        .lte('end_time', end.toIso8601String())
+        .gte('start_time', start.toUtc().toIso8601String())
+        .lte('end_time', end.toUtc().toIso8601String())
         .order('start_time', ascending: true);
     
     return (response as List)
@@ -157,8 +157,8 @@ class ClassRepository {
     final response = await _client
         .from('class_sessions')
         .select('*')
-        .gte('start_time', startOfDay.toIso8601String())
-        .lte('end_time', endOfDay.toIso8601String())
+        .gte('start_time', startOfDay.toUtc().toIso8601String())
+        .lte('end_time', endOfDay.toUtc().toIso8601String())
         .count();
         
     return response.count;

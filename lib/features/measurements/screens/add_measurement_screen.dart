@@ -10,6 +10,7 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class AddMeasurementScreen extends StatefulWidget {
   final Member member;
@@ -98,7 +99,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: AppColors.primaryYellow),
-                title: const Text('Kamera', style: AppTextStyles.body),
+                title: Text('Kamera', style: AppTextStyles.body),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(position, ImageSource.camera);
@@ -106,7 +107,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: AppColors.primaryYellow),
-                title: const Text('Galeri', style: AppTextStyles.body),
+                title: Text('Galeri', style: AppTextStyles.body),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(position, ImageSource.gallery);
@@ -286,6 +287,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(widget.member.name),
         backgroundColor: Colors.transparent,
@@ -295,7 +297,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
+      body: AmbientBackground(
+        child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Form(
@@ -303,6 +306,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: kToolbarHeight + 10),
                 _buildSectionTitle('Tarih'),
                 GestureDetector(
                   onTap: () => _selectDate(context),
@@ -425,6 +429,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

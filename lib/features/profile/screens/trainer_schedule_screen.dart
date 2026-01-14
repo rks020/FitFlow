@@ -9,6 +9,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../data/models/profile.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class TrainerScheduleScreen extends StatefulWidget {
   const TrainerScheduleScreen({super.key});
@@ -94,17 +95,21 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Eğitmen Programı'),
         backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           color: AppColors.primaryYellow,
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
-        children: [
+      body: AmbientBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
           // Galaxy Calendar
           GlassCard(
             margin: const EdgeInsets.all(20),
@@ -193,6 +198,8 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
                     ),
           ),
         ],
+        ),
+      ),
       ),
     );
   }
@@ -307,12 +314,12 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surfaceDark,
-        title: const Text('Dersi İptal Et', style: AppTextStyles.title3),
+        title: Text('Dersi İptal Et', style: AppTextStyles.title3),
         content: const Text('Bu dersi silmek istediğinize emin misiniz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hayır', style: AppTextStyles.body),
+            child: Text('Hayır', style: AppTextStyles.body),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),

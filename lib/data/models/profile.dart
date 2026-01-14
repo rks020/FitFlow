@@ -7,6 +7,8 @@ class Profile {
   final String? hobbies;
   final String? avatarUrl;
   final String? role;
+  final String? organizationId;
+  final String? organizationName; // Added field
   final DateTime? updatedAt;
 
   Profile({
@@ -18,10 +20,18 @@ class Profile {
     this.hobbies,
     this.avatarUrl,
     this.role,
+    this.organizationId,
+    this.organizationName, // Added to constructor
     this.updatedAt,
   });
 
   factory Profile.fromSupabase(Map<String, dynamic> map) {
+    // Extract organization name safely
+    String? orgName;
+    if (map['organizations'] != null && map['organizations'] is Map) {
+      orgName = map['organizations']['name'];
+    }
+
     return Profile(
       id: map['id'] ?? '',
       firstName: map['first_name'],
@@ -31,6 +41,8 @@ class Profile {
       hobbies: map['hobbies'],
       avatarUrl: map['avatar_url'],
       role: map['role'],
+      organizationId: map['organization_id'],
+      organizationName: orgName, // Mapped
       updatedAt: map['updated_at'] != null 
           ? DateTime.parse(map['updated_at']).toLocal() 
           : null,
@@ -45,6 +57,7 @@ class Profile {
       'age': age,
       'hobbies': hobbies,
       'avatar_url': avatarUrl,
+      'organization_id': organizationId, // Included for initial creation scenarios
       // role is usually not updatable by user here, but if needed:
       // 'role': role, 
       'updated_at': DateTime.now().toUtc().toIso8601String(),

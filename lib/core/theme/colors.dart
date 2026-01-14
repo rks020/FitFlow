@@ -2,19 +2,27 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary Colors - From PT Body Change Logo
-  static const Color primaryYellow = Color(0xFFFDD835);
-  static const Color primaryYellowDark = Color(0xFFF9A825);
+  static const Color primaryYellow = Color(0xFFFFD700); // Gold
+  static const Color primaryYellowDark = Color(0xFFEAB308);
   
   // Dark Theme Colors
   static const Color backgroundDark = Color(0xFF0A0A0A);
   static const Color surfaceDark = Color(0xFF1C1C1E);
   static const Color cardDark = Color(0xFF2C2C2E);
   
+  // Aliases for new UI
+  static const Color background = backgroundDark;
+  static const Color surface = surfaceDark;
+  static const Color surfaceLight = cardDark;
+  static const Color secondaryBlue = neonCyan;
+
   // Accent Colors
   static const Color accentBlue = Color(0xFF007AFF);
+  static const Color neonCyan = Color(0xFF06B6D4); // Neon Cyan for Members
   static const Color accentGreen = Color(0xFF34C759);
   static const Color accentRed = Color(0xFFFF3B30);
   static const Color accentOrange = Color(0xFFFF9500);
+  static const Color success = Color(0xFF34C759); // Green alias
   
   // Text Colors
   static const Color textPrimary = Color(0xFFFFFFFF);

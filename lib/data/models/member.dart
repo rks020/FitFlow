@@ -13,6 +13,7 @@ class Member {
   final String? trainerName;
   final String? subscriptionPackage;
   final int? sessionCount;
+  final String? organizationId;
   
   Member({
     required this.id,
@@ -29,6 +30,7 @@ class Member {
     this.trainerName,
     this.subscriptionPackage,
     this.sessionCount,
+    this.organizationId,
   });
   
   Map<String, dynamic> toMap() {
@@ -84,6 +86,7 @@ class Member {
           : null,
       subscriptionPackage: map['subscription_package'] as String?,
       sessionCount: map['session_count'] as int?,
+      organizationId: map['organization_id'] as String?,
     );
   }
   
@@ -100,6 +103,7 @@ class Member {
     String? notes,
     String? subscriptionPackage,
     int? sessionCount,
+    String? organizationId,
   }) {
     return Member(
       id: id ?? this.id,
@@ -114,6 +118,7 @@ class Member {
       notes: notes ?? this.notes,
       subscriptionPackage: subscriptionPackage ?? this.subscriptionPackage,
       sessionCount: sessionCount ?? this.sessionCount,
+      organizationId: organizationId ?? this.organizationId,
     );
   }
 }

@@ -25,8 +25,11 @@ class MemberCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: AppColors.muscleGradient,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primaryYellow.withOpacity(0.8),
+                  AppColors.neonCyan.withOpacity(0.8),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

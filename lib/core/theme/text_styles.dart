@@ -1,31 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'colors.dart';
 
 class AppTextStyles {
   // Large Titles
-  static const TextStyle largeTitle = TextStyle(
+  static TextStyle largeTitle = GoogleFonts.montserrat(
     fontSize: 34,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w800, // ExtraBold
     letterSpacing: 0.37,
     color: AppColors.textPrimary,
   );
   
   // Titles
-  static const TextStyle title1 = TextStyle(
+  static TextStyle title1 = GoogleFonts.montserrat(
     fontSize: 28,
     fontWeight: FontWeight.bold,
     letterSpacing: 0.36,
     color: AppColors.textPrimary,
   );
   
-  static const TextStyle title2 = TextStyle(
+  static TextStyle title2 = GoogleFonts.montserrat(
     fontSize: 22,
     fontWeight: FontWeight.bold,
     letterSpacing: 0.35,
     color: AppColors.textPrimary,
   );
   
-  static const TextStyle title3 = TextStyle(
+  static TextStyle title3 = GoogleFonts.montserrat(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.38,
@@ -33,7 +34,7 @@ class AppTextStyles {
   );
   
   // Headline
-  static const TextStyle headline = TextStyle(
+  static TextStyle headline = GoogleFonts.inter(
     fontSize: 17,
     fontWeight: FontWeight.w600,
     letterSpacing: -0.41,
@@ -41,14 +42,14 @@ class AppTextStyles {
   );
   
   // Body
-  static const TextStyle body = TextStyle(
+  static TextStyle body = GoogleFonts.inter(
     fontSize: 17,
     fontWeight: FontWeight.w400,
     letterSpacing: -0.41,
     color: AppColors.textPrimary,
   );
   
-  static const TextStyle bodySecondary = TextStyle(
+  static TextStyle bodySecondary = GoogleFonts.inter(
     fontSize: 17,
     fontWeight: FontWeight.w400,
     letterSpacing: -0.41,
@@ -56,7 +57,7 @@ class AppTextStyles {
   );
   
   // Callout
-  static const TextStyle callout = TextStyle(
+  static TextStyle callout = GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     letterSpacing: -0.32,
@@ -64,7 +65,7 @@ class AppTextStyles {
   );
   
   // Subheadline
-  static const TextStyle subheadline = TextStyle(
+  static TextStyle subheadline = GoogleFonts.inter(
     fontSize: 15,
     fontWeight: FontWeight.w400,
     letterSpacing: -0.24,
@@ -72,7 +73,7 @@ class AppTextStyles {
   );
   
   // Footnote
-  static const TextStyle footnote = TextStyle(
+  static TextStyle footnote = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w400,
     letterSpacing: -0.08,
@@ -80,14 +81,14 @@ class AppTextStyles {
   );
   
   // Caption
-  static const TextStyle caption1 = TextStyle(
+  static TextStyle caption1 = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.0,
     color: AppColors.textSecondary,
   );
   
-  static const TextStyle caption2 = TextStyle(
+  static TextStyle caption2 = GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.06,

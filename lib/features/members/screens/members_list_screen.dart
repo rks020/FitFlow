@@ -7,6 +7,7 @@ import '../../../data/repositories/member_repository.dart';
 import '../widgets/member_card.dart';
 import 'add_edit_member_screen.dart';
 import 'member_detail_screen.dart';
+import 'package:pt_body_change/shared/widgets/ambient_background.dart';
 
 class MembersListScreen extends StatefulWidget {
   const MembersListScreen({super.key});
@@ -38,10 +39,12 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
     try {
       final members = await _repository.getAll();
-      setState(() {
-        _members = members;
-        _filterMembers();
-      });
+      if (mounted) {
+        setState(() {
+          _members = members;
+          _filterMembers();
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -49,9 +52,11 @@ class _MembersListScreenState extends State<MembersListScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -103,9 +108,10 @@ class _MembersListScreenState extends State<MembersListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Column(
-          children: [
+          child: Column(
+            children: [
             // Header
             Padding(
               padding: const EdgeInsets.all(20),
@@ -278,7 +284,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
                         ),
             ),
           ],
-        ),
+      ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _navigateToAddMember,

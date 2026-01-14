@@ -8,6 +8,7 @@ import '../../../data/repositories/measurement_repository.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class MeasurementDetailScreen extends StatelessWidget {
   final Measurement measurement;
@@ -68,6 +69,7 @@ class MeasurementDetailScreen extends StatelessWidget {
     final dateStr = DateFormat('dd MMMM yyyy, HH:mm', 'tr_TR').format(measurement.date);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Ölçüm Detayı'),
         backgroundColor: Colors.transparent,
@@ -84,97 +86,99 @@ class MeasurementDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(dateStr, style: AppTextStyles.title2),
-              const SizedBox(height: 24),
+      body: AmbientBackground(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.only(top: kToolbarHeight + 40, left: 20, right: 20, bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(dateStr, style: AppTextStyles.title2),
+                const SizedBox(height: 24),
 
-              // Photos Section
-              if (measurement.frontPhotoUrl != null || 
-                  measurement.sidePhotoUrl != null || 
-                  measurement.backPhotoUrl != null) ...[
-                GlassCard(
-                  padding: EdgeInsets.zero,
-                  child: SizedBox(
-                    height: 300,
-                    child: PageView(
+                // Photos Section
+                if (measurement.frontPhotoUrl != null || 
+                    measurement.sidePhotoUrl != null || 
+                    measurement.backPhotoUrl != null) ...[
+                  GlassCard(
+                    padding: EdgeInsets.zero,
+                    child: SizedBox(
+                      height: 300,
+                      child: PageView(
+                        children: [
+                          if (measurement.frontPhotoUrl != null) 
+                            _buildPhotoPage(measurement.frontPhotoUrl!, 'Ön'),
+                          if (measurement.sidePhotoUrl != null) 
+                            _buildPhotoPage(measurement.sidePhotoUrl!, 'Yan'),
+                          if (measurement.backPhotoUrl != null) 
+                            _buildPhotoPage(measurement.backPhotoUrl!, 'Arka'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Basic Stats
+                Text('Temel Bilgiler', style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
+                const SizedBox(height: 12),
+                  GlassCard(
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceAround,
+                      runSpacing: 12,
+                      spacing: 12,
                       children: [
-                        if (measurement.frontPhotoUrl != null) 
-                          _buildPhotoPage(measurement.frontPhotoUrl!, 'Ön'),
-                        if (measurement.sidePhotoUrl != null) 
-                          _buildPhotoPage(measurement.sidePhotoUrl!, 'Yan'),
-                        if (measurement.backPhotoUrl != null) 
-                          _buildPhotoPage(measurement.backPhotoUrl!, 'Arka'),
+                        _buildStatItem('Kilo', '${measurement.weight} kg'),
+                        _buildStatItem('Boy', '${measurement.height} cm'),
+                        if (measurement.age != null) _buildStatItem('Yaş', '${measurement.age}'),
+                        _buildStatItem('BMI', measurement.bmi.toStringAsFixed(1)),
+                        if (measurement.bodyFatPercentage != null)
+                          _buildStatItem('Yağ', '%${measurement.bodyFatPercentage}'),
+                        if (measurement.waterPercentage != null)
+                          _buildStatItem('Su', '%${measurement.waterPercentage}'),
+                        if (measurement.boneMass != null)
+                          _buildStatItem('Kemik', '${measurement.boneMass} kg'),
+                        if (measurement.visceralFatRating != null)
+                          _buildStatItem('Visceral', '${measurement.visceralFatRating}'),
+                        if (measurement.metabolicAge != null)
+                          _buildStatItem('Met. Yaş', '${measurement.metabolicAge}'),
+                        if (measurement.basalMetabolicRate != null)
+                          _buildStatItem('BMR', '${measurement.basalMetabolicRate} kcal'),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-              ],
 
-              // Basic Stats
-              Text('Temel Bilgiler', style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
-              const SizedBox(height: 12),
+                const SizedBox(height: 24),
+                // Circumferences
+                Text('Çevre Ölçümleri', style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
+                const SizedBox(height: 12),
                 GlassCard(
-                  child: Wrap(
-                    alignment: WrapAlignment.spaceAround,
-                    runSpacing: 12,
-                    spacing: 12,
+                  child: Column(
                     children: [
-                      _buildStatItem('Kilo', '${measurement.weight} kg'),
-                      _buildStatItem('Boy', '${measurement.height} cm'),
-                      if (measurement.age != null) _buildStatItem('Yaş', '${measurement.age}'),
-                      _buildStatItem('BMI', measurement.bmi.toStringAsFixed(1)),
-                      if (measurement.bodyFatPercentage != null)
-                        _buildStatItem('Yağ', '%${measurement.bodyFatPercentage}'),
-                      if (measurement.waterPercentage != null)
-                        _buildStatItem('Su', '%${measurement.waterPercentage}'),
-                      if (measurement.boneMass != null)
-                        _buildStatItem('Kemik', '${measurement.boneMass} kg'),
-                      if (measurement.visceralFatRating != null)
-                        _buildStatItem('Visceral', '${measurement.visceralFatRating}'),
-                      if (measurement.metabolicAge != null)
-                        _buildStatItem('Met. Yaş', '${measurement.metabolicAge}'),
-                      if (measurement.basalMetabolicRate != null)
-                        _buildStatItem('BMR', '${measurement.basalMetabolicRate} kcal'),
+                      if (measurement.chest != null) _buildRow('Göğüs', '${measurement.chest} cm'),
+                      if (measurement.waist != null) _buildRow('Bel', '${measurement.waist} cm'),
+                      if (measurement.hips != null) _buildRow('Kalça', '${measurement.hips} cm'),
+                      const Divider(color: AppColors.glassBorder),
+                      if (measurement.leftArm != null) _buildRow('Sol Kol', '${measurement.leftArm} cm'),
+                      if (measurement.rightArm != null) _buildRow('Sağ Kol', '${measurement.rightArm} cm'),
+                      const Divider(color: AppColors.glassBorder),
+                      if (measurement.leftThigh != null) _buildRow('Sol Bacak', '${measurement.leftThigh} cm'),
+                      if (measurement.rightThigh != null) _buildRow('Sağ Bacak', '${measurement.rightThigh} cm'),
+                      // Calves removed
                     ],
                   ),
                 ),
 
-              const SizedBox(height: 24),
-              // Circumferences
-              Text('Çevre Ölçümleri', style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
-              const SizedBox(height: 12),
-              GlassCard(
-                child: Column(
-                  children: [
-                    if (measurement.chest != null) _buildRow('Göğüs', '${measurement.chest} cm'),
-                    if (measurement.waist != null) _buildRow('Bel', '${measurement.waist} cm'),
-                    if (measurement.hips != null) _buildRow('Kalça', '${measurement.hips} cm'),
-                    const Divider(color: AppColors.glassBorder),
-                    if (measurement.leftArm != null) _buildRow('Sol Kol', '${measurement.leftArm} cm'),
-                    if (measurement.rightArm != null) _buildRow('Sağ Kol', '${measurement.rightArm} cm'),
-                    const Divider(color: AppColors.glassBorder),
-                    if (measurement.leftThigh != null) _buildRow('Sol Bacak', '${measurement.leftThigh} cm'),
-                    if (measurement.rightThigh != null) _buildRow('Sağ Bacak', '${measurement.rightThigh} cm'),
-                    // Calves removed
-                  ],
-                ),
-              ),
-
-              if (measurement.notes != null && measurement.notes!.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                Text('Notlar', style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
-                const SizedBox(height: 12),
-                GlassCard(
-                  child: Text(measurement.notes!, style: AppTextStyles.body),
-                ),
+                if (measurement.notes != null && measurement.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Text('Notlar', style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
+                  const SizedBox(height: 12),
+                  GlassCard(
+                    child: Text(measurement.notes!, style: AppTextStyles.body),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

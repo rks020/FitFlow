@@ -11,6 +11,7 @@ import 'add_class_screen.dart';
 import 'class_detail_screen.dart';
 import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
+import 'package:pt_body_change/shared/widgets/ambient_background.dart';
 
 class ClassScheduleScreen extends StatefulWidget {
   const ClassScheduleScreen({super.key});
@@ -81,25 +82,10 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background Logo
-          Positioned.fill(
-            child: Align(
-              alignment: const Alignment(0, 0.3),
-              child: Opacity(
-                opacity: 0.1,
-                child: Image.asset(
-                  'assets/images/pt_logo.png',
-                  width: 300,
-                ),
-              ),
-            ),
-          ),
-          // Content
-          SafeArea(
-            child: Column(
-              children: [
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+          child: Column(
+            children: [
             // Header
             Padding(
               padding: const EdgeInsets.all(20),
@@ -194,9 +180,9 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
           ],
         ),
       ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+
+      floatingActionButton: (_currentProfile?.role == 'admin' || _currentProfile?.role == 'owner')
+        ? FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.push(
             context,
@@ -212,7 +198,8 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_rounded),
         label: Text('Ders Ekle', style: AppTextStyles.headline.copyWith(color: Colors.black)),
-      ),
+      )
+      : null,
     );
   }
 

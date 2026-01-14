@@ -48,7 +48,7 @@ class _InboxScreenState extends State<InboxScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Kutusu', style: AppTextStyles.headline),
+        title: Text('Mesaj Kutusu', style: AppTextStyles.headline),
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryYellow),

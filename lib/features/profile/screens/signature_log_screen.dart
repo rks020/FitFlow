@@ -6,6 +6,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class SignatureLogScreen extends StatefulWidget {
   const SignatureLogScreen({super.key});
@@ -87,14 +88,19 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('İmza Defteri'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
+      body: AmbientBackground(
+        child: SafeArea(
+          child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _sessions.isEmpty
               ? Center(
@@ -207,6 +213,8 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
                     );
                   },
                 ),
+          ),
+      ),
     );
   }
 }

@@ -14,6 +14,9 @@ import 'edit_profile_screen.dart';
 import 'signature_log_screen.dart';
 import 'trainer_schedule_screen.dart';
 
+import 'package:pt_body_change/features/auth/screens/welcome_screen.dart';
+import 'package:pt_body_change/shared/widgets/ambient_background.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -54,7 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
+          builder: (context) => const WelcomeScreen(),
         ),
         (route) => false,
       );
@@ -65,12 +68,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     // Fallback to auth metadata if profile is not yet created
     final user = Supabase.instance.client.auth.currentUser;
-    final displayName = _profile?.firstName != null 
-        ? '${_profile!.firstName} ${_profile!.lastName ?? ''}'
-        : (user?.userMetadata?['username'] ?? 'PT User');
-    
+    // Priority: Profile Name > User Metadata Name > Fallback
+    String displayName = 'Kullanıcı';
+    if (_profile?.firstName != null && _profile!.firstName!.isNotEmpty) {
+      displayName = '${_profile!.firstName} ${_profile!.lastName ?? ''}'.trim();
+    } else if (user?.userMetadata?['first_name'] != null) {
+      displayName = '${user!.userMetadata!['first_name']} ${user!.userMetadata!['last_name'] ?? ''}'.trim();
+    } else if (user?.userMetadata?['full_name'] != null) {
+      displayName = user!.userMetadata!['full_name'];
+    }
+
     String initials = 'PT';
-    if (displayName.isNotEmpty) {
+    if (displayName.isNotEmpty && displayName != 'Kullanıcı') {
       final names = displayName.trim().split(' ').where((String s) => s.isNotEmpty).toList();
       if (names.length >= 2) {
         initials = '${names.first[0]}${names.last[0]}'.toUpperCase();
@@ -79,14 +88,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
+    // Role Label
+    String roleLabel = 'Kullanıcı';
+    if (_profile?.role == 'owner' || _profile?.role == 'admin') {
+      roleLabel = 'Salon Sahibi';
+    } else if (_profile?.role == 'trainer') {
+      roleLabel = 'Eğitmen';
+    }
+
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
                     children: [
                       // Header
                       Center(
@@ -156,24 +174,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 16),
                       
-                      // Name & Profession
+                      // Name
                       Text(
                         displayName,
                         style: AppTextStyles.title1.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (_profile?.profession != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          _profile!.profession!,
-                          style: AppTextStyles.subheadline.copyWith(
-                            color: AppColors.primaryYellow,
-                            fontWeight: FontWeight.w600,
+                      
+                      const SizedBox(height: 8),
+
+                      // Organization Name (New)
+                      if (_profile?.organizationName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentBlue.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.accentBlue.withOpacity(0.5)),
+                            ),
+                            child: Text(
+                              _profile!.organizationName!,
+                              style: AppTextStyles.caption1.copyWith(
+                                color: AppColors.accentBlue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
-                      ],
-                      const SizedBox(height: 8),
+
+                      // Role & Profession
+                      Text(
+                        _profile?.profession ?? roleLabel,
+                        style: AppTextStyles.subheadline.copyWith(
+                          color: AppColors.primaryYellow,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 4),
                       Text(
                         user?.email ?? '',
                         style: AppTextStyles.caption1.copyWith(
@@ -288,7 +329,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
-      ),
+        ),
+
     );
   }
 

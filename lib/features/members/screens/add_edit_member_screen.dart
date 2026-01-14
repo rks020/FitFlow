@@ -3,9 +3,13 @@ import 'package:uuid/uuid.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/profile.dart'; // Added
 import '../../../data/repositories/member_repository.dart';
+import '../../../data/repositories/profile_repository.dart'; // Added
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Added
+import '../../../shared/widgets/ambient_background.dart';
 
 class AddEditMemberScreen extends StatefulWidget {
   final Member? member;
@@ -33,9 +37,18 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
   bool _isActive = true;
   bool _isLoading = false;
 
+  // Trainer Selection
+  List<Profile> _trainers = [];
+  String? _selectedTrainerId;
+  bool _canAssignTrainer = false;
+  final _profileRepository = ProfileRepository();
+  bool _isLoadingTrainers = false;
+
   @override
   void initState() {
     super.initState();
+    _checkPermissionsAndLoadTrainers();
+    
     if (widget.member != null) {
       _nameController.text = widget.member!.name;
       _emailController.text = widget.member!.email;
@@ -45,6 +58,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
       _notesController.text = widget.member!.notes ?? '';
       _selectedPackage = widget.member!.subscriptionPackage;
       _sessionCountController.text = widget.member!.sessionCount?.toString() ?? '';
+      _selectedTrainerId = widget.member!.trainerId; // Set initial trainer
       
       // Auto-fill session count if missing but package is selected
       if (_sessionCountController.text.isEmpty && _selectedPackage != null) {
@@ -55,6 +69,38 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
       }
 
       _isActive = widget.member!.isActive;
+    }
+  }
+
+  Future<void> _checkPermissionsAndLoadTrainers() async {
+    final profile = await _profileRepository.getProfile();
+    if (profile?.role == 'admin' || profile?.role == 'owner') {
+      if (mounted) {
+        setState(() {
+          _canAssignTrainer = true;
+          _isLoadingTrainers = true;
+        });
+      }
+      await _loadTrainers();
+    }
+  }
+
+  Future<void> _loadTrainers() async {
+    try {
+      final supabase = Supabase.instance.client;
+      // Fetch all profiles in org (RLS allows owner to see them)
+      final response = await supabase.from('profiles').select().order('first_name');
+      final trainers = (response as List).map((e) => Profile.fromSupabase(e)).toList();
+      
+      if (mounted) {
+        setState(() {
+          _trainers = trainers;
+          _isLoadingTrainers = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading trainers: $e');
+      if (mounted) setState(() => _isLoadingTrainers = false);
     }
   }
 
@@ -84,6 +130,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
             : _notesController.text.trim(),
         subscriptionPackage: _selectedPackage,
         sessionCount: int.tryParse(_sessionCountController.text.trim()),
+        trainerId: _selectedTrainerId, // Critical: Pass selected trainer ID
       );
 
       final repository = MemberRepository();
@@ -94,6 +141,12 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
       }
 
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Başarıyla kaydedildi'),
+            backgroundColor: AppColors.success,
+          ),
+        );
         Navigator.of(context).pop(true);
       }
     } catch (e) {
@@ -114,15 +167,19 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(widget.member == null ? 'Üye Ekle' : 'Üye Düzenle'),
+        backgroundColor: Colors.transparent,
       ),
-      body: SafeArea(
+      body: AmbientBackground(
+        child: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              const SizedBox(height: kToolbarHeight + 10),
               CustomTextField(
                 label: 'Ad Soyad *',
                 hint: 'Ahmet Yılmaz',
@@ -259,6 +316,52 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+              // Trainer Selection Dropdown (Only for Admin/Owner)
+              if (_canAssignTrainer)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _isLoadingTrainers 
+                      ? const Center(child: CircularProgressIndicator())
+                      : DropdownButtonFormField<String>(
+                          value: _selectedTrainerId,
+                          dropdownColor: AppColors.surfaceDark,
+                          style: AppTextStyles.body,
+                          decoration: InputDecoration(
+                            labelText: 'Eğitmen Ata',
+                            labelStyle: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                            prefixIcon: const Icon(Icons.person_pin_circle_rounded, color: AppColors.textSecondary),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.glassBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.primaryYellow),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.surfaceDark,
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Eğitmen Yok (Boşa Çıkar)', style: TextStyle(color: Colors.white70)),
+                            ),
+                            ..._trainers.map((trainer) {
+                              final name = '${trainer.firstName ?? ''} ${trainer.lastName ?? ''}'.trim();
+                              return DropdownMenuItem<String>(
+                                value: trainer.id,
+                                child: Text(name.isEmpty ? 'İsimsiz Eğitmen' : name),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedTrainerId = value;
+                            });
+                          },
+                        ),
+                ),
+
               CustomButton(
                 text: widget.member == null ? 'Üye Ekle' : 'Kaydet',
                 onPressed: _saveMember,
@@ -267,6 +370,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

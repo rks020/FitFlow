@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/profile.dart';
 
@@ -10,6 +11,28 @@ class ProfileRepository {
     if (userId == null) return null;
 
     try {
+      // Try fetching with organization name
+      try {
+        final data = await _supabase
+            .from('profiles')
+            .select('*, organizations!profiles_organization_id_fkey(name)')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (data != null) {
+          // Extract organization name safely
+          String? orgName;
+          if (data['organizations'] != null) {
+            orgName = data['organizations']['name'];
+          }
+          return Profile.fromSupabase(data);
+        }
+      } catch (e) {
+        debugPrint('Error fetching with org join: $e');
+        // Fallback to simple select if join fails
+      }
+
+      // Fallback: simple select
       final data = await _supabase
           .from('profiles')
           .select()
@@ -19,7 +42,7 @@ class ProfileRepository {
       if (data == null) return null;
       return Profile.fromSupabase(data);
     } catch (e) {
-      // If error (e.g. table doesn't exist or RLS issue), return null
+      debugPrint('Error fetching profile: $e');
       return null;
     }
   }
@@ -28,16 +51,17 @@ class ProfileRepository {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
 
-    // Check if profile exists, if not insert, else update
-    final existing = await getProfile();
-    
-    if (existing == null) {
-      await _supabase.from('profiles').insert({
-        'id': userId,
-        ...profile.toSupabaseMap(),
-      });
-    } else {
-      await _supabase.from('profiles').update(profile.toSupabaseMap()).eq('id', userId);
+    try {
+      final data = profile.toSupabaseMap();
+      // Ensure ID is set
+      data['id'] = userId;
+      
+      // Use upsert to handle both insert and update atomically
+      // onConflict: 'id' ensures we update based on primary key
+      await _supabase.from('profiles').upsert(data);
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+      rethrow;
     }
   }
 

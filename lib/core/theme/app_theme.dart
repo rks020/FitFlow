@@ -25,13 +25,13 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.backgroundDark,
       
       // AppBar Theme
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.backgroundDark,
         elevation: 0,
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         titleTextStyle: AppTextStyles.headline,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       
       // Card Theme
@@ -75,7 +75,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.glassBorder, width: 1),
+          borderSide: const BorderSide(color: AppColors.glassBorder, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -116,7 +116,7 @@ class AppTheme {
       ),
 
       // Text Theme
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         displayLarge: AppTextStyles.largeTitle,
         displayMedium: AppTextStyles.title1,
         displaySmall: AppTextStyles.title2,

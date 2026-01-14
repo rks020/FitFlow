@@ -16,8 +16,9 @@ import '../../../data/repositories/class_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../members/screens/add_edit_member_screen.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
+import 'package:pt_body_change/shared/widgets/ambient_background.dart';
+import 'package:pt_body_change/features/dashboard/screens/trainers_list_screen.dart';
 import '../../../core/services/presence_service.dart';
-import 'trainers_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,13 +29,42 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  void _onTabTapped(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     void switchToTab(int index) {
-      setState(() {
-        _selectedIndex = index;
-      });
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
 
     final List<Widget> _screens = [
@@ -45,7 +75,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Scaffold(
-      body: _screens[_selectedIndex],
+      extendBodyBehindAppBar: true, // Allow background to extend
+      body: AmbientBackground(
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: _onPageChanged,
+          children: _screens,
+        ),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -57,11 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
+          onTap: _onTabTapped,
           type: BottomNavigationBarType.fixed,
           backgroundColor: AppColors.surfaceDark,
           selectedItemColor: AppColors.primaryYellow,
@@ -260,313 +293,314 @@ class _DashboardHomeState extends State<_DashboardHome> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: () async {
-          await _loadStats();
-          await _loadProfile();
-        },
-        color: AppColors.primaryYellow,
-        backgroundColor: AppColors.surfaceDark,
-        child: CustomScrollView(
-          slivers: [
-            // Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                Expanded(
-                                  child: RichText(
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    text: TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'PT',
-                                          style: GoogleFonts.graduate(
-                                            textStyle: AppTextStyles.largeTitle.copyWith(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await _loadStats();
+            await _loadProfile();
+          },
+          color: AppColors.primaryYellow,
+          backgroundColor: AppColors.surfaceDark,
+          child: CustomScrollView(
+            slivers: [
+              // Header
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                  Expanded(
+                                    child: RichText(
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      text: TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: 'Fit',
+                                            style: AppTextStyles.largeTitle.copyWith(
                                               fontWeight: FontWeight.w900,
                                               color: AppColors.primaryYellow,
-                                              fontSize: 22,
+                                              fontSize: 32,
+                                              letterSpacing: 1.5,
                                             ),
                                           ),
-                                        ),
-                                        TextSpan(
-                                          text: ' Body Change',
-                                          style: GoogleFonts.graduate(
-                                            textStyle: AppTextStyles.largeTitle.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 22,
+                                          TextSpan(
+                                            text: 'Flow',
+                                            style: AppTextStyles.largeTitle.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.neonCyan, // Cyan/Blue
+                                              fontSize: 32,
+                                              letterSpacing: 1.5,
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Row(
-                                  children: [
-                                    Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(builder: (context) => const InboxScreen()),
-                                            ).then((_) => _loadUnreadCount());
-                                          },
-                                          child: Container(
-                                            width: 40,
-                                            height: 40,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primaryYellow.withOpacity(0.2),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: AppColors.primaryYellow,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: const Icon(
-                                              Icons.mail_outline_rounded,
-                                              color: AppColors.primaryYellow,
-                                              size: 20,
-                                            ),
-                                          ),
-                                        ),
-                                        if (_unreadMessageCount > 0)
-                                          Positioned(
-                                            right: -4,
-                                            top: -4,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(4),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.red,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              constraints: const BoxConstraints(
-                                                minWidth: 18,
-                                                minHeight: 18,
-                                              ),
-                                              child: Text(
-                                                '$_unreadMessageCount',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 8),
-                                    GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => const ProfileScreen(),
-                                      ),
-                                    ).then((_) => _loadProfile());
-                                  },
-                                  child: Stack(
+                                  // Stats icons remain unchanged
+                                  Row(
                                     children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryYellow.withOpacity(0.2),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: AppColors.primaryYellow,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            _userInitials,
-                                            style: AppTextStyles.headline.copyWith(
-                                              color: Colors.black,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      if (_isOnline)
-                                        Positioned(
-                                          right: 0,
-                                          bottom: 0,
-                                          child: Container(
-                                            width: 12,
-                                            height: 12,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.accentGreen,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: AppColors.surfaceDark,
-                                                width: 2,
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(builder: (context) => const InboxScreen()),
+                                              ).then((_) => _loadUnreadCount());
+                                            },
+                                            child: GlassCard(
+                                              padding: const EdgeInsets.all(8),
+                                              borderRadius: BorderRadius.circular(50),
+                                              backgroundColor: AppColors.primaryYellow.withOpacity(0.2),
+                                              border: Border.all(color: AppColors.primaryYellow, width: 2),
+                                              child: const SizedBox(
+                                                width: 26,
+                                                height: 26,
+                                                child: Center(
+                                                  child: Icon(
+                                                    Icons.mail_outline_rounded,
+                                                    color: Colors.white,
+                                                    size: 22,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
+                                          if (_unreadMessageCount > 0)
+                                            Positioned(
+                                              right: -4,
+                                              top: -4,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.red,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                constraints: const BoxConstraints(
+                                                  minWidth: 18,
+                                                  minHeight: 18,
+                                                ),
+                                                child: Text(
+                                                  '$_unreadMessageCount',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => const ProfileScreen(),
+                                            ),
+                                          ).then((_) => _loadProfile());
+                                        },
+                                        child: Stack(
+                                          children: [
+                                            GlassCard(
+                                              padding: const EdgeInsets.all(8),
+                                              borderRadius: BorderRadius.circular(50),
+                                              backgroundColor: AppColors.primaryYellow.withOpacity(0.2),
+                                              border: Border.all(color: AppColors.primaryYellow, width: 2),
+                                              child: SizedBox(
+                                                width: 26,
+                                                height: 26,
+                                                child: Center(
+                                                  child: Text(
+                                                    _userInitials,
+                                                    style: AppTextStyles.headline.copyWith(
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            if (_isOnline)
+                                              Positioned(
+                                                right: 0,
+                                                bottom: 0,
+                                                child: Container(
+                                                  width: 12,
+                                                  height: 12,
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.accentGreen,
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: AppColors.surfaceDark,
+                                                      width: 2,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
                                         ),
+                                      ),
                                     ],
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Sporcu Takip Sistemi',
+                                style: AppTextStyles.subheadline.copyWith(
+                                  fontSize: 14,
+                                  color: Colors.grey[400],
                                 ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Sporcu Takip Sistemi',
-                              style: AppTextStyles.subheadline.copyWith(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Stats Grid
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.35,
-              ),
-                delegate: SliverChildListDelegate([
-                  StatCard(
-                    title: 'Toplam Üye',
-                    value: '$_totalMembers',
-                    icon: Icons.people_rounded,
-                    color: AppColors.accentBlue,
-                    onTap: () => widget.onNavigate(1), // Navigate to Members
-                    backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
-                  ),
-                  StatCard(
-                    title: 'Aktif Üye',
-                    value: '$_activeMembers',
-                    icon: Icons.person_rounded,
-                    color: AppColors.accentGreen,
-                    onTap: () => widget.onNavigate(1), // Navigate to Members
-                    backgroundImage: 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?q=80&w=1469&auto=format&fit=crop',
-                  ),
-                   StatCard(
-                    title: 'Bugünkü Dersler',
-                    value: '$_todayClasses',
-                    icon: Icons.fitness_center_rounded,
-                    color: AppColors.primaryYellow,
-                    onTap: () => widget.onNavigate(2), // Navigate to Classes
-                    backgroundImage: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2669&auto=format&fit=crop',
-                  ),
-                  StatCard(
-                    title: 'Eğitmenler',
-                    value: '$_onlineTrainersCount',
-                    icon: Icons.people_alt_rounded,
-                    color: AppColors.accentOrange,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const TrainersListScreen(),
-                        ),
-                      );
-                    },
-                    backgroundImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1470&auto=format&fit=crop',
-                  ),
-                ]),
-              ),
-            ),
-
-            // Quick Actions
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    Text(
-                      'Hızlı İşlemler',
-                      style: AppTextStyles.title3,
-                    ),
-                    const SizedBox(height: 16),
-                    _QuickActionButton(
-                      icon: Icons.person_add_rounded,
-                      title: 'Yeni Üye Ekle',
-                      subtitle: 'Sisteme yeni sporcu kaydet',
-                      color: AppColors.accentBlue,
-                      backgroundImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1470&auto=format&fit=crop',
-                      onTap: () async {
-                        final result = await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const AddEditMemberScreen(),
+                              ),
+                            ],
                           ),
-                        );
-                        if (result == true) {
-                          if (context.mounted) {
-                            CustomSnackBar.showSuccess(
-                              context, 
-                              'Üye başarıyla eklendi',
-                            );
-                          }
-                          _loadStats();
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _QuickActionButton(
-                      icon: Icons.straighten_rounded,
-                      title: 'Ölçüm Yap',
-                      subtitle: 'Sporcunun ölçümlerini kaydet',
-                      color: AppColors.accentOrange,
-                      backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
-                      onTap: () {
-                        widget.onNavigate(1);
-                        CustomSnackBar.showError(
-                          context,
-                          'Lütfen ölçüm eklemek istediğiniz üyeyi seçin.',
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _QuickActionButton(
-                      icon: Icons.add_circle_rounded,
-                      title: 'Ders Oluştur',
-                      subtitle: 'Yeni ders programı ekle',
-                      color: AppColors.primaryYellow,
-                      backgroundImage: 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?q=80&w=1450&auto=format&fit=crop',
-                      onTap: () {
-                        widget.onNavigate(2);
-                      },
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-          ],
+
+            // Stats Grid
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.35,
+                ),
+                  delegate: SliverChildListDelegate([
+                    StatCard(
+                      title: 'Toplam Üye',
+                      value: '$_totalMembers',
+                      icon: Icons.people_rounded,
+                      color: AppColors.accentBlue,
+                      onTap: () => widget.onNavigate(1), // Navigate to Members
+                      backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
+                    ),
+                    StatCard(
+                      title: 'Aktif Üye',
+                      value: '$_activeMembers',
+                      icon: Icons.person_rounded,
+                      color: AppColors.accentGreen,
+                      onTap: () => widget.onNavigate(1), // Navigate to Members
+                      backgroundImage: 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?q=80&w=1469&auto=format&fit=crop',
+                    ),
+                     StatCard(
+                      title: 'Bugünkü Dersler',
+                      value: '$_todayClasses',
+                      icon: Icons.fitness_center_rounded,
+                      color: AppColors.primaryYellow,
+                      onTap: () => widget.onNavigate(2), // Navigate to Classes
+                      backgroundImage: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2669&auto=format&fit=crop',
+                    ),
+                    StatCard(
+                      title: 'Eğitmenler',
+                      value: '$_onlineTrainersCount',
+                      icon: Icons.people_alt_rounded,
+                      color: AppColors.accentOrange,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const TrainersListScreen(),
+                          ),
+                        );
+                      },
+                      backgroundImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1470&auto=format&fit=crop',
+                    ),
+                  ]),
+                ),
+              ),
+
+              // Quick Actions
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      Text(
+                        'Hızlı İşlemler',
+                        style: AppTextStyles.title3.copyWith(color: Colors.white),
+                      ),
+                      const SizedBox(height: 16),
+                      _QuickActionButton(
+                        icon: Icons.person_add_rounded,
+                        title: 'Yeni Üye Ekle',
+                        subtitle: 'Sisteme yeni sporcu kaydet',
+                        color: AppColors.accentBlue,
+                        backgroundImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1470&auto=format&fit=crop',
+                        onTap: () async {
+                          final result = await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const AddEditMemberScreen(),
+                            ),
+                          );
+                          if (result == true) {
+                            if (context.mounted) {
+                              CustomSnackBar.showSuccess(
+                                context, 
+                                'Üye başarıyla eklendi',
+                              );
+                            }
+                            _loadStats();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _QuickActionButton(
+                        icon: Icons.straighten_rounded,
+                        title: 'Ölçüm Yap',
+                        subtitle: 'Sporcunun ölçümlerini kaydet',
+                        color: AppColors.accentOrange,
+                        backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
+                        onTap: () {
+                          widget.onNavigate(1);
+                          CustomSnackBar.showError(
+                            context,
+                            'Lütfen ölçüm eklemek istediğiniz üyeyi seçin.',
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _QuickActionButton(
+                        icon: Icons.add_circle_rounded,
+                        title: 'Ders Oluştur',
+                        subtitle: 'Yeni ders programı ekle',
+                        color: AppColors.primaryYellow,
+                        backgroundImage: 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?q=80&w=1450&auto=format&fit=crop',
+                        onTap: () {
+                          widget.onNavigate(2);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
     );
   }
 }

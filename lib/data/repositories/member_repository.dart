@@ -6,6 +6,18 @@ class MemberRepository {
 
   // Create
   Future<void> create(Member member) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+
+    // Fetch organization_id from current user's profile
+    final profileResponse = await _client
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', userId)
+        .single();
+    
+    final organizationId = profileResponse['organization_id'] as String?;
+
     await _client.from('members').insert({
       'id': member.id,
       'name': member.name,
@@ -17,7 +29,9 @@ class MemberRepository {
       'emergency_contact': member.emergencyContact,
       'emergency_phone': member.emergencyPhone,
       'notes': member.notes,
-      'trainer_id': _client.auth.currentUser?.id,
+      // Use provided trainerId, fallback to current user
+      'trainer_id': member.trainerId ?? userId,
+      'organization_id': organizationId, // Critical for RLS
       'subscription_package': member.subscriptionPackage,
       'session_count': member.sessionCount,
     });
@@ -66,7 +80,7 @@ class MemberRepository {
   Future<Member?> getById(String id) async {
     final response = await _client
         .from('members')
-        .select()
+        .select('*, profiles:trainer_id(first_name, last_name)')
         .eq('id', id)
         .maybeSingle();
     
@@ -89,7 +103,7 @@ class MemberRepository {
 
   // Update
   Future<void> update(Member member) async {
-    await _client.from('members').update({
+    final updateData = {
       'name': member.name,
       'email': member.email,
       'phone': member.phone,
@@ -101,7 +115,14 @@ class MemberRepository {
       'updated_at': DateTime.now().toIso8601String(),
       'subscription_package': member.subscriptionPackage,
       'session_count': member.sessionCount,
-    }).eq('id', member.id);
+      'trainer_id': member.trainerId, // Always include trainer_id (null or value)
+    };
+    
+    // Remove trainer_id key if strictly unnecessary? No, we likely want to allow setting null.
+    // Ideally we only update it if it's meant to be changed. 
+    // Since UI passes the dropdown value (which starts as current value), it verifies intent.
+    
+    await _client.from('members').update(updateData).eq('id', member.id);
   }
 
   // Delete

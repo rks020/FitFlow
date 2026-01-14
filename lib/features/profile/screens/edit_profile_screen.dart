@@ -7,6 +7,7 @@ import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Profile? initialProfile;
@@ -146,14 +147,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text('Profili Düzenle', style: AppTextStyles.headline),
         backgroundColor: Colors.transparent,
       ),
-      body: SingleChildScrollView(
+      body: AmbientBackground(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            SizedBox(height: kToolbarHeight + 40),
             // Avatar Selector
             GestureDetector(
               onTap: _showImagePickerOptions,
@@ -235,6 +239,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               foregroundColor: Colors.black,
             ),
           ],
+        ),
         ),
       ),
     );

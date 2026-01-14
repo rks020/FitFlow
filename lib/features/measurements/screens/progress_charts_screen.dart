@@ -7,6 +7,7 @@ import '../../../data/models/measurement.dart';
 import '../../../data/models/member.dart';
 import '../../../data/repositories/measurement_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/ambient_background.dart';
 
 class ProgressChartsScreen extends StatefulWidget {
   final Member member;
@@ -92,6 +93,7 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Gelişim Grafikleri'),
         backgroundColor: Colors.transparent,
@@ -101,7 +103,8 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading 
+      body: AmbientBackground(
+        child: _isLoading 
           ? const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
           : _measurements.isEmpty 
               ? Center(
@@ -114,6 +117,7 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
+                      const SizedBox(height: kToolbarHeight + 50),
                       // Metric Selector
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -162,6 +166,7 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
                     ],
                   ),
                 ),
+      ),
     );
   }
 

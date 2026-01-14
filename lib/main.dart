@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'dart:io';
 import 'core/theme/app_theme.dart';
 import 'core/constants/supabase_config.dart';
+import 'package:pt_body_change/features/auth/screens/welcome_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 
@@ -60,9 +61,16 @@ class PTBodyChangeApp extends StatelessWidget {
       title: 'PT Body Change',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: Supabase.instance.client.auth.currentSession != null
-          ? const DashboardScreen()
-          : const LoginScreen(),
+      home: StreamBuilder<AuthState>(
+        stream: Supabase.instance.client.auth.onAuthStateChange,
+        builder: (context, snapshot) {
+          final session = Supabase.instance.client.auth.currentSession;
+          if (session != null) {
+            return const DashboardScreen();
+          }
+           return const WelcomeScreen();
+        },
+      ),
     );
   }
 }
