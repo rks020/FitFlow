@@ -103,7 +103,23 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
       }
     }
 
+    }
+
     setState(() => _isLoading = true);
+
+    // Check if we are already authenticated (e.g. via Google but incomplete)
+    final currentUser = _supabase.auth.currentUser;
+    // Check if email matches current user (to ensure we are completing the CORRECT user)
+    // If currentUser is anonymous or different email, ignore.
+    if (currentUser != null && currentUser.email != null && currentUser.email == email) {
+       // We are ALREADY logged in (Google User completing registration)
+       if (isRegister) {
+          await _completeOwnerRegistration();
+          setState(() => _isLoading = false);
+          return;
+       }
+    }
+
     debugPrint('Attempting Register with Email: "$email" (Length: ${email.length})');
     email.runes.forEach((int rune) {
        var character = String.fromCharCode(rune);
@@ -126,6 +142,10 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
              'password_changed': true, // Owners set their own password, no need to change
           }
         );
+
+        if (response.session != null) {
+           await _completeOwnerRegistration();
+        }
 
         // For email verification flow:
         // logic is handled by Database Trigger (on_auth_user_created)
@@ -253,14 +273,47 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
              .eq('id', userId)
              .maybeSingle();
 
-         if (profileData == null || profileData['organization_id'] == null) {
-           // Unauthorized User - Delete/SignOut
-           await _supabase.auth.signOut();
-           if (mounted) {
-             _showUnauthorizedDialog(context);
-           }
-           return;
-         }
+          final role = profileData?['role'];
+          
+          // If user is definitely a member or trainer, block them from Owner App
+          if (role == 'member' || role == 'trainer') {
+             await _supabase.auth.signOut();
+             if (mounted) {
+               CustomSnackBar.showError(context, 'Bu hesap bir üye veya antrenör hesabıdır. Lütfen ilgili uygulamayı kullanın.');
+             }
+             return;
+          }
+
+          // If role is null (new) or owner, but no org -> Incomplete Registration
+          if (profileData == null || profileData['organization_id'] == null) {
+             // Do NOT sign out. Let them complete registration.
+             if (mounted) {
+               CustomSnackBar.showInfo(context, 'Lütfen salon bilgilerinizi girerek kaydı tamamlayın.');
+               
+               // Prefill form from Google Data
+               final user = response.user;
+               if (user != null) {
+                  _emailController.text = user.email ?? '';
+                  final meta = user.userMetadata;
+                  if (meta != null) {
+                     final fullName = meta['full_name'] as String? ?? '';
+                     if (fullName.isNotEmpty) {
+                        final parts = fullName.split(' ');
+                        if (parts.isNotEmpty) _firstNameController.text = parts.first;
+                        if (parts.length > 1) _lastNameController.text = parts.sublist(1).join(' ');
+                     } else {
+                        _firstNameController.text = meta['first_name'] ?? '';
+                        _lastNameController.text = meta['last_name'] ?? '';
+                     }
+                  }
+               }
+               
+               // Switch to Register Tab
+               _tabController.animateTo(1);
+             }
+             setState(() => _isLoading = false);
+             return; 
+          }
 
           // Check if user has completed invitation (changed password)
           // We use profileData because session metadata might be unreliable during OAuth/Google Sign-In
