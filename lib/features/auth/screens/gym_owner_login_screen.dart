@@ -657,7 +657,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
         ),
         content: const Text(
           'Bu Google hesabı ile eşleşen bir salon kaydı bulunamadı.\n\n'
-          'PTBodyChange ile **kendi spor salonunuzu yönetmek** için yeni bir hesap mı oluşturmak istiyorsunuz?\n\n'
+          'FitFlow ile **kendi spor salonunuzu yönetmek** için yeni bir hesap mı oluşturmak istiyorsunuz?\n\n'
           'Eğer bir salona üyeyseniz veya PT iseniz, lütfen salon sahibinizin sizi davet etmesini bekleyin.',
           style: TextStyle(color: Colors.white70),
         ),
