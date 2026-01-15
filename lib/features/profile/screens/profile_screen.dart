@@ -7,6 +7,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
 
