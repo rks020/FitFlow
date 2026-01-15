@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/theme/colors.dart';
-import '../../features/dashboard/screens/dashboard_screen.dart';
-import '../../core/utils/error_translator.dart';
-import '../../shared/widgets/custom_snackbar.dart';
+import '../../../core/theme/colors.dart';
+import '../../dashboard/screens/dashboard_screen.dart';
+import '../../../core/utils/error_translator.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 
 class AuthCheckScreen extends StatefulWidget {
   const AuthCheckScreen({super.key});
