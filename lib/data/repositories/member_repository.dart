@@ -127,7 +127,16 @@ class MemberRepository {
 
   // Delete
   Future<void> delete(String id) async {
-    await _client.from('members').delete().eq('id', id);
+    // OLD: await _client.from('members').delete().eq('id', id);
+    // NEW: Call edge function to delete auth user as well
+    final response = await _client.functions.invoke(
+      'delete-user',
+      body: {'user_id': id},
+    );
+    
+    if (response.status != 200) {
+      throw Exception('Failed to delete user: ${response.data}');
+    }
   }
 
   // Get member count

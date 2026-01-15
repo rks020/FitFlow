@@ -38,8 +38,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       // Sends a password reset email to the user
-      // The link in the email should redirect to the app (deep link) or a landing page
-      // where they can set a new password.
+      // CRITICAL: Must use 'redirectTo' for Deep Linking to work (open the app)
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email,
         redirectTo: 'io.supabase.fitflow://login-callback',
@@ -53,7 +52,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Text('Email Gönderildi', style: TextStyle(color: Colors.white)),
             content: Text(
-              '$email adresine şifre sıfırlama bağlantısı gönderildi. Lütfen gelen kutunuzu (ve spam klasörünü) kontrol edin.',
+              '$email adresine şifre sıfırlama bağlantısı gönderildi. Lütfen gelen kutunuzu (ve spam klasörünü) kontrol edin.\n\nGelen linke tıkladığınızda UYGULAMA açılacaktır.',
               style: const TextStyle(color: Colors.grey),
             ),
             actions: [
@@ -77,8 +76,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,39 +95,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.lock_reset_rounded,
-                    size: 64,
-                    color: AppColors.primaryYellow,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Hesabınıza erişmek için şifre sıfırlama bağlantısı gönderilecektir.',
-                    style: AppTextStyles.body.copyWith(color: Colors.grey[400]),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  CustomTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    hint: 'ornek@email.com',
-                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primaryYellow),
-                  ),
-                  const SizedBox(height: 32),
-                  CustomButton(
-                    text: 'Sıfırlama Bağlantısı Gönder',
-                    onPressed: _resetPassword,
-                    isLoading: _isLoading,
-                    backgroundColor: AppColors.primaryYellow,
-                    foregroundColor: Colors.black,
-                  ),
-                ],
+                  children: [
+                    const Icon(
+                      Icons.lock_reset_rounded,
+                      size: 64,
+                      color: AppColors.primaryYellow,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Hesabınıza erişmek için şifre sıfırlama bağlantısı gönderilecektir.',
+                      style: AppTextStyles.body.copyWith(color: Colors.grey[400]),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    CustomTextField(
+                      controller: _emailController,
+                      label: 'Email',
+                      hint: 'ornek@email.com',
+                      prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primaryYellow),
+                    ),
+                    const SizedBox(height: 32),
+                    CustomButton(
+                      text: 'Sıfırlama Bağlantısı Gönder',
+                      onPressed: _resetPassword,
+                      isLoading: _isLoading,
+                      backgroundColor: AppColors.primaryYellow,
+                      foregroundColor: Colors.black,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
       ),
     );
   }

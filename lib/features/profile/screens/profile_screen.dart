@@ -9,7 +9,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
-import '../../auth/screens/login_screen.dart';
+
 import 'edit_profile_screen.dart';
 import 'signature_log_screen.dart';
 import 'trainer_schedule_screen.dart';

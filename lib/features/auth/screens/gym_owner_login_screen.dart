@@ -11,6 +11,8 @@ import 'package:fitflow/features/dashboard/screens/dashboard_screen.dart';
 import 'package:fitflow/features/auth/screens/forgot_password_screen.dart';
 import '../../../core/utils/error_translator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'account_pending_screen.dart';
+import '../../profile/screens/change_password_screen.dart';
 
 class GymOwnerLoginScreen extends StatefulWidget {
   const GymOwnerLoginScreen({super.key});
@@ -138,8 +140,22 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
       } else {
         response = await _supabase.auth.signInWithPassword(email: email, password: password);
       
-        // Navigation (Only for Login)
         if (mounted && response.session != null) {
+          // Check if user has completed invitation (changed password)
+          // If password_changed is null, assume true (legacy user or standard signup)
+          // Block only if explicitly set to false (invited user who hasn't accepted yet)
+          final userMetadata = response.session!.user.userMetadata;
+          final passwordChanged = userMetadata?['password_changed'];
+
+          if (passwordChanged == false) {
+             // User needs to change temporary password
+             Navigator.of(context).pushAndRemoveUntil(
+               MaterialPageRoute(builder: (context) => const ChangePasswordScreen(isFirstLogin: true)),
+               (route) => false,
+             );
+             return;
+          }
+
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const DashboardScreen()),
             (route) => false,
@@ -149,7 +165,14 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
 
     } on AuthException catch (e) {
       if (mounted) {
-        CustomSnackBar.showError(context, ErrorMessageTranslator.translateAuthError(e));
+        if (e.message.contains('Invalid login credentials') || e.statusCode == '400') {
+          CustomSnackBar.showError(
+            context, 
+            'Giriş bilgileri hatalı. Geçici şifre ile giriyorsanız salon sahibinden aldığınız şifreyi kontrol edin.'
+          );
+        } else {
+          CustomSnackBar.showError(context, ErrorMessageTranslator.translateAuthError(e));
+        }
       }
     } catch (e) {
       if (mounted) CustomSnackBar.showError(context, 'Beklenmeyen bir hata oluştu');
@@ -191,12 +214,46 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
          accessToken: accessToken,
        );
 
-        if (mounted && response.session != null) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            (route) => false,
-          );
-        }
+       if (response.session != null) {
+         // Check if user is authorized (has a profile and organization)
+         final userId = response.user!.id;
+         final profileData = await _supabase
+             .from('profiles')
+             .select()
+             .eq('id', userId)
+             .maybeSingle();
+
+         if (profileData == null || profileData['organization_id'] == null) {
+           // Unauthorized User - Delete/SignOut
+           await _supabase.auth.signOut();
+           if (mounted) {
+             _showUnauthorizedDialog(context);
+           }
+           return;
+         }
+
+          // Check if user has completed invitation (changed password)
+          // We use profileData because session metadata might be unreliable during OAuth/Google Sign-In
+          final passwordChanged = profileData['password_changed'];
+
+          if (passwordChanged == false) {
+             await _supabase.auth.signOut();
+             if (mounted) {
+               CustomSnackBar.showError(
+                 context, 
+                 'Lütfen önce salon sahibinden aldığınız geçici şifre ile normal giriş yaparak şifrenizi belirleyin. Daha sonra Google ile giriş yapabilirsiniz.'
+               );
+             }
+             return;
+          }
+
+         if (mounted) {
+           Navigator.of(context).pushAndRemoveUntil(
+             MaterialPageRoute(builder: (context) => const DashboardScreen()),
+             (route) => false,
+           );
+         }
+       }
 
      } catch (e) {
         if (mounted) CustomSnackBar.showError(context, 'Google Giriş Hatası: $e');
@@ -432,6 +489,35 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
             ),
           ],
         ),
+      ),
+    );
+  }
+  void _showUnauthorizedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface.withOpacity(0.9),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.primaryYellow, width: 1)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, color: AppColors.error, size: 28),
+            SizedBox(width: 12),
+            Text('Yetkisiz Giriş', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: const Text(
+          'Bu sisteme giriş yapabilmek için davet edilmiş olmanız gerekmektedir.\n\nLütfen salon sahibi ile iletişime geçin.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Tamam', style: TextStyle(color: AppColors.primaryYellow)),
+          ),
+        ],
       ),
     );
   }

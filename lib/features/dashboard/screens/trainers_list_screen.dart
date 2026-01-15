@@ -66,15 +66,26 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
 
   Future<void> _loadTrainers() async {
     try {
-      // 1. Fetch all, ordered by newest creation date first
+      // Get current user's organization_id first
+      final currentUserProfile = await _profileRepository.getProfile();
+      final orgId = currentUserProfile?.organizationId;
+
+      if (orgId == null) {
+        debugPrint('User has no organization_id, cannot load trainers');
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // Fetch only trainers from the same organization, ordered by newest first
       final response = await _supabase
           .from('profiles')
           .select()
+          .eq('organization_id', orgId) // CRITICAL: Filter by organization
           .order('created_at', ascending: false); 
           
       final trainers = (response as List).map((e) => Profile.fromSupabase(e)).toList();
       
-      // 2. Custom Sort: Force Owner to the very top
+      // Custom Sort: Force Owner to the very top
       trainers.sort((a, b) {
         if (a.role == 'owner' && b.role != 'owner') return -1; // Owner moves up
         if (a.role != 'owner' && b.role == 'owner') return 1;  // Owner moves up
@@ -88,6 +99,7 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
         });
       }
     } catch (e) {
+      debugPrint('Error loading trainers: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -444,43 +456,28 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
         throw Exception("Salon sahibi bir organizasyona sahip değil.");
       }
 
-      // If username is empty, derive from email or name
-      String finalUsername = username;
-      if (finalUsername.isEmpty) {
-        finalUsername = email.split('@')[0];
-      }
-      final cleanUsername = finalUsername.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-    
-      // 2. Create user with signUp (with password)
-      final response = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {
+      // 2. Create trainer via Edge Function with temporary password
+      final response = await _supabase.functions.invoke(
+        'create-trainer',
+        body: {
+          'email': email,
+          'password': password,
           'first_name': first,
           'last_name': last,
-          'full_name': '$first $last'.trim(),
-          'display_name': '$first $last'.trim(), 
-          'username': cleanUsername,
-          'role': 'trainer',
-          'organization_id': orgId,
           'specialty': specialty,
-          'password_changed': false, // Flag that password needs to be changed
+          'organization_id': orgId,
         },
       );
 
-      if (response.user == null) {
-        throw Exception('Kullanıcı oluşturulamadı');
+      if (response.status != 200) {
+        throw Exception(response.data['error'] ?? 'Kullanıcı oluşturulamadı');
       }
 
-      // 3. Update the profile with organization_id and password_changed flag
-      await _supabase.from('profiles').update({
-        'organization_id': orgId,
-        'specialty': specialty,
-        'password_changed': false,
-      }).eq('id', response.user!.id);
-
       if (mounted) {
-        CustomSnackBar.showSuccess(context, 'Eğitmen başarıyla oluşturuldu!');
+        CustomSnackBar.showSuccess(
+          context, 
+          'Eğitmen oluşturuldu! Geçici şifre ile giriş yapabilir.',
+        );
         await Future.delayed(const Duration(seconds: 1)); 
         _loadTrainers();
       }
@@ -649,7 +646,15 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
       if (mounted) setState(() => _isLoading = true);
 
       try {
-        await _supabase.rpc('delete_user_by_admin', params: {'target_user_id': trainer.id});
+        // Use delete-user Edge Function instead of RPC
+        final response = await _supabase.functions.invoke(
+          'delete-user',
+          body: {'user_id': trainer.id},
+        );
+
+        if (response.status != 200) {
+          throw Exception(response.data['error'] ?? 'Silme başarısız');
+        }
 
         if (mounted) {
           CustomSnackBar.showSuccess(context, 'Eğitmen başarıyla silindi');
@@ -689,14 +694,18 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
     if (confirm == true) {
       if (mounted) setState(() => _isLoading = true);
       try {
-        // Iterate and delete each user via RPC (secure deletion of Auth + Profile)
+        // Iterate and delete each user via Edge Function (secure deletion of Auth + Profile)
         for (final userId in _selectedTrainerIds) {
           try {
-            await _supabase.rpc('delete_user_by_admin', params: {'target_user_id': userId});
-          } catch (rpcError) {
-             debugPrint('Failed to delete user $userId: $rpcError');
-             // If RPC fails (e.g. not admin, or user not found), we might try manual profile delete as fallback
-             // but usually RPC is the source of truth.
+            final response = await _supabase.functions.invoke(
+              'delete-user',
+              body: {'user_id': userId},
+            );
+            if (response.status != 200) {
+              debugPrint('Failed to delete user $userId: ${response.data}');
+            }
+          } catch (deleteError) {
+             debugPrint('Failed to delete user $userId: $deleteError');
           }
         }
         

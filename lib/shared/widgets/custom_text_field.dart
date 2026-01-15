@@ -14,6 +14,8 @@ class CustomTextField extends StatelessWidget {
   final void Function(String)? onChanged;
   final int? maxLines;
   final bool enabled;
+  final bool readOnly;
+  final int? maxLength;
 
   const CustomTextField({
     super.key,
@@ -28,6 +30,8 @@ class CustomTextField extends StatelessWidget {
     this.onChanged,
     this.maxLines = 1,
     this.enabled = true,
+    this.readOnly = false,
+    this.maxLength,
   });
 
   @override
@@ -50,12 +54,15 @@ class CustomTextField extends StatelessWidget {
           onChanged: onChanged,
           maxLines: obscureText ? 1 : maxLines,
           enabled: enabled,
+          readOnly: readOnly,
+          maxLength: maxLength,
           style: AppTextStyles.body,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             filled: true,
+            counterText: "", // Hide character counter
             fillColor: enabled ? AppColors.surfaceDark : AppColors.cardDark,
           ),
         ),

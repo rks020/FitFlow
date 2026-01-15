@@ -23,6 +23,7 @@ class AppColors {
   static const Color accentRed = Color(0xFFFF3B30);
   static const Color accentOrange = Color(0xFFFF9500);
   static const Color success = Color(0xFF34C759); // Green alias
+  static const Color error = accentRed; // Red alias
   
   // Text Colors
   static const Color textPrimary = Color(0xFFFFFFFF);

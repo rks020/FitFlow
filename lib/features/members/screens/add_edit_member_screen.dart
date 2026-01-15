@@ -31,6 +31,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
 
   final _notesController = TextEditingController();
   final _sessionCountController = TextEditingController();
+  final _passwordController = TextEditingController();
   
   String? _selectedPackage;
   final List<String> _packages = ['Standard (8 Ders)', 'Pro (10 Ders)'];
@@ -126,52 +127,51 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
         // Check if email is empty
         if (email.isEmpty) throw Exception('Yeni üye için e-posta zorunludur.');
         
-        // Generate a temporary password (Phone number if available, otherwise default)
-        String tempPassword = phone.isNotEmpty && phone.length >= 6 
-            ? phone.replaceAll(RegExp(r'[^\d]'), '') 
-            : 'Member123';
+        // Create user with temporary password set by admin
+        final tempPassword = _passwordController.text.trim();
         
-        // Ensure password is at least 6 characters
-        if (tempPassword.length < 6) {
-          tempPassword = 'Member123';
+        if (tempPassword.isEmpty || tempPassword.length < 6) {
+          throw Exception('Geçici şifre en az 6 karakter olmalıdır');
         }
-
-        // Get organization_id
-        final orgId = (await _profileRepository.getProfile())?.organizationId;
-        if (orgId == null) throw Exception('Organizasyon bulunamadı');
-
-        // Create user with signUp
-        final response = await Supabase.instance.client.auth.signUp(
-          email: email,
-          password: tempPassword,
-          data: {
-            'role': 'member',
+        
+        final supabase = Supabase.instance.client;
+        
+        // Get current organization_id
+        final currentProfile = await _profileRepository.getProfile();
+        final orgId = currentProfile?.organizationId;
+        
+        if (orgId == null) {
+          throw Exception('Organizasyon bulunamadı');
+        }
+        
+        // Create user via Edge Function
+        final authResponse = await supabase.functions.invoke(
+          'create-member',
+          body: {
+            'email': email,
+            'password': tempPassword,
             'first_name': firstName,
             'last_name': lastName,
-            'full_name': _nameController.text.trim(),
-            'display_name': _nameController.text.trim(),
             'organization_id': orgId,
-            'password_changed': false, // Flag for first-time password change
           },
         );
 
-        if (response.user == null) {
+        if (authResponse.status != 200) {
+          throw Exception(authResponse.data['error'] ?? 'Kullanıcı oluşturulamadı');
+        }
+
+        final responseData = authResponse.data;
+        if (responseData == null || responseData['user'] == null) {
           throw Exception('Kullanıcı oluşturulamadı');
         }
-        
-        memberId = response.user!.id;
-        
-        // Update profile with organization_id and password_changed flag
-        await Supabase.instance.client.from('profiles').update({
-          'organization_id': orgId,
-          'password_changed': false,
-        }).eq('id', memberId);
-        
-        // Display password to admin
+
+        memberId = responseData['user']['id'];
+
+        // Display info to admin
         if (mounted) {
           CustomSnackBar.showSuccess(
             context, 
-            'Üye oluşturuldu! Geçici şifre: $tempPassword\n(Üyeye iletin)'
+            'Üye oluşturuldu! İlk girişte şifre değiştirilecek.'
           );
         }
 
@@ -276,6 +276,26 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                 },
               ),
               const SizedBox(height: 20),
+              // Password field - only for new members
+              if (widget.member == null)
+                CustomTextField(
+                  label: 'Geçici Şifre (min 6 karakter)',
+                  hint: 'Üyenin ilk girişte kullanacağı şifre',
+                  controller: _passwordController,
+                  obscureText: true,
+                  prefixIcon: const Icon(Icons.lock_rounded),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Geçici şifre gerekli';
+                    }
+                    if (value.length < 6) {
+                      return 'Şifre en az 6 karakter olmalı';
+                    }
+                    return null;
+                  },
+                ),
+              if (widget.member == null)
+                const SizedBox(height: 20),
               CustomTextField(
                 label: 'Telefon',
                 hint: '0555 555 55 55',
@@ -453,6 +473,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
     _emergencyPhoneController.dispose();
     _notesController.dispose();
     _sessionCountController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 }

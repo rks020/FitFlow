@@ -24,6 +24,37 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // If this screen is opened (via link), it means the user has clicked the invitation.
+    // We strictly mark their profile as 'password_changed: true' (even before they type a new one)
+    // to allow them to switch to Google Login if they wish.
+    if (widget.isFirstLogin) {
+      _markInvitationAccepted();
+    }
+  }
+
+  Future<void> _markInvitationAccepted() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        debugPrint('Marking invitation as accepted for user: $userId');
+        await Supabase.instance.client.from('profiles').update({
+          'password_changed': true,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+        
+        // Also update Auth Metadata
+        await Supabase.instance.client.auth.updateUser(
+          UserAttributes(data: {'password_changed': true}),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error marking invitation accepted: $e');
+    }
+  }
+
+  @override
   void dispose() {
     _passwordController.dispose();
     _confirmPasswordController.dispose();

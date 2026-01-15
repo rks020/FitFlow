@@ -82,11 +82,39 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     );
 
     if (confirmed == true) {
-      final repository = MemberRepository();
-      await repository.delete(_currentMember.id);
-      
+      // Show loading indicator
       if (mounted) {
-        Navigator.of(context).pop(true);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      try {
+        final repository = MemberRepository();
+        await repository.delete(_currentMember.id);
+        
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Üye başarıyla silindi'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          Navigator.of(context).pop(true); // Go back to list
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Silme hatası: $e'),
+              backgroundColor: AppColors.accentRed,
+            ),
+          );
+        }
       }
     }
   }
