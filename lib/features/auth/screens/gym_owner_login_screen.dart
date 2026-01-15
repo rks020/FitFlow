@@ -438,13 +438,13 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
               children: [
                 Expanded(child: CustomTextField(
                   controller: _firstNameController, 
-                  label: 'Salon Sahibi Adı', 
+                  label: 'Adı', 
                   prefixIcon: const Icon(Icons.person, color: AppColors.primaryYellow)
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: CustomTextField(
                   controller: _lastNameController, 
-                  label: 'Salon Sahibi Soyadı', 
+                  label: 'Soyadı', 
                   prefixIcon: const Icon(Icons.person_outline, color: AppColors.primaryYellow)
                 )),
               ],
@@ -483,6 +483,8 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                     ),
                     dropdownColor: AppColors.surfaceDark,
                     style: AppTextStyles.body,
+                    menuMaxHeight: 300,
+                    isExpanded: true,
                     items: TurkeyCities.cityNames.map((String city) {
                       return DropdownMenuItem<String>(
                         value: city,
@@ -492,7 +494,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                     onChanged: (String? newValue) {
                       setState(() {
                         _selectedCity = newValue;
-                        _selectedDistrict = null; // Reset district when city changes
+                        _selectedDistrict = null;
                       });
                     },
                   ),
@@ -523,6 +525,8 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                     ),
                     dropdownColor: AppColors.surfaceDark,
                     style: AppTextStyles.body,
+                    menuMaxHeight: 300,
+                    isExpanded: true,
                     items: _selectedCity == null 
                       ? [] 
                       : TurkeyCities.getDistricts(_selectedCity!).map((String district) {
