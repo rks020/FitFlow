@@ -456,95 +456,87 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
               prefixIcon: const Icon(Icons.fitness_center, color: AppColors.primaryYellow)
             ),
             const SizedBox(height: 16),
-             Row(
-              children: [
-                // City Dropdown
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedCity,
-                    decoration: InputDecoration(
-                      labelText: 'İl',
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.location_city, color: AppColors.primaryYellow),
-                      filled: true,
-                      fillColor: AppColors.surfaceDark,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.glassBorder),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.glassBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primaryYellow),
-                      ),
-                    ),
-                    dropdownColor: AppColors.surfaceDark,
-                    style: AppTextStyles.body,
-                    menuMaxHeight: 300,
-                    isExpanded: true,
-                    items: TurkeyCities.cityNames.map((String city) {
-                      return DropdownMenuItem<String>(
-                        value: city,
-                        child: Text(city),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedCity = newValue;
-                        _selectedDistrict = null;
-                      });
-                    },
-                  ),
+            // City Dropdown
+            DropdownButtonFormField<String>(
+              value: _selectedCity,
+              decoration: InputDecoration(
+                labelText: 'İl',
+                labelStyle: const TextStyle(color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.location_city, color: AppColors.primaryYellow),
+                filled: true,
+                fillColor: AppColors.surfaceDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.glassBorder),
                 ),
-                const SizedBox(width: 12),
-                // District Dropdown
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedDistrict,
-                    decoration: InputDecoration(
-                      labelText: 'İlçe',
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.location_on, color: AppColors.primaryYellow),
-                      filled: true,
-                      fillColor: AppColors.surfaceDark,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.glassBorder),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.glassBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primaryYellow),
-                      ),
-                    ),
-                    dropdownColor: AppColors.surfaceDark,
-                    style: AppTextStyles.body,
-                    menuMaxHeight: 300,
-                    isExpanded: true,
-                    items: _selectedCity == null 
-                      ? [] 
-                      : TurkeyCities.getDistricts(_selectedCity!).map((String district) {
-                          return DropdownMenuItem<String>(
-                            value: district,
-                            child: Text(district),
-                          );
-                        }).toList(),
-                    onChanged: _selectedCity == null 
-                      ? null 
-                      : (String? newValue) {
-                          setState(() {
-                            _selectedDistrict = newValue;
-                          });
-                        },
-                  ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.glassBorder),
                 ),
-              ],
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primaryYellow),
+                ),
+              ),
+              dropdownColor: AppColors.surfaceDark,
+              style: AppTextStyles.body,
+              menuMaxHeight: 300,
+              isExpanded: true,
+              items: TurkeyCities.cityNames.map((String city) {
+                return DropdownMenuItem<String>(
+                  value: city,
+                  child: Text(city),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedCity = newValue;
+                  _selectedDistrict = null;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            // District Dropdown
+            DropdownButtonFormField<String>(
+              value: _selectedDistrict,
+              decoration: InputDecoration(
+                labelText: 'İlçe',
+                labelStyle: const TextStyle(color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.location_on, color: AppColors.primaryYellow),
+                filled: true,
+                fillColor: AppColors.surfaceDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.glassBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.glassBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primaryYellow),
+                ),
+              ),
+              dropdownColor: AppColors.surfaceDark,
+              style: AppTextStyles.body,
+              menuMaxHeight: 300,
+              isExpanded: true,
+              items: _selectedCity == null 
+                ? [] 
+                : TurkeyCities.getDistricts(_selectedCity!).map((String district) {
+                    return DropdownMenuItem<String>(
+                      value: district,
+                      child: Text(district),
+                    );
+                  }).toList(),
+              onChanged: _selectedCity == null 
+                ? null 
+                : (String? newValue) {
+                    setState(() {
+                      _selectedDistrict = newValue;
+                    });
+                  },
             ),
             const SizedBox(height: 16),
             CustomTextField(
