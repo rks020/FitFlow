@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:fitflow/core/theme/colors.dart';
@@ -237,7 +238,9 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
            }
         } else {
            // Login specific errors
-           if (e.message.contains('Invalid login credentials') || e.statusCode == '400') {
+           if (e.message.contains('Email not confirmed')) {
+             CustomSnackBar.showError(context, 'Lütfen mailinizden hesabınızı onaylayın');
+           } else if (e.message.contains('Invalid login credentials') || e.statusCode == '400') {
              CustomSnackBar.showError(
                context, 
                'Giriş bilgileri hatalı. Geçici şifre ile giriyorsanız salon sahibinden aldığınız şifreyi kontrol edin.'
