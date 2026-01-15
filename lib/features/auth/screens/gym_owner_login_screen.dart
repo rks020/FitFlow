@@ -467,7 +467,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                       labelStyle: const TextStyle(color: AppColors.textSecondary),
                       prefixIcon: const Icon(Icons.location_city, color: AppColors.primaryYellow),
                       filled: true,
-                      fillColor: AppColors.cardBackground,
+                      fillColor: AppColors.surfaceDark,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: AppColors.glassBorder),
@@ -481,7 +481,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                         borderSide: const BorderSide(color: AppColors.primaryYellow),
                       ),
                     ),
-                    dropdownColor: AppColors.cardBackground,
+                    dropdownColor: AppColors.surfaceDark,
                     style: AppTextStyles.body,
                     items: TurkeyCities.cityNames.map((String city) {
                       return DropdownMenuItem<String>(
@@ -507,7 +507,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                       labelStyle: const TextStyle(color: AppColors.textSecondary),
                       prefixIcon: const Icon(Icons.location_on, color: AppColors.primaryYellow),
                       filled: true,
-                      fillColor: AppColors.cardBackground,
+                      fillColor: AppColors.surfaceDark,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: AppColors.glassBorder),
@@ -521,7 +521,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> with SingleTi
                         borderSide: const BorderSide(color: AppColors.primaryYellow),
                       ),
                     ),
-                    dropdownColor: AppColors.cardBackground,
+                    dropdownColor: AppColors.surfaceDark,
                     style: AppTextStyles.body,
                     items: _selectedCity == null 
                       ? [] 
