@@ -5,6 +5,9 @@ import '../../members/screens/member_schedule_screen.dart';
 import '../../measurements/screens/member_measurements_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../../shared/widgets/ambient_background.dart';
+import '../../chat/screens/chat_screen.dart';
+import '../../../data/models/profile.dart';
+import '../../../shared/widgets/custom_snackbar.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({super.key});
@@ -36,6 +39,52 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     });
   }
 
+  Future<void> _handleChatPress() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      // 1. Fetch Member info to get trainer_id
+      final memberData = await _supabase
+          .from('members')
+          .select('trainer_id')
+          .eq('id', user.id) // Assuming members.id = auth.id
+          .maybeSingle();
+
+      if (memberData == null) {
+        if (mounted) CustomSnackBar.showError(context, 'Üye kaydı bulunamadı.');
+        return;
+      }
+
+      final trainerId = memberData['trainer_id'];
+
+      if (trainerId == null) {
+        if (mounted) CustomSnackBar.showError(context, 'Henüz bir antrenör atanmamış.');
+        return;
+      }
+
+      // 2. Fetch Trainer Profile
+      final trainerProfileData = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', trainerId)
+          .single();
+
+      final trainerProfile = Profile.fromSupabase(trainerProfileData);
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(otherUser: trainerProfile),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) CustomSnackBar.showError(context, 'Chat başlatılamadı: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,6 +94,11 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
           index: _currentIndex,
           children: _screens,
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _handleChatPress,
+        backgroundColor: AppColors.primaryYellow,
+        child: const Icon(Icons.chat_bubble_outline, color: Colors.black),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../dashboard/screens/announcements_screen.dart';
 
 class MemberScheduleScreen extends StatefulWidget {
   const MemberScheduleScreen({super.key});
@@ -74,13 +75,34 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    'Ders Programım',
-                    style: AppTextStyles.title1.copyWith(fontWeight: FontWeight.bold),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ders Programım',
+                          style: AppTextStyles.title1.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.glassBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.notifications_none_rounded, color: AppColors.primaryYellow),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 GlassCard(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   child: TableCalendar(
