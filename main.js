@@ -49,3 +49,39 @@ const yearElement = document.querySelector('.footer-bottom p');
 if (yearElement) {
     yearElement.textContent = yearElement.textContent.replace('2026', new Date().getFullYear());
 }
+
+// Screenshot Carousel
+let currentSlide = 0;
+const screenshots = document.querySelectorAll('.screenshot');
+const dots = document.querySelectorAll('.dot');
+const totalSlides = screenshots.length;
+
+function showSlide(index) {
+    screenshots.forEach((screenshot, i) => {
+        screenshot.classList.remove('active');
+        dots[i].classList.remove('active');
+    });
+
+    screenshots[index].classList.add('active');
+    dots[index].classList.add('active');
+}
+
+function nextSlide() {
+    currentSlide = (currentSlide + 1) % totalSlides;
+    showSlide(currentSlide);
+}
+
+// Auto-rotate every 3 seconds
+let carouselInterval = setInterval(nextSlide, 3000);
+
+// Manual dot click
+dots.forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+        currentSlide = index;
+        showSlide(currentSlide);
+        // Reset auto-rotate timer
+        clearInterval(carouselInterval);
+        carouselInterval = setInterval(nextSlide, 3000);
+    });
+});
+

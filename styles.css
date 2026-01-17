@@ -54,7 +54,7 @@ body {
     width: 100%;
     height: 100%;
     background: radial-gradient(circle at 20% 50%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.15) 0%, transparent 50%);
+        radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.15) 0%, transparent 50%);
     z-index: 0;
 }
 
@@ -153,29 +153,74 @@ body {
 .phone-frame {
     width: 300px;
     height: 600px;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0, 212, 255, 0.1));
+    background: #000;
     border-radius: 40px;
-    border: 8px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 
+    border: 8px solid rgba(255, 255, 255, 0.15);
+    box-shadow:
         0 30px 60px rgba(0, 0, 0, 0.5),
         inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
     position: relative;
     overflow: hidden;
 }
 
-.phone-frame::before {
-    content: '';
+.phone-notch {
     position: absolute;
-    top: 20px;
+    top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 100px;
+    width: 120px;
     height: 30px;
-    background: var(--darker-bg);
+    background: #000;
     border-radius: 0 0 20px 20px;
-    z-index: 2;
+    z-index: 10;
 }
+
+.screenshot-carousel {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.screenshot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+}
+
+.screenshot.active {
+    opacity: 1;
+}
+
+.carousel-dots {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 5;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.dot.active {
+    background: var(--primary-yellow);
+    width: 24px;
+    border-radius: 4px;
+}
+
 
 /* ===== FEATURES SECTION ===== */
 .features {
@@ -340,19 +385,19 @@ body {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .hero-image {
         order: -1;
     }
-    
+
     .cta-buttons {
         justify-content: center;
     }
-    
+
     .footer-content {
         grid-template-columns: 1fr;
     }
-    
+
     .footer-links {
         grid-template-columns: 1fr;
         gap: 30px;
@@ -364,25 +409,25 @@ body {
         min-height: auto;
         padding: 60px 0;
     }
-    
+
     .phone-frame {
         width: 250px;
         height: 500px;
     }
-    
+
     .features {
         padding: 80px 0;
     }
-    
+
     .features-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .cta-buttons {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .btn {
         width: 100%;
         justify-content: center;
