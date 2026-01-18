@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/glass_card.dart';
@@ -16,30 +18,92 @@ class MemberScheduleScreen extends StatefulWidget {
 
 class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
   final _supabase = Supabase.instance.client;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  DateTime _selectedDate = DateTime.now();
   Map<DateTime, List<dynamic>> _events = {};
+  StreamSubscription? _announcementSubscription;
+  List<dynamic> _latestAnnouncements = [];
   bool _isLoading = true;
+  int _unreadAnnouncements = 0;
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay;
     _loadMyClasses();
+    _subscribeToAnnouncements();
   }
+
+  @override
+  void dispose() {
+    _announcementSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _subscribeToAnnouncements() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final memberData = await _supabase
+          .from('members')
+          .select('organization_id')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (memberData == null || memberData['organization_id'] == null) return;
+      final orgId = memberData['organization_id'];
+
+      _announcementSubscription = _supabase
+          .from('announcements')
+          .stream(primaryKey: ['id'])
+          .eq('organization_id', orgId)
+          .listen((data) {
+            if (!mounted) return;
+            _latestAnnouncements = data;
+            _calculateUnread();
+          });
+    } catch (e) {
+      debugPrint('Error subscribing to announcements: $e');
+    }
+  }
+
+  Future<void> _calculateUnread() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastViewedStr = prefs.getString('last_announcements_view_time');
+      final lastViewed = lastViewedStr != null ? DateTime.parse(lastViewedStr) : null;
+      
+      int unread = 0;
+      for (var item in _latestAnnouncements) {
+        final created = DateTime.parse(item['created_at']);
+        if (lastViewed == null || created.isAfter(lastViewed)) {
+           unread++;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _unreadAnnouncements = unread;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error calculating unread: $e');
+    }
+  }
+
+  Future<void> _refreshUnreadCount() async {
+     await _calculateUnread();
+  }
+
 
   Future<void> _loadMyClasses() async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
 
-      // Ensure we get only this member's sessions
-      // RLS should enforce it if we query by member_id or if policy is "View Own"
-      // But let's be explicit
       final response = await _supabase
           .from('class_sessions')
           .select('*, profiles:trainer_id(first_name, last_name)')
-          .eq('member_id', user.id) // Only my classes
+          .eq('member_id', user.id)
           .order('start_time');
 
       final Map<DateTime, List<dynamic>> events = {};
@@ -64,99 +128,158 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
     }
   }
 
-  List<dynamic> _getEventsForDay(DateTime day) {
-    return _events[DateTime(day.year, day.month, day.day)] ?? [];
+  List<dynamic> _getClassesForSelectedDate() {
+    final dateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    return _events[dateKey] ?? [];
+  }
+
+  void _onDateSelected(DateTime date) {
+    setState(() {
+      _selectedDate = date;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final todaysClasses = _getClassesForSelectedDate();
+
     return SafeArea(
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Ders Programım',
-                          style: AppTextStyles.title1.copyWith(fontWeight: FontWeight.bold),
-                        ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Ders Programım',
+                        style: AppTextStyles.title1.copyWith(fontWeight: FontWeight.bold),
+                      ),
                         Container(
                           decoration: BoxDecoration(
                             color: AppColors.glassBackground,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppColors.glassBorder),
                           ),
-                          child: IconButton(
-                            icon: const Icon(Icons.notifications_none_rounded, color: AppColors.primaryYellow),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
-                              );
-                            },
+                          child: Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.notifications_none_rounded, color: AppColors.primaryYellow),
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
+                                  );
+                                  // Refresh unread count when returning
+                                  _refreshUnreadCount();
+                                },
+                              ),
+                              if (_unreadAnnouncements > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 16,
+                                    ),
+                                    child: Text(
+                                      '$_unreadAnnouncements',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                GlassCard(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TableCalendar(
-                    firstDay: DateTime.utc(2024, 1, 1),
-                    lastDay: DateTime.utc(2026, 12, 31),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    calendarFormat: CalendarFormat.week,
-                    availableCalendarFormats: const {
-                      CalendarFormat.week: 'Haftalık',
-                    },
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                    },
-                    eventLoader: _getEventsForDay,
-                    calendarStyle: CalendarStyle(
-                      defaultTextStyle: const TextStyle(color: Colors.white),
-                      weekendTextStyle: const TextStyle(color: AppColors.accentOrange),
-                      selectedDecoration: const BoxDecoration(
-                        color: AppColors.primaryYellow,
-                        shape: BoxShape.circle,
-                      ),
-                      selectedTextStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                      todayDecoration: BoxDecoration(
-                        color: AppColors.primaryYellow.withOpacity(0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      markerDecoration: const BoxDecoration(
-                        color: AppColors.neonCyan,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    headerStyle: HeaderStyle(
-                      titleCentered: true,
-                      formatButtonVisible: false,
-                      titleTextStyle: AppTextStyles.headline,
-                      leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white),
-                      rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: ListView.builder(
+                
+                // Horizontal Date Picker (From ClassScheduleScreen)
+                SizedBox(
+                  height: 80,
+                  child: ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _getEventsForDay(_selectedDay!).length,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: 90, // Show next 3 months
+                    separatorBuilder: (context, index) => const SizedBox(width: 12),
                     itemBuilder: (context, index) {
-                      final session = _getEventsForDay(_selectedDay!)[index];
-                      return _buildClassCard(session);
+                      // Start from today or slightly before? ClassSchedule starts from today.
+                      final date = DateTime.now().add(Duration(days: index));
+                      final isSelected = _isSameDay(date, _selectedDate);
+                      
+                      return GestureDetector(
+                        onTap: () => _onDateSelected(date),
+                        child: Container(
+                          width: 60,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primaryYellow
+                                : AppColors.surfaceDark,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primaryYellow
+                                  : AppColors.glassBorder,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _getDayName(date.weekday),
+                                style: AppTextStyles.caption1.copyWith(
+                                  color: isSelected
+                                      ? Colors.black
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${date.day}',
+                                style: AppTextStyles.title3.copyWith(
+                                  color: isSelected
+                                      ? Colors.black
+                                      : AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     },
                   ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Classes List
+                Expanded(
+                  child: todaysClasses.isEmpty 
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: todaysClasses.length,
+                        itemBuilder: (context, index) {
+                          final session = todaysClasses[index];
+                          return _buildClassCard(session);
+                        },
+                      ),
                 ),
               ],
             ),
@@ -189,33 +312,33 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
       border: Border.all(color: statusColor.withOpacity(0.5)),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  DateFormat('HH:mm').format(startTime),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    DateFormat('HH:mm').format(startTime),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                Text(
-                  DateFormat('HH:mm').format(endTime),
-                  style: TextStyle(
-                    color: statusColor.withOpacity(0.7),
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
+                  Text(
+                    DateFormat('HH:mm').format(endTime),
+                    style: TextStyle(
+                      color: statusColor.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -250,5 +373,30 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.calendar_today_rounded, size: 64, color: AppColors.textSecondary.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            'Bu tarihte ders yok',
+            style: AppTextStyles.headline.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _getDayName(int weekday) {
+    const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    return days[weekday - 1];
   }
 }

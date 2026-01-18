@@ -15,6 +15,7 @@ import 'edit_profile_screen.dart';
 import 'signature_log_screen.dart';
 import 'trainer_schedule_screen.dart';
 import 'change_password_screen.dart';
+import 'upgrade_to_pro_screen.dart';
 
 import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 import 'package:fitflow/shared/widgets/ambient_background.dart';
@@ -30,6 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _repository = ProfileRepository();
   Profile? _profile;
   bool _isLoading = true;
+  int _memberCount = 0;
+  int _trainerCount = 0;
+  String _subscriptionTier = 'FREE';
+  DateTime? _trialEndDate;
 
   @override
   void initState() {
@@ -43,6 +48,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _profile = profile;
+        });
+      }
+      await _loadSubscriptionInfo();
+      if (mounted) {
+        setState(() {
           _isLoading = false;
         });
       }
@@ -51,6 +61,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _loadSubscriptionInfo() async {
+    if (_profile?.organizationId == null) return;
+    
+    try {
+      // Get member count from members table
+      final membersResponse = await Supabase.instance.client
+          .from('members')
+          .select()
+          .eq('organization_id', _profile!.organizationId!);
+      
+      // Get trainer count from profiles table
+      final trainersResponse = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('organization_id', _profile!.organizationId!)
+          .eq('role', 'trainer');
+      
+      // Get subscription tier from organization
+      final orgResponse = await Supabase.instance.client
+          .from('organizations')
+          .select('subscription_tier, trial_end_date')
+          .eq('id', _profile!.organizationId!)
+          .single();
+      
+      if (mounted) {
+        setState(() {
+          _memberCount = (membersResponse as List).length;
+          _trainerCount = (trainersResponse as List).length;
+          _subscriptionTier = (orgResponse['subscription_tier'] ?? 'free').toString().toUpperCase();
+          if (orgResponse['trial_end_date'] != null) {
+            _trialEndDate = DateTime.parse(orgResponse['trial_end_date']);
+          }
+        });
+        debugPrint('Subscription loaded: Members=$_memberCount, Trainers=$_trainerCount, Tier=$_subscriptionTier');
+      }
+    } catch (e) {
+      debugPrint('Error loading subscription info: $e');
+    }
+  }
+
+  int _getTrialDaysLeft() {
+    if (_trialEndDate == null) return 30;
+    final now = DateTime.now();
+    final difference = _trialEndDate!.difference(now);
+    return difference.inDays.clamp(0, 30);
   }
 
   Future<void> _logout() async {
@@ -98,8 +155,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
       roleLabel = 'Eğitmen';
     }
 
+
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: _profile?.role == 'owner'
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Text(
+                'Profil',
+                style: AppTextStyles.title1.copyWith(fontWeight: FontWeight.bold),
+              ),
+              centerTitle: true,
+              actions: [
+                Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: _subscriptionTier == 'PRO'
+                        ? LinearGradient(
+                            colors: [AppColors.primaryYellow, AppColors.accentBlue],
+                          )
+                        : null,
+                    color: _subscriptionTier == 'PRO' ? null : AppColors.accentBlue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _subscriptionTier == 'PRO' ? AppColors.primaryYellow : AppColors.accentBlue,
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    _subscriptionTier == 'PRO' ? Icons.workspace_premium_rounded : Icons.workspace_premium_outlined,
+                    color: _subscriptionTier == 'PRO' ? Colors.black : AppColors.accentBlue,
+                    size: 24,
+                  ),
+                ),
+              ],
+            )
+          : null,
       body: AmbientBackground(
         child: SafeArea(
           child: _isLoading
@@ -109,17 +202,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                     children: [
-                      // Header
-                      Center(
-                        child: Text(
-                          'Profil',
-                          style: AppTextStyles.title1.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      
                       // Profile Avatar
                       GestureDetector(
                         onTap: _showAvatarOptions,
@@ -187,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       
                       const SizedBox(height: 8),
 
-                      // Organization Name (New)
+                      // Organization Name
                       if (_profile?.organizationName != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
@@ -246,6 +328,123 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       
                       const SizedBox(height: 40),
                       
+                      // Subscription Tier Card (Owner Only)
+                      if (_profile?.role == 'owner') ...[
+                        GlassCard(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _subscriptionTier == 'PRO' ? Icons.workspace_premium_rounded : Icons.workspace_premium_outlined,
+                                        color: _subscriptionTier == 'PRO' ? AppColors.primaryYellow : AppColors.accentBlue,
+                                        size: 28,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _subscriptionTier == 'PRO' ? 'Pro Paket' : 'Ücretsiz Paket',
+                                            style: AppTextStyles.headline.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          if (_subscriptionTier == 'PRO')
+                                            Text(
+                                              '₺399/ay',
+                                              style: AppTextStyles.caption1.copyWith(
+                                                color: AppColors.primaryYellow,
+                                              ),
+                                            )
+                                          else if (_trialEndDate != null)
+                                            Text(
+                                              'Deneme ${_getTrialDaysLeft()} gün sonra bitiyor',
+                                              style: AppTextStyles.caption1.copyWith(
+                                                color: _getTrialDaysLeft() <= 7 ? AppColors.accentRed : AppColors.textSecondary,
+                                              ),
+                                            )
+                                          else
+                                            Text(
+                                              '1 ay deneme',
+                                              style: AppTextStyles.caption1.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  if (_subscriptionTier == 'PRO')
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [AppColors.primaryYellow, AppColors.accentBlue],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '⭐ AKTİF',
+                                        style: AppTextStyles.caption2.copyWith(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1, color: AppColors.glassBorder),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      icon: Icons.people_outline_rounded,
+                                      label: 'Üye',
+                                      value: '$_memberCount',
+                                      limit: _subscriptionTier == 'FREE' ? ' / 10' : ' / ∞',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      icon: Icons.fitness_center_rounded,
+                                      label: 'Antrenör',
+                                      value: '$_trainerCount',
+                                      limit: _subscriptionTier == 'FREE' ? ' / 2' : ' / ∞',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_subscriptionTier == 'FREE') ...[
+                                const SizedBox(height: 16),
+                                CustomButton(
+                                  text: 'Pro\'ya Yükselt',
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const UpgradeToProScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: Icons.upgrade_rounded,
+                                  backgroundColor: AppColors.primaryYellow,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      
                       // Profile Options
                       GlassCard(
                         child: Column(
@@ -279,6 +478,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 );
                               },
                             ),
+                            Divider(color: AppColors.glassBorder, height: 1),
+                            _ProfileOption(
+                              icon: Icons.help_rounded,
+                              title: 'Yardım / Destek',
+                              onTap: () {},
+                            ),
                             // Delete Organization (Owner Only)
                             if (_profile?.role == 'owner') ...[
                               Divider(color: AppColors.glassBorder, height: 1),
@@ -290,12 +495,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onTap: _showDeleteOrganizationDialog,
                               ),
                             ],
-                            Divider(color: AppColors.glassBorder, height: 1),
-                            _ProfileOption(
-                              icon: Icons.help_rounded,
-                              title: 'Yardım / Destek',
-                              onTap: () {},
-                            ),
                           ],
                         ),
                       ),
@@ -527,6 +726,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatCard({required IconData icon, required String label, required String value, required String limit}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.glassBackground.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.primaryYellow, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              style: AppTextStyles.headline.copyWith(fontWeight: FontWeight.bold),
+              children: [
+                TextSpan(text: value),
+                TextSpan(
+                  text: limit,
+                  style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

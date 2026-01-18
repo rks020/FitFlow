@@ -7,6 +7,8 @@ import '../../../shared/widgets/ambient_background.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/push_notification_sender.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
   const AnnouncementsScreen({super.key});
@@ -27,6 +29,16 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     super.initState();
     _checkPermissions();
     _loadAnnouncements();
+    _markAsRead();
+  }
+
+  Future<void> _markAsRead() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_announcements_view_time', DateTime.now().toIso8601String());
+    } catch (e) {
+      debugPrint('Error marking announcements as read: $e');
+    }
   }
 
   Future<void> _checkPermissions() async {
@@ -108,8 +120,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       });
 
       _loadAnnouncements();
-      if (mounted) Navigator.pop(context);
       if (mounted) CustomSnackBar.showSuccess(context, 'Duyuru oluşturuldu');
+      // Push notification now handled by database trigger
 
     } catch (e) {
       if (mounted) CustomSnackBar.showError(context, 'Hata: $e');
