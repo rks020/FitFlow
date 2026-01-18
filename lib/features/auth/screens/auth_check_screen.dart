@@ -4,6 +4,8 @@ import '../../../core/theme/colors.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../../core/utils/error_translator.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
+import '../../profile/screens/trial_expired_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 
 class AuthCheckScreen extends StatefulWidget {
   const AuthCheckScreen({super.key});
@@ -50,6 +52,43 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
          return;
       }
 
+      // Check trial expiration for FREE tier
+      final orgResponse = await Supabase.instance.client
+          .from('organizations')
+          .select('subscription_tier, trial_end_date')
+          .eq('id', organizationId)
+          .maybeSingle();
+
+      if (orgResponse != null) {
+        final tier = (orgResponse['subscription_tier'] ?? 'free').toString().toUpperCase();
+        final trialEndDateStr = orgResponse['trial_end_date'];
+        
+        // Check if trial expired for FREE tier
+        if (tier == 'FREE' && trialEndDateStr != null) {
+          final trialEndDate = DateTime.parse(trialEndDateStr);
+          final now = DateTime.now();
+          
+          if (now.isAfter(trialEndDate)) {
+            // Trial expired
+            final userRole = response['role'];
+            
+            if (userRole == 'owner' || userRole == 'admin') {
+              // Owner/Admin: Show trial expired screen with upgrade option
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const TrialExpiredScreen()),
+                );
+              }
+              return;
+            } else {
+              // Member/Trainer: Show message and logout
+              await _handleTrialExpiredNonOwner();
+              return;
+            }
+          }
+        }
+      }
+
       // Valid User -> Navigate to Dashboard
       // We use pushReplacement to remove this check screen from stack
       Navigator.of(context).pushReplacement(
@@ -71,6 +110,17 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
        CustomSnackBar.showError(context, message);
        // The StreamBuilder in main.dart will automatically handle the redirect to WelcomeScreen
        // because auth state changes to null.
+    }
+  }
+
+  Future<void> _handleTrialExpiredNonOwner() async {
+    await Supabase.instance.client.auth.signOut();
+    if (mounted) {
+       CustomSnackBar.showError(
+         context, 
+         'Organizasyonunuzun deneme süresi doldu. Lütfen salon sahibinizle iletişime geçin.',
+       );
+       // The StreamBuilder in main.dart will automatically handle the redirect to WelcomeScreen
     }
   }
 

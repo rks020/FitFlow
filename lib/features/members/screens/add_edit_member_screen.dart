@@ -11,6 +11,7 @@ import '../../../shared/widgets/custom_text_field.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Added
 import '../../../shared/widgets/ambient_background.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
+import '../../../shared/widgets/subscription_limit_dialog.dart';
 
 class AddEditMemberScreen extends StatefulWidget {
   final Member? member;
@@ -108,6 +109,48 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
 
   Future<void> _saveMember() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Check subscription limits before creating new member
+    if (widget.member == null) {
+      final currentProfile = await _profileRepository.getProfile();
+      final orgId = currentProfile?.organizationId;
+      
+      if (orgId != null) {
+        // Get organization subscription tier
+        final orgResponse = await Supabase.instance.client
+            .from('organizations')
+            .select('subscription_tier')
+            .eq('id', orgId)
+            .single();
+        
+        final tier = (orgResponse['subscription_tier'] ?? 'free').toString().toUpperCase();
+        
+        // Check member count for FREE tier
+        if (tier == 'FREE') {
+          final membersResponse = await Supabase.instance.client
+              .from('members')
+              .select()
+              .eq('organization_id', orgId);
+          
+          final currentCount = (membersResponse as List).length;
+          
+          if (currentCount >= 10) {
+            // Show limit dialog
+            if (mounted) {
+              await showDialog(
+                context: context,
+                builder: (context) => const SubscriptionLimitDialog(
+                  limitType: 'member',
+                  currentCount: 10,
+                  maxCount: 10,
+                ),
+              );
+              return; // Don't proceed with member creation
+            }
+          }
+        }
+      }
+    }
 
     setState(() {
       _isLoading = true;
