@@ -28,6 +28,7 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
   final _supabase = Supabase.instance.client;
 
   @override
@@ -231,11 +232,18 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
                         CustomTextField(
                           controller: _passwordController,
                           label: 'Şifre',
-                          hint: '••••••••',
-                          obscureText: true,
+                          hint: '******',
+                          obscureText: !_isPasswordVisible,
                           prefixIcon: Icon(
                             Icons.lock_outline, 
                             color: widget.isTrainer ? AppColors.accentOrange : AppColors.neonCyan
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                           ),
                         ),
                         Align(
