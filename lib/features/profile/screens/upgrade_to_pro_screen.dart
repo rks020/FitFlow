@@ -4,6 +4,8 @@ import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
+import '../../../core/services/iap_manager.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
 class UpgradeToProScreen extends StatefulWidget {
   const UpgradeToProScreen({super.key});
@@ -14,6 +16,38 @@ class UpgradeToProScreen extends StatefulWidget {
 
 class _UpgradeToProScreenState extends State<UpgradeToProScreen> {
   String _selectedPlan = 'yearly'; // 'monthly' or 'yearly'
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializeIAP();
+  }
+
+  void _initializeIAP() {
+    try {
+      IAPManager.instance.initialize().then((_) {
+        if (mounted) setState(() {});
+      }).catchError((error) {
+        debugPrint('IAP initialization error: $error');
+        if (mounted) setState(() {});
+      });
+      
+      IAPManager.instance.addListener(_onIAPUpdate);
+    } catch (e) {
+      debugPrint('IAP setup error: $e');
+      // Even if IAP fails, screen should still render
+    }
+  }
+  
+  void _onIAPUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    IAPManager.instance.removeListener(_onIAPUpdate);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,34 +109,35 @@ class _UpgradeToProScreenState extends State<UpgradeToProScreen> {
             const SizedBox(height: 40),
 
             // Pricing Cards
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedPlan = 'monthly'),
-                    child: _buildPricingCard(
-                      planId: 'monthly',
-                      title: 'Aylık',
-                      price: '₺399',
-                      period: '/ay',
+            if (IAPManager.instance.isLoading)
+              const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedPlan = 'monthly'),
+                      child: _buildProductCard(
+                        type: 'monthly',
+                        title: 'Aylık',
+                        defaultPrice: '₺399',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedPlan = 'yearly'),
-                    child: _buildPricingCard(
-                      planId: 'yearly',
-                      title: 'Yıllık',
-                      price: '₺3.999',
-                      period: '/yıl',
-                      badge: '2 AY BEDAVA',
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedPlan = 'yearly'),
+                      child: _buildProductCard(
+                        type: 'yearly',
+                        title: 'Yıllık',
+                        defaultPrice: '₺3990',
+                        badge: '2 AY BEDAVA',
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
 
             const SizedBox(height: 32),
 
@@ -148,15 +183,11 @@ class _UpgradeToProScreenState extends State<UpgradeToProScreen> {
 
             // CTA Button
             CustomButton(
-              text: _selectedPlan == 'monthly' ? 'Satın Al - ₺399' : 'Satın Al - ₺3.999',
-              onPressed: () {
-                // TODO: Implement payment
-                final amount = _selectedPlan == 'monthly' ? '₺399' : '₺3.999';
-                final period = _selectedPlan == 'monthly' ? 'aylık' : 'yıllık';
-                CustomSnackBar.showInfo(context, '$amount $period ödeme yakında aktif olacak!');
-              },
+              text: _getButtonText(),
+              onPressed: _handlePurchase,
               icon: Icons.shopping_cart_rounded,
               backgroundColor: AppColors.primaryYellow,
+              isLoading: IAPManager.instance.isLoading,
             ),
 
             const SizedBox(height: 16),
@@ -176,6 +207,98 @@ class _UpgradeToProScreenState extends State<UpgradeToProScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildProductCard({
+    required String type,
+    required String title,
+    required String defaultPrice,
+    String? badge,
+  }) {
+    // Find product or use default price
+    ProductDetails? product;
+    try {
+      product = IAPManager.instance.products.firstWhere(
+        (p) => p.id.contains(type),
+      );
+    } catch (e) {
+      // Product not found, will use default price
+      product = null;
+    }
+    
+    final displayPrice = product?.price ?? defaultPrice;
+    
+    return _buildPricingCard(
+      planId: type,
+      title: title,
+      price: displayPrice,
+      period: type == 'monthly' ? '/ay' : '/yıl',
+      badge: badge,
+    );
+  }
+
+  String _getButtonText() {
+    if (IAPManager.instance.products.isEmpty) {
+      // Fallback text if store not loaded
+      return _selectedPlan == 'monthly' ? 'Satın Al - ₺399' : 'Satın Al - ₺3990';
+    }
+    
+    ProductDetails product;
+    try {
+      product = IAPManager.instance.products.firstWhere(
+        (p) => p.id.contains(_selectedPlan),
+      );
+    } catch (_) {
+      product = IAPManager.instance.products.first;
+    }
+    
+    return 'Satın Al - ${product.price}';
+  }
+
+  void _handlePurchase() {
+    // Check 1: Is IAP available?
+    if (!IAPManager.instance.isAvailable) {
+      CustomSnackBar.showError(
+        context, 
+        'Hata: Google Play Store servisi bulunamadı.\n'
+        'Telefonunuz Play Store desteklemiyor olabilir.'
+      );
+      return;
+    }
+    
+    // Check 2: Are products loaded?
+    if (IAPManager.instance.products.isEmpty) {
+      CustomSnackBar.showError(
+        context, 
+        'Hata: Ürünler yüklenemedi.\n'
+        'Product IDs: pro_monthly, pro_yearly\n'
+        'Lütfen Google Play Console\'da bu ürünlerin Aktif olduğundan emin olun.'
+      );
+      return;
+    }
+    
+    // Check 3: Find the selected product
+    ProductDetails? product;
+    try {
+      product = IAPManager.instance.products.firstWhere(
+        (p) => p.id.contains(_selectedPlan),
+      );
+    } catch (e) {
+      product = null;
+    }
+    
+    if (product == null) {
+      CustomSnackBar.showError(
+        context, 
+        'Hata: $_selectedPlan paketi bulunamadı.\n'
+        'Yüklenen ürünler: ${IAPManager.instance.products.map((p) => p.id).join(", ")}'
+      );
+      return;
+    }
+    
+    // All checks passed, attempt purchase
+    CustomSnackBar.showSuccess(context, 'Satın alma başlatılıyor: ${product.title}');
+    IAPManager.instance.buyProduct(product);
   }
 
   Widget _buildPricingCard({
@@ -235,7 +358,7 @@ class _UpgradeToProScreenState extends State<UpgradeToProScreen> {
               child: Text(
                 badge,
                 style: AppTextStyles.caption2.copyWith(
-                  color: Colors.black,
+                  color: AppColors.background,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -259,6 +382,7 @@ class _UpgradeToProScreenState extends State<UpgradeToProScreen> {
                       text: price,
                       style: AppTextStyles.title1.copyWith(
                         fontWeight: FontWeight.bold,
+                        fontSize: 24, // Reduced font size slightly
                         color: isSelected ? AppColors.primaryYellow : Colors.white,
                       ),
                     ),

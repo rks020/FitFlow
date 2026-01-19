@@ -2,7 +2,7 @@ name: fitflow
 description: "Modern athlete tracking app for fitness trainers"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+8
 
 environment:
   sdk: ^3.6.0
@@ -47,6 +47,7 @@ dependencies:
   googleapis_auth: ^2.0.0
 
   google_sign_in: ^6.2.1
+  in_app_purchase: ^3.2.3
 
 dev_dependencies:
   flutter_test:

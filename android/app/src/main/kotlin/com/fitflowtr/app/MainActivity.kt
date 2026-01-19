@@ -1,4 +1,4 @@
-package com.fitflow.app
+package com.fitflowtr.app
 
 import io.flutter.embedding.android.FlutterActivity
 

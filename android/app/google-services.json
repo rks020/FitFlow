@@ -7,12 +7,25 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:431063576237:android:e3f7be24be74d6e4d32024",
+        "mobilesdk_app_id": "1:431063576237:android:08c27c16aca5561dd32024",
         "android_client_info": {
-          "package_name": "com.fitflow.app"
+          "package_name": "com.fitflowtr.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "431063576237-if01lhgs9ukvjvdmih7pb4pi0bpeab6g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fitflowtr.app",
+            "certificate_hash": "caeaa8bcfc5bb1e37b038c061332e8f059cd5978"
+          }
+        },
+        {
+          "client_id": "431063576237-npfq2tnlukv1hv7cit6lig9mktvmq8pl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC0A4qX5-YUjX-SDkwVwB3FmSUFxaUM5Mg"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "431063576237-npfq2tnlukv1hv7cit6lig9mktvmq8pl.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "431063576237-5qettlhpoavrb2f9u91g9ufe0mh3hpep.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fitflowtr.app"
+              }
+            }
+          ]
         }
       }
     }

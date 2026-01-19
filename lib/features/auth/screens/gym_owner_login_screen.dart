@@ -303,14 +303,12 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
   Future<void> _handleGoogleSignIn() async {
      setState(() => _isLoading = true);
      try {
-       // 1. Web Client ID (from Supabase Auth Settings -> Google)
-       // 2. iOS Client ID (from Google Cloud Console)
-       const webClientId = '763178042993-oogl3ur576s2nqt2q4qilvre6ettftu5.apps.googleusercontent.com';
-       const iosClientId = '763178042993-j0ni4gerolse2h9nt0uidvnku14nlscg.apps.googleusercontent.com';
+        // 1. Web Client ID (from Supabase Auth Settings -> Google)
+       // This MUST match the "Web client ID" in Google Cloud Console
+       const webClientId = '431063576237-npfq2tnlukv1hv7cit6lig9mktvmq8pl.apps.googleusercontent.com';
 
        final GoogleSignIn googleSignIn = GoogleSignIn(
          serverClientId: webClientId,
-         clientId: iosClientId,
        );
 
        final googleUser = await googleSignIn.signIn();
