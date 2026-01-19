@@ -27,13 +27,13 @@ class ClassRepository {
   Future<List<ClassSession>> getSessions(DateTime start, DateTime end) async {
     final response = await _client
         .from('class_sessions')
-        .select('*, profiles(first_name, last_name)')
+        .select('*, profiles(first_name, last_name), workouts(name)')
         .gte('start_time', start.toUtc().toIso8601String())
         .lte('end_time', end.toUtc().toIso8601String())
         .order('start_time', ascending: true);
     
     return (response as List)
-        .map((json) => ClassSession.fromSupabaseMap(json))
+        .map((json) => ClassSession.fromJson(json))
         .toList();
   }
 
@@ -41,24 +41,35 @@ class ClassRepository {
   Future<ClassSession> createSession(ClassSession session) async {
     final response = await _client
         .from('class_sessions')
-        .insert(session.toSupabaseMap())
+        .insert(session.toJson())
         .select()
         .single();
     
-    return ClassSession.fromSupabaseMap(response);
+    return ClassSession.fromJson(response);
   }
 
   // Update session
   Future<void> updateSession(ClassSession session) async {
     await _client
         .from('class_sessions')
-        .update(session.toSupabaseMap())
+        .update(session.toJson())
         .eq('id', session.id!);
   }
 
   // Cancel/Delete session
   Future<void> deleteSession(String id) async {
     await _client.from('class_sessions').delete().eq('id', id);
+  }
+
+  // Get single session
+  Future<ClassSession> getSession(String id) async {
+    final response = await _client
+        .from('class_sessions')
+        .select('*, profiles(first_name, last_name), workouts(name)')
+        .eq('id', id)
+        .single();
+    
+    return ClassSession.fromJson(response);
   }
 
   // Delete future sessions (Series)
@@ -180,7 +191,7 @@ class ClassRepository {
         .order('class_sessions(start_time)', ascending: true);
 
     return (response as List)
-        .map((e) => ClassSession.fromSupabaseMap(e['class_sessions'] as Map<String, dynamic>))
+        .map((e) => ClassSession.fromJson(e['class_sessions'] as Map<String, dynamic>))
         .toList();
   }
 
@@ -194,7 +205,7 @@ class ClassRepository {
 
     return (response as List)
         .map((e) {
-             final session = ClassSession.fromSupabaseMap(e);
+             final session = ClassSession.fromJson(e);
              // Manually attach enrollments if needed, or rely on UI fetching them separately.
              // But wait, ClassSession doesn't store enrollments list.
              // We might need a DTO or just return list of Maps if complex, 

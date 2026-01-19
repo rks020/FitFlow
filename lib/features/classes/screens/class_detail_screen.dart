@@ -10,6 +10,8 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/signature_dialog.dart';
+import '../../../features/workouts/repositories/workout_repository.dart';
+import '../../../features/workouts/models/workout_model.dart';
 import 'dart:typed_data';
 
 class ClassDetailScreen extends StatefulWidget {
@@ -272,9 +274,48 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       const SizedBox(height: 12),
                       Text(widget.session.description!, style: AppTextStyles.caption1),
                     ],
+                      const SizedBox(height: 12),
+                      const Divider(color: AppColors.glassBorder),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _handleWorkoutAction,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: widget.session.workoutId != null 
+                                  ? AppColors.primaryYellow.withOpacity(0.3)
+                                  : Colors.grey.withOpacity(0.3)
+                            )
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                widget.session.workoutId != null ? Icons.fitness_center : Icons.add_circle_outline, 
+                                size: 16, 
+                                color: widget.session.workoutId != null ? AppColors.primaryYellow : Colors.grey
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  widget.session.workoutName != null 
+                                      ? 'Program: ${widget.session.workoutName}'
+                                      : 'Program Seçilmedi (Ata)',
+                                  style: AppTextStyles.headline.copyWith(
+                                    color: widget.session.workoutId != null ? AppColors.primaryYellow : Colors.grey
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                            ],
+                        ),
+                      ),
+                    ),
                   ],
+                  ),
                 ),
-              ),
               
               Expanded(
                 child: GlassCard(
@@ -501,6 +542,163 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       } catch (e) {
         CustomSnackBar.showError(context, 'Güncelleme hatası: $e');
       }
+    }
+  }
+
+  void _handleWorkoutAction() {
+    if (widget.session.workoutId != null) {
+      _showWorkoutDetails(widget.session.workoutId!);
+    } else {
+      _showAssignDialog();
+    }
+  }
+
+  Future<void> _showAssignDialog() async {
+    try {
+      // Load workouts
+      final workoutRepo = WorkoutRepository();
+      final workouts = await workoutRepo.getWorkouts();
+      
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) => Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceDark,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Program Ata', style: AppTextStyles.title2),
+              const SizedBox(height: 16),
+              if (workouts.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: Text('Kayıtlı program bulunamadı.', style: TextStyle(color: Colors.grey))),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: workouts.length,
+                    separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+                    itemBuilder: (context, index) {
+                      final w = workouts[index];
+                      return ListTile(
+                        title: Text(w.name, style: const TextStyle(color: Colors.white)),
+                        subtitle: Text('${w.exercises.length} Hareket', style: const TextStyle(color: Colors.grey)),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await _assignWorkout(w);
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+
+    } catch (e) {
+      CustomSnackBar.showError(context, 'Programlar yüklenirken hata oluştu: $e');
+    }
+  }
+
+  Future<void> _assignWorkout(Workout workout) async {
+    try {
+      // Create updated session manually since we don't have copyWith
+      // IMPORTANT: Preserving all existing fields
+      final updatedSession = ClassSession(
+        id: widget.session.id,
+        title: widget.session.title,
+        description: widget.session.description,
+        startTime: widget.session.startTime,
+        endTime: widget.session.endTime,
+        capacity: widget.session.capacity,
+        trainerId: widget.session.trainerId,
+        status: widget.session.status,
+        isCancelled: widget.session.isCancelled,
+        createdAt: widget.session.createdAt,
+        trainerSignatureUrl: widget.session.trainerSignatureUrl,
+        workoutId: workout.id, // NEW
+        workoutName: workout.name, 
+        currentEnrollments: widget.session.currentEnrollments,
+      );
+
+      await _classRepository.updateSession(updatedSession);
+      CustomSnackBar.showSuccess(context, 'Program atandı: ${workout.name}');
+      
+      // Need to reload the screen -> Assuming parent can rebuild or we navigate replacement
+      // For now, simpler: Pop with result true to indicate update, or just use setState if we can update widget.session locally?
+      // widget.session is final. We should probably pop(true) or use a local state wrapper.
+      // Easiest is to pop(true) and let previous screen reload, OR navigate replacement to self.
+      // Better yet: Just Pop(true) and let the previous screen handle refresh? 
+      // User is ON this screen. They want to see the change.
+      // I cannot update `widget.session`. 
+      // Solution: Convert `ClassDetailScreen` to fetch its own session or wrap session in State.
+      // OR: Navigate Replace to self.
+      if (mounted) {
+         Navigator.pushReplacement(
+           context, 
+           MaterialPageRoute(builder: (_) => ClassDetailScreen(session: updatedSession))
+         );
+      }
+
+    } catch (e) {
+      CustomSnackBar.showError(context, 'Atama hatası: $e');
+    }
+  }
+
+  Future<void> _showWorkoutDetails(String workoutId) async {
+    try {
+      final workoutRepo = WorkoutRepository(); 
+      final workout = await workoutRepo.getWorkout(workoutId);
+      
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surfaceDark,
+          title: Text(workout.name, style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: ListView.separated(
+              itemCount: workout.exercises.length,
+              separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+              itemBuilder: (context, index) {
+                final ex = workout.exercises[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(ex.exercise?.name ?? 'Hareket ${index+1}', style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(
+                    '${ex.sets} Set x ${ex.reps} Tekrar • ${ex.restSeconds}sn Dinlenme', 
+                    style: const TextStyle(color: Colors.grey)
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showAssignDialog();
+              },
+              child: const Text('Değiştir', style: TextStyle(color: AppColors.primaryYellow)),
+            ),
+             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Kapat', style: TextStyle(color: Colors.white))),
+          ],
+        ),
+      );
+    } catch (e) {
+      CustomSnackBar.showError(context, 'Program detayları yüklenemedi: $e');
     }
   }
 }

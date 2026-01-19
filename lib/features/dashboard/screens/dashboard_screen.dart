@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../members/screens/members_list_screen.dart';
-import '../../classes/screens/class_schedule_screen.dart';
+import '../../workouts/screens/workouts_hub_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../chat/screens/inbox_screen.dart';
 import '../widgets/stat_card.dart';
@@ -121,7 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Widget> _screens = [
       _DashboardHome(onNavigate: switchToTab),
       const MembersListScreen(),
-      const ClassScheduleScreen(),
+      const WorkoutsHubScreen(),
       const ProfileScreen(),
     ];
 
@@ -166,7 +166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.fitness_center_rounded),
-              label: 'Dersler',
+              label: 'Antrenman',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),

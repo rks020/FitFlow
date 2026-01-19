@@ -13,6 +13,9 @@ import '../../../shared/widgets/glass_card.dart';
 import '../widgets/conflict_warning_dialog.dart';
 import '../../../shared/widgets/ambient_background.dart';
 
+import '../../workouts/models/workout_model.dart';
+import '../../workouts/repositories/workout_repository.dart';
+
 class CreateScheduleScreen extends StatefulWidget {
   final Member member;
 
@@ -24,12 +27,16 @@ class CreateScheduleScreen extends StatefulWidget {
 
 class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   final _repository = ClassRepository();
+  final _workoutRepo = WorkoutRepository();
   bool _isLoading = false;
 
   late DateTime _startDate;
   late DateTime _endDate;
   final Set<int> _selectedDays = {}; // 1 = Mon, 7 = Sun
   final Map<int, TimeOfDay> _dayTimes = {};
+  final Map<int, Workout?> _dayWorkouts = {}; // dayIndex -> Workout
+  List<Workout> _availableWorkouts = [];
+  
   int _durationMinutes = 60;
   final _titleController = TextEditingController();
 
@@ -40,6 +47,67 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
     _startDate = DateTime(now.year, now.month, now.day);
     _endDate = now.add(const Duration(days: 30));
     _titleController.text = '${widget.member.name} PT Seansı';
+    _loadWorkouts();
+  }
+  
+  Future<void> _loadWorkouts() async {
+    try {
+      final workouts = await _workoutRepo.getWorkouts();
+      if (mounted) setState(() => _availableWorkouts = workouts);
+      
+      // Check if user has previously assigned workouts to this member and try to autofill? 
+      // For now, start empty.
+    } catch (e) {
+      // silent
+    }
+  }
+
+  Future<void> _pickWorkout(int dayIndex) async {
+    final picked = await showDialog<Workout?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: Text('Program Seç', style: AppTextStyles.headline.copyWith(color: Colors.white)),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: _availableWorkouts.isEmpty 
+          ? const Center(child: Text("Kayıtlı program yok", style: TextStyle(color: Colors.white54)))
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: _availableWorkouts.length + 1,
+              itemBuilder: (ctx, i) {
+                if (i == 0) {
+                  return ListTile(
+                    title: const Text('Program Atama', style: TextStyle(color: Colors.grey)),
+                    leading: const Icon(Icons.do_not_disturb, color: Colors.grey),
+                    onTap: () => Navigator.pop(ctx, null),
+                  );
+                }
+                final w = _availableWorkouts[i-1];
+                final isSelected = _dayWorkouts[dayIndex]?.id == w.id;
+                return ListTile(
+                  title: Text(w.name, style: TextStyle(color: isSelected ? AppColors.primaryYellow : Colors.white)),
+                  subtitle: Text(w.difficulty ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  selected: isSelected,
+                  onTap: () => Navigator.pop(ctx, w),
+                );
+              },
+            ),
+        ),
+      ),
+    );
+    
+    // If picked is null, it means "None" OR user cancelled properly?
+    // Actually the dialog logic above returns null for "Program Atama". 
+    // If user tapped outside, it also returns null. 
+    // To distinguish, we could use a clearer return type but for now null = no program is acceptable.
+    // If user taps outside, we might NOT want to clear if they already had one. 
+    // But standard dialog behavior is valid. Users can re-select if mistake.
+    
+    setState(() {
+      _dayWorkouts[dayIndex] = picked;
+    });
   }
 
   @override
@@ -114,10 +182,14 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                     final s = proposedSessions[index];
                     final dateStr = DateFormat('d MMMM, EEEE', 'tr_TR').format(s['start']);
                     final timeStr = DateFormat('HH:mm').format(s['start']);
+                    final dayIndex = (s['start'] as DateTime).weekday;
+                    final workout = _dayWorkouts[dayIndex];
+                    final workoutStr = workout != null ? '• ${workout.name}' : '';
+                    
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
-                        '${index + 1}. $dateStr - $timeStr',
+                        '${index + 1}. $dateStr - $timeStr $workoutStr',
                         style: AppTextStyles.caption1,
                       ),
                     );
@@ -160,7 +232,6 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
           final conflicts = await _repository.findConflictsWithDetails(
             startDateTime,
             endDateTime,
-            excludeTrainerId: currentTrainerId,
           );
 
           if (conflicts.isNotEmpty) {
@@ -218,6 +289,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                 endTime: alternativeEnd!,
                 capacity: 1, 
                 trainerId: Supabase.instance.client.auth.currentUser?.id,
+                workoutId: _dayWorkouts[alternativeStart.weekday]?.id,
               );
               final createdSession = await _repository.createSession(session);
               if (createdSession.id != null) {
@@ -251,6 +323,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
             endTime: endDateTime,
             capacity: 1, // Private session
             trainerId: Supabase.instance.client.auth.currentUser?.id,
+            workoutId: _dayWorkouts[startDateTime.weekday]?.id,
           );
 
           final createdSession = await _repository.createSession(session);
@@ -379,8 +452,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
             ),
 
             const SizedBox(height: 24),
-            
-            // Time & Duration
+                         // Time & Duration
              Text('Saat & Süre', style: AppTextStyles.title3.copyWith(color: AppColors.primaryYellow)),
              const SizedBox(height: 12),
              GlassCard(
@@ -401,23 +473,61 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                       const Divider(color: AppColors.glassBorder),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text("Ders Saatleri", style: AppTextStyles.subheadline),
+                        child: Text("Ders ve Program Detayları", style: AppTextStyles.subheadline),
                       ),
                       ..._selectedDays.map((dayIndex) {
                         final dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
                         final time = _dayTimes[dayIndex] ?? const TimeOfDay(hour: 10, minute: 0);
-                        return ListTile(
-                          dense: true,
-                          title: Text(dayNames[dayIndex - 1], style: AppTextStyles.body),
-                          trailing: Text(time.format(context), style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
-                          onTap: () async {
-                            final t = await showTimePicker(context: context, initialTime: time);
-                            if (t != null) {
-                              setState(() {
-                                _dayTimes[dayIndex] = t;
-                              });
-                            }
-                          },
+                        final selectedWorkout = _dayWorkouts[dayIndex];
+                        final workoutName = selectedWorkout != null ? selectedWorkout.name : "Program Seçilmedi";
+
+                        return Column(
+                          children: [
+                            ListTile(
+                              dense: true,
+                              title: Text(dayNames[dayIndex - 1], style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold)),
+                              subtitle: GestureDetector(
+                                onTap: () => _pickWorkout(dayIndex),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.fitness_center, size: 14, color: selectedWorkout != null ? AppColors.accentGreen : Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        workoutName, 
+                                        style: TextStyle(
+                                          color: selectedWorkout != null ? AppColors.accentGreen : Colors.grey,
+                                          fontSize: 12
+                                        )
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.arrow_drop_down, size: 14, color: Colors.grey),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              trailing: GestureDetector(
+                                onTap: () async {
+                                  final t = await showTimePicker(context: context, initialTime: time);
+                                  if (t != null) {
+                                    setState(() {
+                                      _dayTimes[dayIndex] = t;
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: AppColors.primaryYellow),
+                                    borderRadius: BorderRadius.circular(8)
+                                  ),
+                                  child: Text(time.format(context), style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow)),
+                                ),
+                              ),
+                            ),
+                            const Divider(color: Colors.white10),
+                          ],
                         );
                       }).toList(),
                    ] else ...[
@@ -429,7 +539,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                  ],
                ),
              ),
-
+             
             const SizedBox(height: 32),
             CustomButton(
               text: 'Programı Oluştur',
@@ -437,7 +547,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
               isLoading: _isLoading,
             ),
           ],
-      ),
+        ),
       ),
       ),
     );

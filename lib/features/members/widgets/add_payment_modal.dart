@@ -10,8 +10,13 @@ import '../../../shared/widgets/custom_button.dart';
 
 class AddPaymentModal extends StatefulWidget {
   final Member member;
+  final Payment? paymentToEdit;
 
-  const AddPaymentModal({super.key, required this.member});
+  const AddPaymentModal({
+    super.key, 
+    required this.member,
+    this.paymentToEdit,
+  });
 
   @override
   State<AddPaymentModal> createState() => _AddPaymentModalState();
@@ -22,10 +27,29 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   
-  DateTime _selectedDate = DateTime.now();
-  PaymentType _selectedType = PaymentType.cash;
-  PaymentCategory _selectedCategory = PaymentCategory.packageRenewal;
+  late DateTime _selectedDate;
+  late PaymentType _selectedType;
+  late PaymentCategory _selectedCategory;
   bool _isLoading = false;
+
+  bool get _isEditing => widget.paymentToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      final p = widget.paymentToEdit!;
+      _amountController.text = p.amount.toString().replaceAll('.', ',');
+      _descriptionController.text = p.description ?? '';
+      _selectedDate = p.date;
+      _selectedType = p.type;
+      _selectedCategory = p.category;
+    } else {
+      _selectedDate = DateTime.now();
+      _selectedType = PaymentType.cash;
+      _selectedCategory = PaymentCategory.packageRenewal;
+    }
+  }
 
   @override
   void dispose() {
@@ -53,23 +77,27 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
 
     try {
       final payment = Payment(
-        id: const Uuid().v4(),
+        id: _isEditing ? widget.paymentToEdit!.id : const Uuid().v4(),
         memberId: widget.member.id,
         amount: double.parse(_amountController.text.replaceAll(',', '.')),
         date: _selectedDate,
         type: _selectedType,
         category: _selectedCategory,
         description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
-        createdAt: DateTime.now(),
+        createdAt: _isEditing ? widget.paymentToEdit!.createdAt : DateTime.now(),
       );
 
-      await PaymentRepository().create(payment);
+      if (_isEditing) {
+        await PaymentRepository().update(payment);
+      } else {
+        await PaymentRepository().create(payment);
+      }
 
       if (mounted) {
         Navigator.of(context).pop(true); // Return true to indicate success
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ödeme başarıyla kaydedildi'),
+          SnackBar(
+            content: Text(_isEditing ? 'Ödeme güncellendi' : 'Ödeme başarıyla kaydedildi'),
             backgroundColor: AppColors.accentGreen,
           ),
         );
@@ -105,7 +133,7 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Ödeme Al', style: AppTextStyles.title2),
+                  Text(_isEditing ? 'Ödemeyi Düzenle' : 'Ödeme Al', style: AppTextStyles.title2),
                   IconButton(
                     icon: const Icon(Icons.close, color: AppColors.textSecondary),
                     onPressed: () => Navigator.pop(context),
@@ -208,7 +236,7 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
                       backgroundColor: AppColors.surfaceDark,
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.white,
-                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     );
                   },
@@ -235,7 +263,7 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
 
               // Save Button
               CustomButton(
-                text: _isLoading ? 'Kaydediliyor...' : 'Ödemeyi Kaydet',
+                text: _isLoading ? 'Kaydediliyor...' : (_isEditing ? 'Değişiklikleri Kaydet' : 'Ödemeyi Kaydet'),
                 onPressed: _isLoading ? () {} : _savePayment,
                 backgroundColor: AppColors.accentGreen,
                 icon: Icons.check_circle_outline,

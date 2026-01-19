@@ -9,6 +9,14 @@ class PaymentRepository {
     await _client.from('payments').insert(payment.toSupabaseMap());
   }
 
+  // Update
+  Future<void> update(Payment payment) async {
+    await _client
+        .from('payments')
+        .update(payment.toSupabaseMap())
+        .eq('id', payment.id);
+  }
+
   // Read member payments
   Future<List<Payment>> getMemberPayments(String memberId) async {
     final response = await _client

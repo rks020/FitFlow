@@ -13,8 +13,11 @@ import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
 import 'package:fitflow/shared/widgets/ambient_background.dart';
 
+
 class ClassScheduleScreen extends StatefulWidget {
-  const ClassScheduleScreen({super.key});
+  final bool isEmbedded;
+  const ClassScheduleScreen({super.key, this.isEmbedded = false});
+
 
   @override
   State<ClassScheduleScreen> createState() => _ClassScheduleScreenState();

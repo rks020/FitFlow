@@ -17,6 +17,11 @@ import '../../classes/screens/create_schedule_screen.dart';
 import '../../../data/models/payment.dart';
 import '../../../data/repositories/payment_repository.dart';
 import '../widgets/add_payment_modal.dart';
+import '../../workouts/screens/assign_workout_screen.dart';
+import '../../workouts/screens/member_workouts_screen.dart';
+import 'member_payments_screen.dart';
+import '../widgets/payment_list_item.dart';
+import '../../classes/screens/class_detail_screen.dart';
 
 class MemberDetailScreen extends StatefulWidget {
   final Member member;
@@ -330,55 +335,65 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                        final session = classes[index - 1]; // Shift index
                        final isCompleted = session.status == 'completed';
 
-                       return Container(
-                         width: 170, // Increased width to prevent overflow
-                         margin: const EdgeInsets.only(right: 12),
-                         decoration: BoxDecoration(
-                           color: AppColors.surfaceDark,
-                           borderRadius: BorderRadius.circular(16),
-                           border: Border.all(
-                             color: isCompleted ? AppColors.accentGreen.withOpacity(0.5) : AppColors.glassBorder
-                           ),
-                         ),
-                         padding: const EdgeInsets.all(12),
-                         child: Column(
-                           crossAxisAlignment: CrossAxisAlignment.start,
-                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                           children: [
-                             Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text(
-                                   isCompleted ? 'Tamamlanmış' : 'Gelecek Ders',
-                                   style: AppTextStyles.headline.copyWith(
-                                     color: isCompleted ? AppColors.accentGreen : AppColors.primaryYellow, 
-                                     fontSize: 16
-                                   ),
-                                   maxLines: 1,
-                                   overflow: TextOverflow.ellipsis,
-                                 ),
-                                 const SizedBox(height: 8),
-                                 Text(
-                                   DateFormat('dd MMM HH:mm', 'tr_TR').format(session.startTime),
-                                   style: AppTextStyles.title1.copyWith(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                                 ),
-                               ],
+                       return GestureDetector(
+                         onTap: () {
+                           Navigator.push(
+                             context,
+                             MaterialPageRoute(
+                               builder: (context) => ClassDetailScreen(session: session),
                              ),
+                           );
+                         },
+                         child: Container(
+                           width: 170, // Increased width to prevent overflow
+                           margin: const EdgeInsets.only(right: 12),
+                           decoration: BoxDecoration(
+                             color: AppColors.surfaceDark,
+                             borderRadius: BorderRadius.circular(16),
+                             border: Border.all(
+                               color: isCompleted ? AppColors.accentGreen.withOpacity(0.5) : AppColors.glassBorder
+                             ),
+                           ),
+                           padding: const EdgeInsets.all(12),
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                             children: [
+                               Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Text(
+                                     isCompleted ? 'Tamamlanmış' : 'Gelecek Ders',
+                                     style: AppTextStyles.headline.copyWith(
+                                       color: isCompleted ? AppColors.accentGreen : AppColors.primaryYellow, 
+                                       fontSize: 16
+                                     ),
+                                     maxLines: 1,
+                                     overflow: TextOverflow.ellipsis,
+                                   ),
+                                   const SizedBox(height: 8),
+                                   Text(
+                                     DateFormat('dd MMM HH:mm', 'tr_TR').format(session.startTime),
+                                     style: AppTextStyles.title1.copyWith(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                   ),
+                                 ],
+                               ),
 
-                              Row(
-                                children: [
-                                  Icon(Icons.person_outline_rounded, size: 12, color: AppColors.textSecondary),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      session.title, // Trainer Name
-                                       style: AppTextStyles.caption1,
-                                       maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              )
-                           ],
+                               Row(
+                                 children: [
+                                   Icon(Icons.person_outline_rounded, size: 12, color: AppColors.textSecondary),
+                                   const SizedBox(width: 4),
+                                   Expanded(
+                                     child: Text(
+                                       session.title, // Trainer Name
+                                        style: AppTextStyles.caption1,
+                                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                                     ),
+                                   ),
+                                 ],
+                               )
+                             ],
+                           ),
                          ),
                        );
                      },
@@ -478,11 +493,27 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             const SizedBox(height: 12),
             Column(
               children: [
+                // _ActionTile for 'Antrenman Programı Ata' removed
+
                 _ActionTile(
-                  title: 'Program Oluştur & Düzenle',
-                  subtitle: 'Üye için ders programı hazırla',
+                  title: 'Antrenman Geçmişi',
+                  subtitle: 'Atanan programları görüntüle',
+                  icon: Icons.history_toggle_off_rounded,
+                  color: AppColors.primaryYellow,
+                  onTap: () {
+                     Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => MemberWorkoutsScreen(member: _currentMember),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _ActionTile(
+                  title: 'Ders Programı Oluştur',
+                  subtitle: 'Grup/Bireysel ders saatleri',
                   icon: Icons.calendar_month_rounded,
-                  color: AppColors.accentOrange,
+                  color: AppColors.primaryYellow,
                   onTap: () {
                      Navigator.of(context).push(
                       MaterialPageRoute(
@@ -498,7 +529,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   title: 'Ölçüm Ekle',
                   subtitle: 'Yeni vücut ölçümleri kaydet',
                   icon: Icons.straighten_rounded,
-                  color: AppColors.accentOrange, // Keeping same color as defined in dashboard usually
+                  color: AppColors.primaryYellow, // Changed to primaryYellow
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -512,7 +543,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   title: 'Ölçüm Geçmişi',
                   subtitle: 'Tüm ölçüm kayıtlarını incele',
                   icon: Icons.history_rounded,
-                  color: AppColors.accentOrange,
+                  color: AppColors.primaryYellow,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -526,7 +557,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   title: 'Gelişim Grafikleri',
                   subtitle: 'Vücut değişim analizini gör',
                   icon: Icons.show_chart_rounded,
-                  color: AppColors.accentOrange,
+                  color: AppColors.primaryYellow,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -541,9 +572,51 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             const SizedBox(height: 32),
 
             // Payment History
-            Text(
-              'Son Ödemeler',
-              style: AppTextStyles.title3,
+            // Payment History Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Son Ödemeler',
+                  style: AppTextStyles.title3,
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MemberPaymentsScreen(
+                          memberId: _currentMember.id,
+                          memberName: _currentMember.name,
+                        ),
+                      ),
+                    );
+                    setState(() {});
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Tümünü Gör',
+                        style: AppTextStyles.caption1.copyWith(
+                          color: AppColors.primaryYellow,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 12,
+                        color: AppColors.primaryYellow,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             FutureBuilder<List<Payment>>(
@@ -564,63 +637,11 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   );
                 }
                 return Column(
-                  children: payments.take(5).map((payment) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.glassBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentGreen.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.currency_lira,
-                              color: AppColors.accentGreen,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  payment.category.label,
-                                  style: AppTextStyles.headline.copyWith(fontSize: 16),
-                                ),
-                                Text(
-                                  payment.formattedDate,
-                                  style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                payment.formattedAmount,
-                                style: AppTextStyles.headline.copyWith(
-                                  color: AppColors.accentGreen,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                payment.type.label,
-                                style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                  children: payments.take(2).map((payment) {
+                    return PaymentListItem(
+                      payment: payment,
+                      member: widget.member,
+                      onPaymentUpdated: () => setState(() {}),
                     );
                   }).toList(),
                 );
