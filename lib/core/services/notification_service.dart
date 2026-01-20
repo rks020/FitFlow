@@ -37,57 +37,74 @@ class NotificationService {
       await _createNotificationChannel();
     }
 
-    // SKIP FCM ON iOS - Only use local notifications
-    if (Platform.isAndroid) {
-      // Listen for Auth Changes to save token when user logs in
-      _supabase.auth.onAuthStateChange.listen((data) async {
-        if (data.session?.user != null) {
-          final token = await FirebaseMessaging.instance.getToken();
-          if (token != null) {
-            await _saveToken(token);
-          }
+    // List for Auth Changes to save/remove token
+    _supabase.auth.onAuthStateChange.listen((data) async {
+      if (data.session?.user != null) {
+        // Logged In
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await _saveToken(token);
         }
-      });
+      } else if (data.event == AuthChangeEvent.signedOut) {
+        // Logged Out
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await _deleteToken(token);
+        }
+      }
+    });
 
-      // 1. Request Permission (FCM)
-      final fcm = FirebaseMessaging.instance;
-      
-      final settings = await fcm.requestPermission(
+    // 1. Request Permission (FCM) - Works for iOS & Android
+    final fcm = FirebaseMessaging.instance;
+    
+    // For iOS specifically, we need to request permissions
+    if (Platform.isIOS) {
+      await fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
       );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('User granted permission');
-        
-        // 2. Get Token (Initial check if already logged in)
-        final token = await fcm.getToken();
-        if (token != null) {
-          await _saveToken(token);
-        }
-
-        // 3. Listen for token refresh
-        fcm.onTokenRefresh.listen(_saveToken);
-
-        // 4. Handle Foreground Messages
-        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          debugPrint('Got a message whilst in the foreground!');
-          debugPrint('Message data: ${message.data}');
-
-          if (message.notification != null) {
-            debugPrint('Message also contained a notification: ${message.notification}');
-            // Ensure we show it locally if app is in foreground
-            _showForegroundNotification(message);
-          }
-        });
-      } else {
-        debugPrint('User declined or has not accepted permission');
-      }
+      // For Apple, we also need APNs token
+      final apnsToken = await fcm.getAPNSToken();
+      debugPrint('APNs Token: $apnsToken');
     } else {
-      debugPrint('iOS: Skipping FCM, using local notifications only');
+       // Android Permission
+       await fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
     }
+        
+    // 2. Get Token (Initial check if already logged in)
+    final token = await fcm.getToken();
+    if (token != null) {
+       // If user is already logged in at startup, save token
+       if (_supabase.auth.currentUser != null) {
+          await _saveToken(token);
+       }
+    }
+
+    // 3. Listen for token refresh
+    fcm.onTokenRefresh.listen((newToken) {
+       if (_supabase.auth.currentUser != null) {
+         _saveToken(newToken);
+       }
+    });
+
+    // 4. Handle Foreground Messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('Got a message whilst in the foreground!');
+      debugPrint('Message data: ${message.data}');
+
+      if (message.notification != null) {
+        debugPrint('Message also contained a notification: ${message.notification}');
+        // Ensure we show it locally if app is in foreground
+        _showForegroundNotification(message);
+      }
+    });
   }
 
   Future<void> _createNotificationChannel() async {
@@ -184,15 +201,35 @@ class NotificationService {
     if (userId == null) return;
 
     try {
-      await _supabase.from('fcm_tokens').upsert({
-        'user_id': userId,
-        'token': token,
-        'device_type': _getDeviceType(),
-        'updated_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'token'); 
-      debugPrint('FCM Token saved: $token');
+      // Use RPC to bypass RLS and force claim the token
+      await _supabase.rpc('register_fcm_token', params: {
+        'p_token': token,
+        'p_device_type': _getDeviceType(),
+      });
+      debugPrint('FCM Token registered via RPC for user $userId');
     } catch (e) {
-      debugPrint('Error saving FCM token: $e');
+      debugPrint('RPC Error, falling back to basic upsert: $e');
+      // Fallback if RPC doesn't exist yet (in case user didn't run SQL)
+      try {
+         await _supabase.from('fcm_tokens').delete().eq('token', token);
+         await _supabase.from('fcm_tokens').insert({
+          'user_id': userId,
+          'token': token,
+          'device_type': _getDeviceType(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e2) {
+        debugPrint('Fallback token save failed: $e2');
+      }
+    }
+  }
+
+  Future<void> _deleteToken(String token) async {
+    try {
+      await _supabase.from('fcm_tokens').delete().eq('token', token);
+      debugPrint('FCM Token deleted');
+    } catch (e) {
+      debugPrint('Error deleting FCM token: $e');
     }
   }
 
