@@ -266,7 +266,21 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
         throw Exception('Bu e-posta adresi zaten kullanılıyor. Lütfen farklı bir e-posta girin.');
       }
       if (widget.member == null) {
-        await repository.create(member);
+        try {
+          await repository.create(member);
+        } catch (e) {
+          // If member creation fails, try to cleanup the visible auth user record
+          // to prevent "Email already taken" on next retry
+          try {
+            if (memberId.isNotEmpty) {
+              final supabase = Supabase.instance.client; // Scope fix
+              await supabase.rpc('delete_orphaned_user', params: {'target_user_id': memberId});
+            }
+          } catch (cleanupError) {
+             debugPrint('Cleanup failed: $cleanupError');
+          }
+          rethrow; // Re-throw original error to show to user
+        }
       } else {
         await repository.update(member);
       }
