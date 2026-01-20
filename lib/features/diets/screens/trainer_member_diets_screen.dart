@@ -186,9 +186,34 @@ class _TrainerMemberDietsScreenState extends State<TrainerMemberDietsScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Oluşturulma: ${DateFormat('dd MMM yyyy HH:mm', 'tr_TR').format(diet.createdAt)}',
-                style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Oluşturulma: ${DateFormat('dd MMM yyyy HH:mm', 'tr_TR').format(diet.createdAt)}',
+                    style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: AppColors.primaryYellow, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateDietScreen(
+                            memberId: widget.memberId,
+                            memberName: widget.memberName,
+                            existingDiet: diet,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        _loadDiets();
+                      }
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(

@@ -62,6 +62,29 @@ class DietRepository {
     }
   }
 
+  Future<void> updateDiet(Diet diet, List<DietItem> newItems) async {
+    // 1. Update Diet metadata
+    await _supabase.from('diets').update({
+      'notes': diet.notes,
+      // dates usually don't change but if needed:
+      // 'start_date': diet.startDate.toIso8601String(),
+    }).eq('id', diet.id);
+
+    // 2. Replace Items (Delete all old, insert all new)
+    // This is simpler than difffing for this use case
+    await _supabase.from('diet_items').delete().eq('diet_id', diet.id);
+
+    final itemsData = newItems.map((item) {
+      final json = item.toJson();
+      json['diet_id'] = diet.id;
+      return json;
+    }).toList();
+
+    if (itemsData.isNotEmpty) {
+      await _supabase.from('diet_items').insert(itemsData);
+    }
+  }
+
   Future<void> deleteDiet(String dietId) async {
     await _supabase.from('diets').delete().eq('id', dietId);
   }

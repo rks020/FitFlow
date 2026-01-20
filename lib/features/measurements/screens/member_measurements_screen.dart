@@ -12,6 +12,9 @@ import '../../../shared/widgets/custom_button.dart';
 import 'progress_charts_screen.dart';
 import 'measurement_comparison_screen.dart';
 import 'dart:async';
+import '../../../../shared/widgets/custom_snackbar.dart';
+import '../../../../data/repositories/measurement_repository.dart';
+import 'add_measurement_screen.dart';
 
 class MemberMeasurementsScreen extends StatefulWidget {
   final String? memberId; // Optional: If provided, viewing that member. If null, view key user.
@@ -24,6 +27,7 @@ class MemberMeasurementsScreen extends StatefulWidget {
 
 class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
   final _supabase = Supabase.instance.client;
+  final _repository = MeasurementRepository();
   List<dynamic> _measurements = [];
   bool _isLoading = true;
   final Set<int> _selectedIndices = {};
@@ -120,6 +124,45 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
         );
       }
     }
+  }
+
+  Future<void> _deleteMeasurement(String measurementId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: Text('Ölçümü Sil', style: AppTextStyles.title3),
+        content: Text('Bu ölçüm kaydını silmek istediğinize emin misiniz?', style: AppTextStyles.body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('İptal', style: AppTextStyles.callout),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
+            child: Text('Sil', style: AppTextStyles.callout),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _repository.delete(measurementId);
+        _loadMeasurements();
+        if (mounted) CustomSnackBar.showSuccess(context, 'Ölçüm silindi.');
+      } catch (e) {
+        if (mounted) CustomSnackBar.showError(context, 'Silme hatası: $e');
+      }
+    }
+  }
+
+  void _editMeasurement(Measurement measurement) async {
+    // Need to fetch member object first if we don't have it fully populated,
+    // but we likely have it from widget.memberId context or we can create a temporary one
+    // Actually MemberMeasurementsScreen is usually pushed with a Member object if called from Trainer side?
+    // Let's check constructor. It usually takes memberId.
   }
 
   @override
@@ -383,8 +426,69 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
                                 ),
                               ),
                               
-                              // Arrow icon
-                              if (!_isSelectionMode)
+                              // Actions for Trainer, Arrow for Member
+                              if (widget.memberId != null && !_isSelectionMode)
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.white54),
+                                  color: AppColors.surfaceDark,
+                                  onSelected: (value) async {
+                                    if (value == 'edit') {
+                                        // We need the Member object. 
+                                        // Since we only have memberId in the widget, we might need to fetch it or pass it.
+                                        // But wait, AddMeasurementScreen requires a Member object. 
+                                        // We should probably construct a minimal Member object or fetch it.
+                                        // For now, let's construct one with ID and Name (if available).
+                                        // Actually the screen title usually has name if passed.
+                                        // Let's assume we can pass a dummy Member with correct ID.
+                                        final member = Member(
+                                          id: widget.memberId!,
+                                          name: 'Üye', // Placeholder, used for title potentially
+                                          email: '',
+                                          phone: '',
+                                          joinDate: DateTime.now(),
+                                        ); // Placeholder
+                                        
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => AddMeasurementScreen(
+                                              member: member,
+                                              existingMeasurement: Measurement.fromSupabaseMap(m),
+                                            ),
+                                          ),
+                                        );
+
+                                        if (result == true) {
+                                          _loadMeasurements();
+                                        }
+                                    } else if (value == 'delete') {
+                                      _deleteMeasurement(m['id']);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit, color: AppColors.primaryYellow, size: 20),
+                                          SizedBox(width: 8),
+                                          Text('Düzenle', style: TextStyle(color: Colors.white)),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete, color: AppColors.accentRed, size: 20),
+                                          SizedBox(width: 8),
+                                          Text('Sil', style: TextStyle(color: Colors.white)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else if (!_isSelectionMode)
                                 const Icon(Icons.chevron_right, color: Colors.white54),
                             ],
                           ),

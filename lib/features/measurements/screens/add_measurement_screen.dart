@@ -18,7 +18,10 @@ class AddMeasurementScreen extends StatefulWidget {
   const AddMeasurementScreen({
     super.key,
     required this.member,
+    this.existingMeasurement,
   });
+
+  final Measurement? existingMeasurement;
 
   @override
   State<AddMeasurementScreen> createState() => _AddMeasurementScreenState();
@@ -56,10 +59,53 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   DateTime _selectedDate = DateTime.now();
 
   // Photos
+  // Photos
   File? _frontPhoto;
   File? _sidePhoto;
   File? _backPhoto;
+  
+  // Existing Photo URLs
+  String? _frontUrl;
+  String? _sideUrl;
+  String? _backUrl;
+
   final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingMeasurement != null) {
+      _loadExistingMeasurement();
+    }
+  }
+
+  void _loadExistingMeasurement() {
+    final m = widget.existingMeasurement!;
+    _selectedDate = m.date;
+    _weightController.text = m.weight.toString();
+    _heightController.text = m.height.toString();
+    if (m.age != null) _ageController.text = m.age.toString();
+    if (m.bodyFatPercentage != null) _bodyFatController.text = m.bodyFatPercentage.toString();
+    if (m.boneMass != null) _boneMassController.text = m.boneMass.toString();
+    if (m.waterPercentage != null) _waterPercentageController.text = m.waterPercentage.toString();
+    if (m.metabolicAge != null) _metabolicAgeController.text = m.metabolicAge.toString();
+    if (m.visceralFatRating != null) _visceralFatController.text = m.visceralFatRating.toString();
+    if (m.basalMetabolicRate != null) _bmrController.text = m.basalMetabolicRate.toString();
+    
+    if (m.chest != null) _chestController.text = m.chest.toString();
+    if (m.waist != null) _waistController.text = m.waist.toString();
+    if (m.hips != null) _hipsController.text = m.hips.toString();
+    if (m.leftArm != null) _leftArmController.text = m.leftArm.toString();
+    if (m.rightArm != null) _rightArmController.text = m.rightArm.toString();
+    if (m.leftThigh != null) _leftThighController.text = m.leftThigh.toString();
+    if (m.rightThigh != null) _rightThighController.text = m.rightThigh.toString();
+    
+    if (m.notes != null) _notesController.text = m.notes!;
+
+    _frontUrl = m.frontPhotoUrl;
+    _sideUrl = m.sidePhotoUrl;
+    _backUrl = m.backPhotoUrl;
+  }
 
   @override
   void dispose() {
@@ -158,11 +204,12 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     try {
       // 1. Create measurement object without photos first
       var measurement = Measurement(
+        id: widget.existingMeasurement?.id, // Preserve ID if editing
         memberId: widget.member.id,
         date: _selectedDate,
         weight: double.parse(_weightController.text),
         height: double.parse(_heightController.text),
-        age: _ageController.text.isNotEmpty ? int.parse(_ageController.text) : null, // Added Age
+        age: _ageController.text.isNotEmpty ? int.parse(_ageController.text) : null,
         bodyFatPercentage: _bodyFatController.text.isNotEmpty 
             ? double.parse(_bodyFatController.text) : null,
         boneMass: _boneMassController.text.isNotEmpty ? double.parse(_boneMassController.text) : null,
@@ -177,12 +224,22 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         rightArm: _rightArmController.text.isNotEmpty ? double.parse(_rightArmController.text) : null,
         leftThigh: _leftThighController.text.isNotEmpty ? double.parse(_leftThighController.text) : null,
         rightThigh: _rightThighController.text.isNotEmpty ? double.parse(_rightThighController.text) : null,
-        // Calves removed
+        frontPhotoUrl: _frontUrl, // Keep existing URLs
+        sidePhotoUrl: _sideUrl,
+        backPhotoUrl: _backUrl,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+        createdAt: widget.existingMeasurement?.createdAt, // Preserve created_at
       );
 
       // 2. Save to DB to get ID
-      measurement = await _repository.create(measurement);
+      if (widget.existingMeasurement == null) {
+         // Create new
+         measurement = await _repository.create(measurement);
+      } else {
+         // Update existing
+         // We already have ID and URLs set in the object above
+         // But photos might be new files, which we handle below
+      }
 
       // 3. Upload photos if selected
       String? frontUrl;
@@ -238,11 +295,19 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           notes: measurement.notes,
         );
         
-        await _repository.update(updatedMeasurement);
+        if (widget.existingMeasurement != null) {
+          // If updating, we just call update with the new URLs
+          // The 'measurement' object above already has the ID
+           await _repository.update(updatedMeasurement);
+        } else {
+           await _repository.update(updatedMeasurement);
+        }
+      } else if (widget.existingMeasurement != null) {
+        // No new photos, but text fields changed - need to update
+         await _repository.update(measurement);
       }
-
       if (mounted) {
-        CustomSnackBar.showSuccess(context, 'Ölçüm başarıyla kaydedildi');
+        CustomSnackBar.showSuccess(context, widget.existingMeasurement != null ? 'Ölçüm güncellendi' : 'Ölçüm başarıyla kaydedildi');
         Navigator.pop(context, true); // Return true to refresh list
       }
     } catch (e) {
@@ -474,9 +539,12 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             image: photo != null ? DecorationImage(
               image: FileImage(photo),
               fit: BoxFit.cover,
-            ) : null,
+            ) : (_getPhotoUrl(position) != null ? DecorationImage(
+              image: NetworkImage(_getPhotoUrl(position)!),
+              fit: BoxFit.cover,
+            ) : null),
           ),
-          child: photo == null ? Column(
+          child: (photo == null && _getPhotoUrl(position) == null) ? Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.camera_alt_rounded, color: AppColors.textSecondary),
@@ -491,10 +559,19 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
-                      switch (position) {
-                        case 'front': _frontPhoto = null; break;
-                        case 'side': _sidePhoto = null; break;
-                        case 'back': _backPhoto = null; break;
+                        switch (position) {
+                        case 'front': 
+                          _frontPhoto = null; 
+                          _frontUrl = null; // Also clear URL if exists
+                          break;
+                        case 'side': 
+                          _sidePhoto = null; 
+                          _sideUrl = null;
+                          break;
+                        case 'back': 
+                          _backPhoto = null; 
+                          _backUrl = null;
+                          break;
                       }
                     });
                   },
@@ -513,5 +590,13 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         ),
       ),
     );
+  }
+  String? _getPhotoUrl(String position) {
+    switch(position) {
+      case 'front': return _frontUrl;
+      case 'side': return _sideUrl;
+      case 'back': return _backUrl;
+      default: return null;
+    }
   }
 }
