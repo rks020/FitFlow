@@ -87,4 +87,35 @@ class ProfileRepository {
       return null;
     }
   }
+
+  // Fetch all users in the same organization (for New Message screen)
+  Future<List<Profile>> getOrganizationUsers() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    try {
+      // 1. Get my organization ID
+      final myProfile = await _supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', userId)
+          .single();
+      
+      final orgId = myProfile['organization_id'];
+      if (orgId == null) return [];
+
+      // 2. Fetch all profiles in this organization
+      final response = await _supabase
+          .from('profiles')
+          .select()
+          .eq('organization_id', orgId)
+          .neq('id', userId) // Exclude myself
+          .order('first_name', ascending: true);
+
+      return (response as List).map((e) => Profile.fromSupabase(e)).toList();
+    } catch (e) {
+      debugPrint('Error fetching organization users: $e');
+      return [];
+    }
+  }
 }

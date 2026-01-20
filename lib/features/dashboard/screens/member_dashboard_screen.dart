@@ -7,7 +7,9 @@ import '../../measurements/screens/member_measurements_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../../shared/widgets/ambient_background.dart';
 import '../../chat/screens/chat_screen.dart';
+import '../../chat/screens/inbox_screen.dart';
 import '../../../data/models/profile.dart';
+import '../../../data/repositories/message_repository.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
@@ -33,6 +35,32 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       const MemberMeasurementsScreen(),  // Tab 2
       const ProfileScreen(),             // Tab 3
     ];
+    _loadUnreadCount();
+    _setupRealtimeSubscription();
+  }
+
+  int _unreadCount = 0;
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final repo = MessageRepository();
+      final count = await repo.getUnreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+      debugPrint('FCM Badge Updated: $count');
+    } catch (e) {
+      debugPrint('Error loading unread count: $e');
+    }
+  }
+
+  void _setupRealtimeSubscription() {
+    _supabase.channel('member_dashboard_messages')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'messages',
+        callback: (payload) => _loadUnreadCount(),
+      )
+      .subscribe();
   }
 
   void _onTabTapped(int index) {
@@ -41,51 +69,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     });
   }
 
-  Future<void> _handleChatPress() async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
 
-      // 1. Fetch Member info to get trainer_id
-      final memberData = await _supabase
-          .from('members')
-          .select('trainer_id')
-          .eq('id', user.id) // Assuming members.id = auth.id
-          .maybeSingle();
-
-      if (memberData == null) {
-        if (mounted) CustomSnackBar.showError(context, 'Üye kaydı bulunamadı.');
-        return;
-      }
-
-      final trainerId = memberData['trainer_id'];
-
-      if (trainerId == null) {
-        if (mounted) CustomSnackBar.showError(context, 'Henüz bir antrenör atanmamış.');
-        return;
-      }
-
-      // 2. Fetch Trainer Profile
-      final trainerProfileData = await _supabase
-          .from('profiles')
-          .select()
-          .eq('id', trainerId)
-          .single();
-
-      final trainerProfile = Profile.fromSupabase(trainerProfileData);
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(otherUser: trainerProfile),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) CustomSnackBar.showError(context, 'Chat başlatılamadı: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,11 +81,42 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
           children: _screens,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _handleChatPress,
-        backgroundColor: AppColors.primaryYellow,
-        child: const Icon(Icons.chat_bubble_outline, color: Colors.black),
-      ),
+      floatingActionButton: _currentIndex == 0 ? Stack(
+        alignment: Alignment.topRight,
+        children: [
+          FloatingActionButton(
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const InboxScreen()),
+              );
+              _loadUnreadCount();
+            },
+            backgroundColor: AppColors.primaryYellow,
+            child: const Icon(Icons.chat_bubble_outline, color: Colors.black),
+          ),
+          if (_unreadCount > 0)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: AppColors.accentRed,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$_unreadCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ) : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E1E).withOpacity(0.9),

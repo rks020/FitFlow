@@ -172,11 +172,11 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
     }
 
     // Prepare data for chart (Weight progress)
-    final weightSpots = _measurements.asMap().entries.map((entry) {
-        final m = entry.value;
-        final weight = (m['weight'] as num?)?.toDouble() ?? 0.0;
-        return FlSpot(entry.key.toDouble(), weight);
-    }).toList();
+    // final weightSpots = _measurements.asMap().entries.map((entry) {
+    //     final m = entry.value;
+    //     final weight = (m['weight'] as num?)?.toDouble() ?? 0.0;
+    //     return FlSpot(entry.key.toDouble(), weight);
+    // }).toList();
 
     final String title = widget.memberId != null && _member != null
         ? '${_member!.name} Ölçümleri'
@@ -211,48 +211,8 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
           children: [
             const SizedBox(height: 20),
             
-            // Weight Chart - only show for members viewing their own
-            if (widget.memberId == null && weightSpots.isNotEmpty)
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                   height: 200,
-                   child: Column(
-                     children: [
-                       Row(
-                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                         children: [
-                           Text('Kilo Değişimi', style: AppTextStyles.headline),
-                           Icon(Icons.monitor_weight_rounded, color: AppColors.primaryYellow.withOpacity(0.5)),
-                         ],
-                       ),
-                       const SizedBox(height: 16),
-                       Expanded(
-                         child: LineChart(
-                           LineChartData(
-                             gridData: FlGridData(show: false),
-                             titlesData: FlTitlesData(show: false),
-                             borderData: FlBorderData(show: false),
-                             lineBarsData: [
-                               LineChartBarData(
-                                 spots: weightSpots,
-                                 isCurved: true,
-                                 color: AppColors.primaryYellow,
-                                 barWidth: 3,
-                                 dotData: FlDotData(show: true),
-                                 belowBarData: BarAreaData(
-                                   show: true,
-                                   color: AppColors.primaryYellow.withOpacity(0.1),
-                                 ),
-                               ),
-                             ],
-                           ),
-                         ),
-                       ),
-                     ],
-                   ),
-                ),
-               ),
+            // Weight Chart removed as per request
+            // if (widget.memberId == null && weightSpots.isNotEmpty) ...
 
             const SizedBox(height: 24),
             

@@ -29,7 +29,25 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
   Future<void> _loadHistory() async {
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
-      final data = await _repository.getCompletedHistoryWithDetails(trainerId: userId);
+      if (userId == null) return;
+
+      // Determine role first
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+      
+      final role = profile['role'] as String?;
+      List<Map<String, dynamic>> data;
+
+      if (role == 'trainer' || role == 'owner' || role == 'admin') {
+        data = await _repository.getCompletedHistoryWithDetails(trainerId: userId);
+      } else {
+        // Assume member
+        data = await _repository.getMemberCompletedHistory(userId);
+      }
+
       if (mounted) {
         setState(() {
           _sessions = data;
@@ -37,6 +55,7 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
         });
       }
     } catch (e) {
+      debugPrint('Error loading history: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(

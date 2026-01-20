@@ -123,7 +123,7 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
       // Query class_enrollments to get the sessions for this member
       final response = await _supabase
           .from('class_enrollments')
-          .select('class_sessions!inner(*, profiles:trainer_id(first_name, last_name))')
+          .select('class_sessions!inner(*, profiles:trainer_id(first_name, last_name), workouts(name))')
           .eq('member_id', user.id);
 
       final Map<DateTime, List<dynamic>> events = {};
@@ -331,8 +331,8 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
     final endTime = DateTime.parse(session['end_time']).toLocal();
     final trainer = session['profiles'];
     final trainerName = trainer != null 
-        ? '${trainer['first_name']} ${trainer['last_name']}' 
-        : 'Eğitmen';
+        ? 'PT: ${trainer['first_name']} ${trainer['last_name']}' 
+        : 'PT: Eğitmen';
     
     final status = session['status'] ?? 'scheduled';
     Color statusColor = AppColors.primaryYellow;
@@ -345,6 +345,9 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
       statusColor = AppColors.accentRed;
       statusText = 'İptal';
     }
+
+    final workout = session['workouts'];
+    final workoutName = workout != null ? workout['name'] : null;
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -389,6 +392,19 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
                   style: AppTextStyles.headline,
                 ),
                 const SizedBox(height: 4),
+                if (workoutName != null) ...[
+                  Row(
+                    children: [
+                      Icon(Icons.fitness_center_rounded, size: 14, color: AppColors.primaryYellow),
+                      const SizedBox(width: 4),
+                      Text(
+                        workoutName,
+                        style: AppTextStyles.subheadline.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Text(
                   session['notes'] ?? 'Ders notu bulunmuyor',
                   style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),

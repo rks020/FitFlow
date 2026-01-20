@@ -236,6 +236,35 @@ class ClassRepository {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  // Get completed history for a specific member
+  Future<List<Map<String, dynamic>>> getMemberCompletedHistory(String memberId) async {
+    // We need to fetch sessions where this member is enrolled AND status is completed.
+    // Querying through class_enrollments is easier.
+    final response = await _client
+        .from('class_enrollments')
+        .select('''
+          *,
+          class_sessions!inner(*),
+          members(name, photo_url)
+        ''')
+        .eq('member_id', memberId)
+        .eq('class_sessions.status', 'completed') // specific status filter on joined table
+        .order('created_at', ascending: false);
+    
+    // Transform to match the structure expected by the UI (List of Sessions)
+    // The UI expects a list of Session objects which contain 'class_enrollments'.
+    // Here we have specific enrollments. We should reconstruct the session object
+    // and attach the enrollment to it.
+    
+    return (response as List).map((enrollment) {
+      final session = enrollment['class_sessions'] as Map<String, dynamic>;
+      // Attach this specific enrollment to the session so the UI shows it
+      // Note: The UI expects 'class_enrollments' to be a list
+      session['class_enrollments'] = [enrollment];
+      return session;
+    }).toList();
+  }
+
   // Check for conflicting sessions
   Future<List<Map<String, dynamic>>> findConflictingSessions(DateTime start, DateTime end) async {
     final startStr = start.toUtc().toIso8601String();

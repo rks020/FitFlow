@@ -156,6 +156,7 @@ class MessageRepository {
              ? '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim() 
              : 'Kullanıcı';
         final otherAvatar = profile != null ? profile['avatar_url'] as String? : null;
+        final otherRole = profile != null ? profile['role'] as String? : null;
         
         if (!conversationMap.containsKey(otherId)) {
           conversationMap[otherId] = InboxItem(
@@ -165,6 +166,7 @@ class MessageRepository {
             lastMessage: msg.content,
             lastMessageTime: msg.createdAt,
             unreadCount: 0,
+            role: otherRole,
           );
         }
 
@@ -176,6 +178,20 @@ class MessageRepository {
 
     return conversationMap.values.toList();
   }
+
+  // Get total unread message count
+  Future<int> getUnreadCount() async {
+    final myId = _client.auth.currentUser?.id;
+    if (myId == null) return 0;
+
+    final response = await _client
+        .from('messages')
+        .count(CountOption.exact)
+        .eq('receiver_id', myId)
+        .eq('is_read', false);
+    
+    return response;
+  }
 }
 
 class InboxItem {
@@ -185,6 +201,7 @@ class InboxItem {
   final String lastMessage;
   final DateTime lastMessageTime;
   int unreadCount;
+  final String? role; // Added role field
 
   InboxItem({
     required this.userId,
@@ -193,5 +210,6 @@ class InboxItem {
     required this.lastMessage,
     required this.lastMessageTime,
     this.unreadCount = 0,
+    this.role,
   });
 }

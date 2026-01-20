@@ -113,7 +113,7 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
               children: [
                 Text(
                   'Beslenme Programım',
-                  style: AppTextStyles.title1.copyWith(fontWeight: FontWeight.bold),
+                  style: AppTextStyles.title2.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Icon(Icons.restaurant_rounded, color: AppColors.primaryYellow, size: 28),
               ],
@@ -160,15 +160,18 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
             const SizedBox(height: 20),
             GlassCard(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Günlük Toplam Kalori', style: AppTextStyles.headline),
-                  Text(
-                    '${_activeDiet!.totalCalories} kcal',
-                     style: AppTextStyles.title1.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              child: SizedBox(
+                width: double.infinity,
+                child: Column(
+                  children: [
+                    Text('Günlük Toplam Kalori', style: AppTextStyles.title3),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_activeDiet!.totalCalories} kcal',
+                       style: AppTextStyles.title2.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ),
             ),
              const SizedBox(height: 40),

@@ -6,6 +6,7 @@ import '../../../data/models/profile.dart'; // Needed for navigation if ChatScre
 import '../../../data/repositories/message_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../chat/screens/chat_screen.dart';
+import 'new_message_screen.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -68,10 +69,25 @@ class _InboxScreenState extends State<InboxScreen> {
                     return _buildInboxItem(item);
                   },
                 ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const NewMessageScreen()),
+          );
+          _loadInbox(); // Refresh on return
+        },
+        backgroundColor: AppColors.primaryYellow,
+        child: const Icon(Icons.add, color: Colors.black),
+      ),
     );
   }
 
   Widget _buildInboxItem(InboxItem item) {
+    final isTrainer = item.role == 'trainer' || item.role == 'owner';
+    final badgeColor = isTrainer ? AppColors.accentOrange : AppColors.success;
+    final badgeText = isTrainer ? 'Antrenör' : 'Üye';
+
     return GlassCard(
       child: ListTile(
         onTap: () async {
@@ -121,7 +137,6 @@ class _InboxScreenState extends State<InboxScreen> {
           ],
         ),
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: Text(
@@ -130,12 +145,32 @@ class _InboxScreenState extends State<InboxScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Text(
-              DateFormat('HH:mm').format(item.lastMessageTime),
-              style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
-            ),
+             // Role Badge
+            if (item.role != null) ...[
+              const SizedBox(width: 8),
+               Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: badgeColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: badgeColor.withOpacity(0.5), width: 0.5),
+                ),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
+         trailing: Text( // Moved time to trailing
+            DateFormat('HH:mm').format(item.lastMessageTime),
+            style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+          ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
