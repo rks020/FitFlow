@@ -47,7 +47,7 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
       if (user == null) return;
 
       _classesSubscription = _supabase
-          .from('class_sessions')
+          .from('class_enrollments')
           .stream(primaryKey: ['id'])
           .eq('member_id', user.id)
           .listen((data) {
@@ -120,15 +120,25 @@ class _MemberScheduleScreenState extends State<MemberScheduleScreen> {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
 
+      // Query class_enrollments to get the sessions for this member
       final response = await _supabase
-          .from('class_sessions')
-          .select('*, profiles:trainer_id(first_name, last_name)')
-          .eq('member_id', user.id)
-          .order('start_time');
+          .from('class_enrollments')
+          .select('class_sessions!inner(*, profiles:trainer_id(first_name, last_name))')
+          .eq('member_id', user.id);
 
       final Map<DateTime, List<dynamic>> events = {};
+      
+      // Flatten the response
+      final List<dynamic> allSessions = (response as List).map((e) => e['class_sessions']).toList();
 
-      for (var session in (response as List)) {
+      // Sort in Dart to be safe
+      allSessions.sort((a, b) {
+        final t1 = DateTime.parse(a['start_time']);
+        final t2 = DateTime.parse(b['start_time']);
+        return t1.compareTo(t2);
+      });
+
+      for (var session in allSessions) {
         final startTime = DateTime.parse(session['start_time']).toLocal();
         final date = DateTime(startTime.year, startTime.month, startTime.day);
 
