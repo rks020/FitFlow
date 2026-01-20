@@ -35,6 +35,7 @@ class MemberDetailScreen extends StatefulWidget {
 
 class _MemberDetailScreenState extends State<MemberDetailScreen> {
   late Member _currentMember;
+  int _classRefreshKey = 0;
 
   @override
   void initState() {
@@ -270,7 +271,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
               style: AppTextStyles.title3,
             ),
              const SizedBox(height: 12),
-            FutureBuilder<List<ClassSession>>(
+            FutureBuilder<List<ClassSession>>(key: ValueKey(_classRefreshKey), 
               future: ClassRepository().getMemberUpcomingClasses(_currentMember.id),
               builder: (context, snapshot) {
                  if (snapshot.connectionState == ConnectionState.waiting) {
@@ -521,7 +522,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                         builder: (context) => CreateScheduleScreen(member: _currentMember),
                       ),
                     ).then((_) {
-                       setState(() {}); // Refresh logic if needed
+                       setState(() { _classRefreshKey++; }); // Refresh logic if needed
                     });
                   },
                 ),
