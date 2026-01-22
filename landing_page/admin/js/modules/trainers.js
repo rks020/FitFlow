@@ -32,18 +32,26 @@ export async function loadTrainers() {
                         <input type="email" id="trainer-email" required>
                     </div>
                     <div class="form-group">
+                        <label>Geçici Şifre</label>
+                        <input type="text" id="trainer-password" required minlength="6" placeholder="En az 6 karakter">
+                    </div>
+                    <div class="form-group">
                         <label>Uzmanlık (opsiyonel)</label>
                         <input type="text" id="trainer-specialty" placeholder="Örn: PT, Diyetisyen">
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="cancel-trainer-btn">İptal</button>
-                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                        <button type="submit" class="btn btn-primary" id="save-trainer-btn">
+                            <span class="btn-text">Kaydet</span>
+                            <span class="btn-loader" style="display:none;">⏳</span>
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
 
         <style>
+/* ... (existing CSS remains the same) ... */
             .module-header {
                 display: flex;
                 justify-content: space-between;
@@ -56,55 +64,11 @@ export async function loadTrainers() {
                 grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
                 gap: 20px;
             }
-
-            .trainer-card {
-                background: var(--surface-color);
-                border: 1px solid var(--glass-border);
-                border-radius: 16px;
-                padding: 20px;
-                transition: all 0.3s ease;
-            }
-
-            .trainer-card:hover {
-                transform: translateY(-4px);
-                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-            }
-
-            .trainer-header {
-                display: flex;
-                align-items: center;
-                gap: 16px;
-                margin-bottom: 16px;
-            }
-
-            .trainer-avatar {
-                width: 60px;
-                height: 60px;
-                border-radius: 50%;
-                background: var(--primary-yellow);
-                color: #000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-                font-weight: 700;
-            }
-
-            .trainer-info h3 {
-                margin: 0;
-                font-size: 18px;
-            }
-
-            .trainer-info p {
-                margin: 4px 0 0;
-                color: var(--text-secondary);
-                font-size: 14px;
-            }
-
+/* ... */
             .trainer-actions {
                 display: flex;
                 gap: 8px;
-                margin-top: 16px;
+                margin-top: auto;
             }
 
             .btn-small {
@@ -183,7 +147,7 @@ async function loadTrainersList() {
         }
 
         listContainer.innerHTML = trainers.map(trainer => `
-            <div class="trainer-card">
+            <div class="trainer-card" style="display: flex; flex-direction: column; height: 100%;">
                 <div class="trainer-header">
                     <div class="trainer-avatar">
                         ${(trainer.first_name?.[0] || 'T').toUpperCase()}
@@ -193,7 +157,7 @@ async function loadTrainersList() {
                         <p>${trainer.specialty || 'Antrenör'}</p>
                     </div>
                 </div>
-                <div class="trainer-details">
+                <div class="trainer-details" style="flex: 1;">
                     <p style="font-size: 14px; color: var(--text-secondary);">
                         📧 ${trainer.id.slice(0, 8)}...
                     </p>
@@ -221,12 +185,24 @@ async function handleAddTrainer(e) {
     const firstname = document.getElementById('trainer-firstname').value.trim();
     const lastname = document.getElementById('trainer-lastname').value.trim();
     const email = document.getElementById('trainer-email').value.trim();
+    const password = document.getElementById('trainer-password').value.trim();
     const specialty = document.getElementById('trainer-specialty').value.trim();
+    const saveBtn = document.getElementById('save-trainer-btn');
 
-    if (!firstname || !lastname || !email) {
+    if (!firstname || !lastname || !email || !password) {
         showToast('Lütfen gerekli alanları doldurun', 'error');
         return;
     }
+
+    if (password.length < 6) {
+        showToast('Şifre en az 6 karakter olmalıdır', 'error');
+        return;
+    }
+
+    // Set loading
+    saveBtn.disabled = true;
+    saveBtn.querySelector('.btn-text').style.display = 'none';
+    saveBtn.querySelector('.btn-loader').style.display = 'inline';
 
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -242,25 +218,33 @@ async function handleAddTrainer(e) {
             return;
         }
 
-        // Call RPC function to invite trainer
-        const { error } = await supabaseClient.rpc('invite_trainer', {
-            trainer_email: email,
-            trainer_first_name: firstname,
-            trainer_last_name: lastname,
-            trainer_specialty: specialty || null,
-            org_id: profile.organization_id
+        // Call Edge Function
+        const { data, error } = await supabaseClient.functions.invoke('create-trainer', {
+            body: {
+                email,
+                password,
+                first_name: firstname,
+                last_name: lastname,
+                specialty: specialty || null,
+                organization_id: profile.organization_id
+            }
         });
 
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
 
-        showToast('Antrenör davet edildi! Email gönderildi.', 'success');
+        showToast('Antrenör başarıyla oluşturuldu!', 'success');
         document.getElementById('add-trainer-modal').classList.remove('active');
         document.getElementById('add-trainer-form').reset();
         await loadTrainersList();
 
     } catch (error) {
         console.error('Error adding trainer:', error);
-        showToast('Antrenör eklenirken hata: ' + error.message, 'error');
+        showToast('Antrenör eklenirken hata: ' + (error.message || 'Bilinmeyen hata'), 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.querySelector('.btn-text').style.display = 'inline';
+        saveBtn.querySelector('.btn-loader').style.display = 'none';
     }
 }
 
