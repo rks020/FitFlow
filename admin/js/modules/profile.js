@@ -28,6 +28,10 @@ export async function loadProfile() {
                             <input type="text" id="edit-last-name" required>
                         </div>
                         <div class="form-group">
+                            <label>Meslek</label>
+                            <input type="text" id="edit-profession" placeholder="Mesleğiniz">
+                        </div>
+                        <div class="form-group">
                             <label>Yaş</label>
                             <input type="number" id="edit-age" placeholder="Yaşınız">
                         </div>
@@ -299,7 +303,7 @@ function renderProfile(user, profile, membersCount, trainersCount) {
             <button class="edit-btn-top" id="open-edit-modal">✏️</button>
             <div class="profile-avatar-large" style="${profile.avatar_url ? `background-image: url('${profile.avatar_url}'); background-size: cover; background-position: center; border: 2px solid var(--primary-yellow);` : ''}">
                 ${profile.avatar_url ? '' : (initials || '👤')}
-                <div class="edit-badge">📷</div>
+                <div class="edit-badge" id="edit-avatar-btn">📷</div>
             </div>
             <h1 class="profile-name">${profile.first_name || ''} ${profile.last_name || ''}</h1>
             <span class="profile-role-badge">${org.name || 'Admin'}</span>
@@ -368,6 +372,7 @@ function renderProfile(user, profile, membersCount, trainersCount) {
     // Attach User Data to Edit Form for easy access
     document.getElementById('edit-first-name').value = profile.first_name || '';
     document.getElementById('edit-last-name').value = profile.last_name || '';
+    document.getElementById('edit-profession').value = profile.profession || '';
     document.getElementById('edit-age').value = profile.age || '';
     document.getElementById('edit-hobbies').value = profile.hobbies || '';
 
@@ -377,9 +382,55 @@ function renderProfile(user, profile, membersCount, trainersCount) {
     // Setup Edit Button Listener
     document.getElementById('open-edit-modal').addEventListener('click', () => {
         const modal = document.getElementById('edit-profile-modal');
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         setTimeout(() => modal.classList.add('show'), 10);
     });
+
+    // Setup Avatar Upload
+    const avatarInput = document.getElementById('avatar-input');
+    const avatarBtn = document.getElementById('edit-avatar-btn');
+
+    if (avatarBtn) {
+        avatarBtn.addEventListener('click', () => avatarInput.click());
+    }
+
+    if (avatarInput) {
+        avatarInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                showToast('Fotoğraf yükleniyor...', 'info');
+
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('avatars')
+                    .upload(filePath, file);
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabaseClient.storage
+                    .from('avatars')
+                    .getPublicUrl(filePath);
+
+                const { error: updateError } = await supabaseClient
+                    .from('profiles')
+                    .update({ avatar_url: publicUrl })
+                    .eq('id', user.id);
+
+                if (updateError) throw updateError;
+
+                showToast('Profil fotoğrafı güncellendi', 'success');
+                loadProfileData(); // Refresh UI
+            } catch (error) {
+                console.error('Avatar upload error:', error);
+                showToast('Fotoğraf yüklenirken hata oluştu', 'error');
+            }
+        });
+    }
 }
 
 function setupEditModal() {
@@ -404,6 +455,7 @@ function setupEditModal() {
         try {
             const firstName = document.getElementById('edit-first-name').value;
             const lastName = document.getElementById('edit-last-name').value;
+            const profession = document.getElementById('edit-profession').value;
             const age = document.getElementById('edit-age').value;
             const hobbies = document.getElementById('edit-hobbies').value;
 
@@ -415,56 +467,71 @@ function setupEditModal() {
                     first_name: firstName,
                     last_name: lastName,
                     age: age ? parseInt(age) : null,
-                    hobbies: hobbies
-                })
-                .eq('id', user.id);
+                    const firstName = document.getElementById('edit-first-name').value;
+                    const lastName = document.getElementById('edit-last-name').value;
+                    const profession = document.getElementById('edit-profession').value;
+                    const age = document.getElementById('edit-age').value;
+                    const hobbies = document.getElementById('edit-hobbies').value;
 
-            if (error) throw error;
+                    const { data: { user } } = await supabaseClient.auth.getUser();
 
-            showToast('Profil başarıyla güncellendi', 'success');
+                    const { error } = await supabaseClient
+                        .from('profiles')
+                        .update({
+                            first_name: firstName,
+                            last_name: lastName,
+                            profession: profession,
+                            age: age ? parseInt(age) : null,
+                            hobbies: hobbies
+                        })
+                        .eq('id', user.id);
+
+                    if(error) throw error;
+
+                    showToast('Profil başarıyla güncellendi', 'success');
             closeModal();
             loadProfileData(); // Refresh UI
 
             // Update Header Name immediately
             const headerName = document.getElementById('user-name');
-            if (headerName) headerName.textContent = `${firstName} ${lastName}`;
+                    if(headerName) headerName.textContent = `${firstName} ${lastName}`;
 
-        } catch (error) {
-            console.error(error);
-            showToast('Güncelleme hatası: ' + error.message, 'error');
-        } finally {
-            btn.textContent = 'Kaydet';
-            btn.disabled = false;
-        }
-    };
-}
+                } catch (error) {
+                    console.error(error);
+                    showToast('Güncelleme hatası: ' + error.message, 'error');
+                } finally {
+                btn.textContent = 'Kaydet';
+                btn.disabled = false;
+            }
+        };
+    }
 
-async function handleDeleteAccount(userId) {
-    if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
-        try {
-            const { error } = await supabaseClient.functions.invoke('delete-user', {
-                body: { user_id: userId }
-            });
+    async function handleDeleteAccount(userId) {
+        if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+            try {
+                const { error } = await supabaseClient.functions.invoke('delete-user', {
+                    body: { user_id: userId }
+                });
 
-            if (error) throw error;
+                if (error) throw error;
 
-            showToast('Hesabınız başarıyla silindi.', 'success');
-            setTimeout(() => {
-                supabaseClient.auth.signOut();
-                window.location.href = 'login.html';
-            }, 1500);
+                showToast('Hesabınız başarıyla silindi.', 'success');
+                setTimeout(() => {
+                    supabaseClient.auth.signOut();
+                    window.location.href = 'login.html';
+                }, 1500);
 
-        } catch (error) {
-            console.error('Delete error:', error);
-            showToast('Hesap silinirken hata oluştu', 'error');
+            } catch (error) {
+                console.error('Delete error:', error);
+                showToast('Hesap silinirken hata oluştu', 'error');
+            }
         }
     }
-}
 
-function getDaysLeft(dateString) {
-    if (!dateString) return 0;
-    const end = new Date(dateString);
-    const now = new Date();
-    const diff = end - now;
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
+    function getDaysLeft(dateString) {
+        if (!dateString) return 0;
+        const end = new Date(dateString);
+        const now = new Date();
+        const diff = end - now;
+        return Math.floor(diff / (1000 * 60 * 60 * 24));
+    }
