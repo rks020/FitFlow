@@ -87,21 +87,23 @@ window.editTrainer = async (id) => {
 };
 
 window.deleteTrainer = async (id) => {
-    if (!confirm('Bu antrenörü silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu antrenörü ve hesabını kalıcı olarak silmek istediğinizden emin misiniz?')) return;
 
     try {
-        const { error } = await supabaseClient
-            .from('profiles')
-            .delete()
-            .eq('id', id);
+        const { data, error } = await supabaseClient.functions.invoke('delete-user', {
+            body: { user_id: id }
+        });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Edge Function Error:', error);
+            throw error;
+        }
 
-        showToast('Antrenör silindi', 'success');
+        showToast('Antrenör başarıyla silindi', 'success');
         await loadTrainersList();
 
     } catch (error) {
         console.error('Error deleting trainer:', error);
-        showToast('Antrenör silinirken hata oluştu', 'error');
+        showToast('Antrenör silinirken hata oluştu: ' + error.message, 'error');
     }
 };
