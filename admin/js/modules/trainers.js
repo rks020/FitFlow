@@ -187,7 +187,22 @@ async function handleAddTrainer(e) {
 
     } catch (error) {
         console.error('Error adding trainer:', error);
-        showToast('Antrenör eklenirken hata: ' + (error.message || 'Bilinmeyen hata'), 'error');
+
+        // Check for specific error types
+        const errorMessage = error.message || error.toString();
+
+        if (errorMessage.includes('already') ||
+            errorMessage.includes('duplicate') ||
+            errorMessage.includes('exists') ||
+            errorMessage.includes('unique') ||
+            errorMessage.includes('User already registered')) {
+            showToast('Bu email adresi sistemimizde kayıtlıdır. Lütfen farklı bir email kullanın.', 'error');
+        } else if (errorMessage.includes('Email não confirmado') ||
+            errorMessage.includes('email not confirmed')) {
+            showToast('Email henüz onaylanmamış', 'error');
+        } else {
+            showToast('Antrenör eklenirken hata: ' + errorMessage, 'error');
+        }
     } finally {
         saveBtn.disabled = false;
         saveBtn.querySelector('.btn-text').style.display = 'inline';
