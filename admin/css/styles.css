@@ -178,7 +178,8 @@ body {
 
 /* Add Button (Fixed the ugly yellow bar) */
 #add-member-btn,
-#add-trainer-btn {
+#add-trainer-btn,
+#add-announcement-btn {
     width: auto !important;
     display: inline-flex !important;
     align-items: center;
