@@ -13,60 +13,15 @@ export async function loadTrainers() {
         <div class="trainers-list" id="trainers-list">
             <p>Yükleniyor...</p>
         </div>
-
-        <!-- Add Trainer Modal -->
-        <div id="add-trainer-modal" class="modal">
-            <div class="modal-content" style="max-width: 500px;">
-                <h2>Yeni Antrenör Ekle</h2>
-                <form id="add-trainer-form">
-                    <div class="form-group">
-                        <label>Ad</label>
-                        <input type="text" id="trainer-firstname" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Soyad</label>
-                        <input type="text" id="trainer-lastname" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="trainer-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Geçici Şifre</label>
-                        <input type="text" id="trainer-password" required minlength="6" placeholder="En az 6 karakter">
-                    </div>
-                    <div class="form-group">
-                        <label>Uzmanlık (opsiyonel)</label>
-                        <input type="text" id="trainer-specialty" placeholder="Örn: PT, Diyetisyen">
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancel-trainer-btn">İptal</button>
-                        <button type="submit" class="btn btn-primary" id="save-trainer-btn">
-                            <span class="btn-text">Kaydet</span>
-                            <span class="btn-loader" style="display:none;">⏳</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
     `;
-
-
 
     // Load trainers
     await loadTrainersList();
 
     // Setup event listeners
     document.getElementById('add-trainer-btn').addEventListener('click', () => {
-        document.getElementById('add-trainer-modal').classList.add('active');
+        window.location.href = 'add-trainer.html';
     });
-
-    document.getElementById('cancel-trainer-btn').addEventListener('click', () => {
-        document.getElementById('add-trainer-modal').classList.remove('active');
-        document.getElementById('add-trainer-form').reset();
-    });
-
-    document.getElementById('add-trainer-form').addEventListener('submit', handleAddTrainer);
 }
 
 async function loadTrainersList() {
@@ -126,91 +81,7 @@ async function loadTrainersList() {
     }
 }
 
-async function handleAddTrainer(e) {
-    e.preventDefault();
-
-    const firstname = document.getElementById('trainer-firstname').value.trim();
-    const lastname = document.getElementById('trainer-lastname').value.trim();
-    const email = document.getElementById('trainer-email').value.trim();
-    const password = document.getElementById('trainer-password').value.trim();
-    const specialty = document.getElementById('trainer-specialty').value.trim();
-    const saveBtn = document.getElementById('save-trainer-btn');
-
-    if (!firstname || !lastname || !email || !password) {
-        showToast('Lütfen gerekli alanları doldurun', 'error');
-        return;
-    }
-
-    if (password.length < 6) {
-        showToast('Şifre en az 6 karakter olmalıdır', 'error');
-        return;
-    }
-
-    // Set loading
-    saveBtn.disabled = true;
-    saveBtn.querySelector('.btn-text').style.display = 'none';
-    saveBtn.querySelector('.btn-loader').style.display = 'inline';
-
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('organization_id')
-            .eq('id', user.id)
-            .single();
-
-        if (!profile?.organization_id) {
-            showToast('Organizasyon bilgisi bulunamadı', 'error');
-            return;
-        }
-
-        // Call Edge Function
-        const { data, error } = await supabaseClient.functions.invoke('create-trainer', {
-            body: {
-                email,
-                password,
-                first_name: firstname,
-                last_name: lastname,
-                specialty: specialty || null,
-                organization_id: profile.organization_id
-            }
-        });
-
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-
-        showToast('Antrenör başarıyla oluşturuldu!', 'success');
-        document.getElementById('add-trainer-modal').classList.remove('active');
-        document.getElementById('add-trainer-form').reset();
-        await loadTrainersList();
-
-    } catch (error) {
-        console.error('Error adding trainer:', error);
-
-        // Check for specific error types
-        const errorMessage = error.message || error.toString();
-
-        if (errorMessage.includes('already') ||
-            errorMessage.includes('duplicate') ||
-            errorMessage.includes('exists') ||
-            errorMessage.includes('unique') ||
-            errorMessage.includes('User already registered')) {
-            showToast('Bu email adresi sistemimizde kayıtlıdır. Lütfen farklı bir email kullanın.', 'error');
-        } else if (errorMessage.includes('Email não confirmado') ||
-            errorMessage.includes('email not confirmed')) {
-            showToast('Email henüz onaylanmamış', 'error');
-        } else {
-            showToast('Antrenör eklenirken hata: ' + errorMessage, 'error');
-        }
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.querySelector('.btn-text').style.display = 'inline';
-        saveBtn.querySelector('.btn-loader').style.display = 'none';
-    }
-}
-
-// Global functions for edit/delete (could be improved with event delegation)
+// Global functions for edit/delete
 window.editTrainer = async (id) => {
     showToast('Düzenleme özelliği yakında eklenecek', 'info');
 };
