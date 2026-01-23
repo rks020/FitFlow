@@ -37,7 +37,21 @@
                         <label>Geçici Şifre</label>
                         <input type="text" id="member-password" required minlength="6" placeholder="En az 6 karakter">
                     </div>
-                    
+                    <div class="form-group">
+                        <label>Üyelik Paketi</label>
+                        <select id="member-package">
+                            <option value="">Seçiniz</option>
+                            <option value="Standard (8 Ders)">Standard (8 Ders)</option>
+                            <option value="Pro (10 Ders)">Pro (10 Ders)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Eğitmen Ata (Opsiyonel)</label>
+                        <select id="member-trainer">
+                            <option value="">Eğitmen Yok</option>
+                        </select>
+                    </div>
+
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="window.history.back()">İptal</button>
                         <button type="submit" class="btn btn-primary" id="save-member-btn">

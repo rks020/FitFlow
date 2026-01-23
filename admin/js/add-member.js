@@ -1,6 +1,29 @@
 import { supabaseClient } from './supabase-config.js';
 import { showToast } from './utils.js';
 
+// Load trainers for dropdown
+async function loadTrainers() {
+    try {
+        const { data: trainers, error } = await supabaseClient
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .or('role.eq.trainer,role.eq.admin,role.eq.owner')
+            .order('first_name');
+
+        if (error) throw error;
+
+        const trainerSelect = document.getElementById('member-trainer');
+        trainers.forEach(trainer => {
+            const option = document.createElement('option');
+            option.value = trainer.id;
+            option.textContent = `${trainer.first_name} ${trainer.last_name}`;
+            trainerSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading trainers:', error);
+    }
+}
+
 // Check session
 async function checkSession() {
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -23,6 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profile = await checkSession();
     if (!profile) return;
 
+    // Load trainers for dropdown
+    await loadTrainers();
+
     const form = document.getElementById('add-member-form');
     const saveBtn = document.getElementById('save-member-btn');
 
@@ -33,6 +59,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const lastname = document.getElementById('member-lastname').value.trim();
         const email = document.getElementById('member-email').value.trim();
         const password = document.getElementById('member-password').value.trim();
+        const selectedPackage = document.getElementById('member-package').value.trim();
+        const trainerId = document.getElementById('member-trainer').value.trim();
 
         if (!firstname || !lastname || !email || !password) {
             showToast('Lütfen tüm alanları doldurun', 'error');
@@ -62,7 +90,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     password,
                     first_name: firstname,
                     last_name: lastname,
-                    organization_id: profile.organization_id
+                    organization_id: profile.organization_id,
+                    subscription_package: selectedPackage || null,
+                    trainer_id: trainerId || null
                 }
             });
 

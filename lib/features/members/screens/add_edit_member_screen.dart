@@ -35,7 +35,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
   final _passwordController = TextEditingController();
   
   String? _selectedPackage;
-  final List<String> _packages = ['Standard (8 Ders)', 'Pro (10 Ders)'];
+  List<String> _packages = ['Standard (8 Ders)', 'Pro (10 Ders)'];
 
   bool _isActive = true;
   bool _isLoading = false;
@@ -62,6 +62,11 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
       _selectedPackage = widget.member!.subscriptionPackage;
       _sessionCountController.text = widget.member!.sessionCount?.toString() ?? '';
       _selectedTrainerId = widget.member!.trainerId; // Set initial trainer
+      
+      // Add current package to list if it's not already there (legacy data support)
+      if (_selectedPackage != null && !_packages.contains(_selectedPackage)) {
+        _packages.add(_selectedPackage!);
+      }
       
       // Auto-fill session count if missing but package is selected
       if (_sessionCountController.text.isEmpty && _selectedPackage != null) {

@@ -543,6 +543,10 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
       'Pilates Eğitmeni',
     ];
 
+    if (!specialtyOptions.contains(selectedSpecialty)) {
+      specialtyOptions.add(selectedSpecialty);
+    }
+
     final result = await showDialog<String>(
       context: context,
       builder: (context) => StatefulBuilder(
