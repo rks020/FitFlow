@@ -481,13 +481,37 @@ body {
         justify-content: center;
     }
 }
+
 /* Auth Container Updates */
 .auth-container {
     max-width: 440px !important;
+    max-height: 90vh !important;
+    /* Make form scrollable */
+    overflow-y: auto !important;
+    /* Enable vertical scrolling */
     padding: 40px !important;
     background: rgba(20, 20, 25, 0.95) !important;
     border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8) !important;
+    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Custom scrollbar for auth container */
+.auth-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.auth-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.auth-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.3);
+    border-radius: 10px;
+}
+
+.auth-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.5);
 }
 
 /* Password Field */
@@ -591,16 +615,33 @@ body {
 /* Input Error State */
 .input-error {
     border-color: var(--error) !important;
-    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
     background: rgba(239, 68, 68, 0.1) !important;
 }
 
 /* Shake Animation */
 @keyframes shake {
-    10%, 90% { transform: translate3d(-1px, 0, 0); }
-    20%, 80% { transform: translate3d(2px, 0, 0); }
-    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-    40%, 60% { transform: translate3d(4px, 0, 0); }
+
+    10%,
+    90% {
+        transform: translate3d(-1px, 0, 0);
+    }
+
+    20%,
+    80% {
+        transform: translate3d(2px, 0, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-4px, 0, 0);
+    }
+
+    40%,
+    60% {
+        transform: translate3d(4px, 0, 0);
+    }
 }
 
 /* Fix Z-Index for Eye Icon to ensure clickability */
@@ -615,9 +656,11 @@ body {
 }
 
 .toggle-password {
-    z-index: 100 !important; /* Ensure it is definitely above inputs */
+    z-index: 100 !important;
+    /* Ensure it is definitely above inputs */
     cursor: pointer !important;
-    pointer-events: auto !important; /* Force pointer events */
+    pointer-events: auto !important;
+    /* Force pointer events */
 }
 
 /* Ensure form is relative so z-index context works */

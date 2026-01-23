@@ -1,14 +1,7 @@
 import { supabaseClient } from './supabase-config.js';
 import { showToast } from './utils.js';
 import { loadDashboard } from './modules/dashboard.js';
-
-// Turkey Cities Data
-const TURKEY_CITIES = {
-    "İstanbul": ["Adalar", "Arnavutköy", "Ataşehir", "Avcılar", "Bağcılar", "Bahçelievler", "Bakırköy", "Başakşehir", "Bayrampaşa", "Beşiktaş", "Beykoz", "Beylikdüzü", "Beyoğlu", "Büyükçekmece", "Çatalca", "Çekmeköy", "Esenler", "Esenyurt", "Eyüpsultan", "Fatih", "Gaziosmanpaşa", "Güngören", "Kadıköy", "Kağıthane", "Kartal", "Küçükçekmece", "Maltepe", "Pendik", "Sancaktepe", "Sarıyer", "Silivri", "Sultanbeyli", "Sultangazi", "Şile", "Şişli", "Tuzla", "Ümraniye", "Üsküdar", "Zeytinburnu"],
-    "Ankara": ["Akyurt", "Altındağ", "Ayaş", "Bala", "Beypazarı", "Çamlıdere", "Çankaya", "Çubuk", "Elmadağ", "Etimesgut", "Evren", "Gölbaşı", "Güdül", "Haymana", "Kahramankazan", "Kalecik", "Keçiören", "Kızılcahamam", "Mamak", "Nallıhan", "Polatlı", "Pursaklar", "Sincan", "Şereflikoçhisar", "Yenimahalle"],
-    "İzmir": ["Aliağa", "Balçova", "Bayındır", "Bayraklı", "Bergama", "Beydağ", "Bornova", "Buca", "Çeşme", "Çiğli", "Dikili", "Foça", "Gaziemir", "Güzelbahçe", "Karabağlar", "Karaburun", "Karşıyaka", "Kemalpaşa", "Kınık", "Kiraz", "Konak", "Menderes", "Menemen", "Narlıdere", "Ödemiş", "Seferihisar", "Selçuk", "Tire", "Torbalı", "Urla"],
-    // Add more cities as needed...
-};
+import { getCityNames, getDistricts } from './cities.js';
 
 // DOM Elements
 let loginForm, registerForm, loginBtn, registerBtn;
@@ -74,8 +67,9 @@ export function initAuth() {
 
         // City Logic
         if (registerCity && registerDistrict) {
-            // Populate cities dropdown
-            Object.keys(TURKEY_CITIES).forEach(city => {
+            // Populate cities dropdown with all 81 cities
+            const cities = getCityNames();
+            cities.forEach(city => {
                 const option = document.createElement('option');
                 option.value = city;
                 option.textContent = city;
@@ -88,8 +82,9 @@ export function initAuth() {
                 registerDistrict.disabled = !selectedCity;
                 registerDistrict.innerHTML = '<option value="">Seçiniz</option>';
 
-                if (selectedCity && TURKEY_CITIES[selectedCity]) {
-                    TURKEY_CITIES[selectedCity].forEach(district => {
+                if (selectedCity) {
+                    const districts = getDistricts(selectedCity);
+                    districts.forEach(district => {
                         const option = document.createElement('option');
                         option.value = district;
                         option.textContent = district;
