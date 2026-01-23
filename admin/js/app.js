@@ -82,6 +82,10 @@ function navigateTo(page) {
 
     // Load page content
     if (pageLoaders[page]) {
+        // Clear content area first
+        const contentArea = document.getElementById('content-area');
+        if (contentArea) contentArea.innerHTML = '<div style="padding: 20px; text-align: center;">Yükleniyor...</div>';
+
         pageLoaders[page]();
     }
 
@@ -94,12 +98,17 @@ function handleNavigation() {
     // Split hash into page and query string (e.g. #announcements?action=new -> page: announcements, query: ?action=new)
     const [page, query] = (window.location.hash.slice(1) || 'dashboard').split('?');
 
+    console.log('Navigating to:', page, 'Query:', query);
+
     if (pageLoaders[page]) {
         // We can pass the query string to the loader if needed, or just let the loader check URL
         // But our init architecture is simple, so we just load the page.
         // We might need to store the query to be accessed by the module
         window.currentQuery = query;
         navigateTo(page);
+    } else {
+        console.warn('No loader found for page:', page);
+        navigateTo('dashboard');
     }
 }
 
