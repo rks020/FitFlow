@@ -10,38 +10,45 @@ export function initAuth() {
 
 // Check Session
 async function checkSession() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError) throw sessionError;
 
-    if (session) {
-        // Verify user role
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('role, organization_id, first_name, last_name')
-            .eq('id', session.user.id)
-            .single();
-
-        if (profile && (profile.role === 'owner' || profile.role === 'trainer') && profile.organization_id) {
-            // Fetch Organization Name
-            const { data: orgData } = await supabaseClient
-                .from('organizations')
-                .select('name')
-                .eq('id', profile.organization_id)
+        if (session) {
+            // Verify user role
+            const { data: profile, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('role, organization_id, first_name, last_name, avatar_url')
+                .eq('id', session.user.id)
                 .single();
 
-            if (orgData) profile.org_name = orgData.name;
+            if (profileError) throw profileError;
 
-            setupUserInterface(session.user, profile);
-            setupUserInterface(session.user, profile);
-            // loadDashboard(); // REMOVED: Managed by app.js handleNavigation
+            if (profile && (profile.role === 'owner' || profile.role === 'trainer') && profile.organization_id) {
+                // Fetch Organization Name
+                const { data: orgData } = await supabaseClient
+                    .from('organizations')
+                    .select('name')
+                    .eq('id', profile.organization_id)
+                    .single();
 
+                if (orgData) profile.org_name = orgData.name;
+
+                setupUserInterface(session.user, profile);
+
+            } else {
+                // Invalid role
+                console.warn('Invalid role or missing organization');
+                await supabaseClient.auth.signOut();
+                window.location.href = 'login.html';
+            }
         } else {
-            // Invalid role
-            await supabaseClient.auth.signOut();
+            // No session
             window.location.href = 'login.html';
         }
-    } else {
-        // No session
-        window.location.href = 'login.html';
+    } catch (error) {
+        console.error('Auth Check Error:', error);
+        // Optional: showToast('Oturum kontrolü başarısız', 'error');
     }
 }
 
@@ -58,6 +65,22 @@ function setupUserInterface(user, profile) {
     const orgNameElement = document.getElementById('org-name');
     if (orgNameElement && profile.org_name) {
         orgNameElement.textContent = profile.org_name;
+    }
+
+    // Set avatar
+    const avatarElement = document.getElementById('user-avatar');
+    if (avatarElement) {
+        if (profile.avatar_url) {
+            avatarElement.style.backgroundImage = `url('${profile.avatar_url}')`;
+            avatarElement.style.backgroundSize = 'cover';
+            avatarElement.style.backgroundPosition = 'center';
+            avatarElement.textContent = ''; // Clear emoji
+            avatarElement.style.border = '2px solid var(--primary-yellow)';
+        } else {
+            const initials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
+            avatarElement.textContent = initials || '👤';
+            avatarElement.style.backgroundImage = 'none';
+        }
     }
 }
 
