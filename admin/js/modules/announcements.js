@@ -100,6 +100,18 @@ export async function loadAnnouncements() {
     // Initialize logic
     await fetchAnnouncements();
     setupModal();
+
+    // Check if we should open the modal automatically
+    if (window.location.hash.includes('action=new')) {
+        const modal = document.getElementById('announcement-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 100);
+
+            // Clean URL to avoid reopening on refresh
+            // window.history.replaceState(null, null, '#announcements');
+        }
+    }
 }
 
 async function fetchAnnouncements() {

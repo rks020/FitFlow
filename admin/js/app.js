@@ -88,9 +88,15 @@ function navigateTo(page) {
 
 // Handle hash navigation
 function handleNavigation() {
-    const hash = window.location.hash.slice(1) || 'dashboard';
-    if (pageLoaders[hash]) {
-        navigateTo(hash);
+    // Split hash into page and query string (e.g. #announcements?action=new -> page: announcements, query: ?action=new)
+    const [page, query] = (window.location.hash.slice(1) || 'dashboard').split('?');
+
+    if (pageLoaders[page]) {
+        // We can pass the query string to the loader if needed, or just let the loader check URL
+        // But our init architecture is simple, so we just load the page.
+        // We might need to store the query to be accessed by the module
+        window.currentQuery = query;
+        navigateTo(page);
     }
 }
 

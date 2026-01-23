@@ -40,7 +40,7 @@ export async function loadDashboard() {
                     <span class="icon">➕</span>
                     <span>Yeni Antrenör Ekle</span>
                 </button>
-                <button class="action-btn" onclick="window.location.hash='announcements'">
+                <button class="action-btn" onclick="window.location.hash='announcements?action=new'">
                     <span class="icon">📢</span>
                     <span>Duyuru Yap</span>
                 </button>
