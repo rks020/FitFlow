@@ -81,7 +81,7 @@ async function loadMembersList(searchQuery = '') {
                     </div>
                     <div class="member-info">
                         <h3>${member.first_name} ${member.last_name}</h3>
-                        <p>${member.email}</p>
+                        <p>${member.email || ''}</p>
                     </div>
                 </div>
 

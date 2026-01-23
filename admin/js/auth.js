@@ -21,6 +21,15 @@ async function checkSession() {
             .single();
 
         if (profile && (profile.role === 'owner' || profile.role === 'trainer') && profile.organization_id) {
+            // Fetch Organization Name
+            const { data: orgData } = await supabaseClient
+                .from('organizations')
+                .select('name')
+                .eq('id', profile.organization_id)
+                .single();
+
+            if (orgData) profile.org_name = orgData.name;
+
             setupUserInterface(session.user, profile);
             loadDashboard(); // Load initial content
         } else {
@@ -41,6 +50,12 @@ function setupUserInterface(user, profile) {
     if (userNameElement) {
         const userName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email;
         userNameElement.textContent = userName;
+    }
+
+    // Set organization info
+    const orgNameElement = document.getElementById('org-name');
+    if (orgNameElement && profile.org_name) {
+        orgNameElement.textContent = profile.org_name;
     }
 }
 
