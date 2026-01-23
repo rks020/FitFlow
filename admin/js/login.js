@@ -94,9 +94,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!profile.organization_id) {
-                await supabaseClient.auth.signOut();
-                showToast('Organizasyon bilgisi bulunamadı.', 'error');
-                return;
+                // If owner, check if they own an organization
+                if (profile.role === 'owner') {
+                    const { data: org } = await supabaseClient
+                        .from('organizations')
+                        .select('id')
+                        .eq('owner_id', data.user.id)
+                        .single();
+
+                    if (org) {
+                        // Update profile if found
+                        await supabaseClient
+                            .from('profiles')
+                            .update({ organization_id: org.id })
+                            .eq('id', data.user.id);
+
+                        profile.organization_id = org.id;
+                    } else {
+                        await supabaseClient.auth.signOut();
+                        showToast('Organizasyon bilgisi bulunamadı.', 'error');
+                        return;
+                    }
+                } else {
+                    await supabaseClient.auth.signOut();
+                    showToast('Organizasyon bilgisi bulunamadı.', 'error');
+                    return;
+                }
             }
 
             showToast('Giriş başarılı!', 'success');
