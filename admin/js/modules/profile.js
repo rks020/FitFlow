@@ -13,9 +13,9 @@ export async function loadProfile() {
         <!-- Edit Profile Modal -->
         <div id="edit-profile-modal" class="modal">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3>Profili Düzenle</h3>
-                    <span class="close-modal">&times;</span>
+                    <span class="close-modal" style="cursor: pointer; font-size: 28px; color: var(--text-secondary);">&times;</span>
                 </div>
                 <div class="modal-body">
                     <form id="edit-profile-form">
@@ -386,15 +386,16 @@ function renderProfile(user, profile, membersCount, trainersCount) {
         setTimeout(() => modal.classList.add('show'), 10);
     });
 
-    // Setup Avatar Upload
+    // Setup Avatar Upload - moved here from setupEditModal
     const avatarInput = document.getElementById('avatar-input');
     const avatarBtn = document.getElementById('edit-avatar-btn');
 
-    if (avatarBtn) {
-        avatarBtn.addEventListener('click', () => avatarInput.click());
-    }
+    if (avatarBtn && avatarInput) {
+        avatarBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            avatarInput.click();
+        });
 
-    if (avatarInput) {
         avatarInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
