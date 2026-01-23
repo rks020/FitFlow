@@ -102,7 +102,8 @@ export async function loadAnnouncements() {
     setupModal();
 
     // Check if we should open the modal automatically
-    if (window.location.hash.includes('action=new')) {
+    // Using window.currentQuery because app.js might reset the hash before we get here
+    if (window.location.hash.includes('action=new') || (window.currentQuery && window.currentQuery.includes('action=new'))) {
         const modal = document.getElementById('announcement-modal');
         if (modal) {
             modal.style.display = 'flex';
