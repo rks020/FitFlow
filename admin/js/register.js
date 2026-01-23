@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Register error:', error);
 
             if (error.message === 'User already registered' || error.message.includes('already registered')) {
-                showToast('Bu email adresi ile daha önce kayıt olunmuş. Lütfen giriş yapın.', 'error');
+                showToast('Bu email adresi sistemde kayıtlıdır.', 'error');
             } else {
                 showToast('Kayıt hatası: ' + error.message, 'error');
             }
