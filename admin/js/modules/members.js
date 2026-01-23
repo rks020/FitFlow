@@ -73,7 +73,7 @@ async function loadMembersList(searchQuery = '') {
         }
 
         listContainer.innerHTML = members.map(member => `
-            <div class="member-card">
+            <div class="member-card" onclick="editMember('${member.id}')" style="cursor: pointer;">
                 <div class="member-header">
                     <div class="member-avatar">
                         ${(member.name?.[0] || 'Ü').toUpperCase()}
@@ -87,10 +87,10 @@ async function loadMembersList(searchQuery = '') {
                 </div>
 
                 <div class="member-actions">
-                    <button class="btn btn-small btn-secondary" onclick="editMember('${member.id}')">
+                    <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); editMember('${member.id}')">
                         Düzenle
                     </button>
-                    <button class="btn btn-small btn-danger" onclick="deleteMember('${member.id}')">
+                    <button class="btn btn-small btn-danger" onclick="event.stopPropagation(); deleteMember('${member.id}')">
                         Sil
                     </button>
                 </div>
