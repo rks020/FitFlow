@@ -17,79 +17,109 @@ let registerFirstname, registerLastname, registerGymname, registerCity, register
 
 // Initialize Auth
 export function initAuth() {
-    // Get DOM elements
-    loginForm = document.getElementById('login-form-element');
-    registerForm = document.getElementById('register-form-element');
-    loginBtn = document.getElementById('login-btn');
-    registerBtn = document.getElementById('register-btn');
+    console.log('Initializing Auth...');
 
-    loginEmail = document.getElementById('login-email');
-    loginPassword = document.getElementById('login-password');
-    registerEmail = document.getElementById('register-email');
-    registerPassword = document.getElementById('register-password');
-    registerFirstname = document.getElementById('register-firstname');
-    registerLastname = document.getElementById('register-lastname');
-    registerGymname = document.getElementById('register-gymname');
-    registerCity = document.getElementById('register-city');
-    registerDistrict = document.getElementById('register-district');
+    // 1. Critical: Get Login Elements & Attach Listeners FIRST
+    try {
+        loginForm = document.getElementById('login-form-element');
+        loginBtn = document.getElementById('login-btn');
+        loginEmail = document.getElementById('login-email');
+        loginPassword = document.getElementById('login-password');
 
-    // Populate cities dropdown
-    Object.keys(TURKEY_CITIES).forEach(city => {
-        const option = document.createElement('option');
-        option.value = city;
-        option.textContent = city;
-        registerCity.appendChild(option);
-    });
+        if (loginForm) {
+            loginForm.addEventListener('submit', handleLogin);
+            console.log('Login listener attached.');
+        } else {
+            console.error('Login form element not found!');
+        }
 
-    // City change handler
-    registerCity.addEventListener('change', (e) => {
-        const selectedCity = e.target.value;
-        registerDistrict.disabled = !selectedCity;
-        registerDistrict.innerHTML = '<option value="">Seçiniz</option>';
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent focus loss
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (input) {
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        btn.querySelector('.icon').textContent = '🙈';
+                    } else {
+                        input.type = 'password';
+                        btn.querySelector('.icon').textContent = '👁️';
+                    }
+                }
+            });
+            console.log('Password toggle attached.');
+        });
 
-        if (selectedCity && TURKEY_CITIES[selectedCity]) {
-            TURKEY_CITIES[selectedCity].forEach(district => {
+    } catch (e) {
+        console.error('Error initializing login:', e);
+    }
+
+    // 2. Register Elements (Wrap in try-catch so it doesn't kill login if it fails)
+    try {
+        registerForm = document.getElementById('register-form-element');
+        registerBtn = document.getElementById('register-btn');
+        registerEmail = document.getElementById('register-email');
+        registerPassword = document.getElementById('register-password');
+        registerFirstname = document.getElementById('register-firstname');
+        registerLastname = document.getElementById('register-lastname');
+        registerGymname = document.getElementById('register-gymname');
+        registerCity = document.getElementById('register-city');
+        registerDistrict = document.getElementById('register-district');
+
+        if (registerForm) {
+            registerForm.addEventListener('submit', handleRegister);
+        }
+
+        // City Logic
+        if (registerCity && registerDistrict) {
+            // Populate cities dropdown
+            Object.keys(TURKEY_CITIES).forEach(city => {
                 const option = document.createElement('option');
-                option.value = district;
-                option.textContent = district;
-                registerDistrict.appendChild(option);
+                option.value = city;
+                option.textContent = city;
+                registerCity.appendChild(option);
+            });
+
+            // City change handler
+            registerCity.addEventListener('change', (e) => {
+                const selectedCity = e.target.value;
+                registerDistrict.disabled = !selectedCity;
+                registerDistrict.innerHTML = '<option value="">Seçiniz</option>';
+
+                if (selectedCity && TURKEY_CITIES[selectedCity]) {
+                    TURKEY_CITIES[selectedCity].forEach(district => {
+                        const option = document.createElement('option');
+                        option.value = district;
+                        option.textContent = district;
+                        registerDistrict.appendChild(option);
+                    });
+                }
             });
         }
-    });
+    } catch (e) {
+        console.error('Error initializing registration:', e);
+    }
 
-    // Toggle password visibility
-    document.querySelectorAll('.toggle-password').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetId = btn.getAttribute('data-target');
-            const input = document.getElementById(targetId);
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.querySelector('.icon').textContent = '🙈';
-            } else {
-                input.type = 'password';
-                btn.querySelector('.icon').textContent = '👁️';
-            }
+    // 3. Form Toggles
+    try {
+        document.getElementById('show-register')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
         });
-    });
 
-    // Form toggle
-    document.getElementById('show-register')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('login-form').style.display = 'none';
-        document.getElementById('register-form').style.display = 'block';
-    });
+        document.getElementById('show-login')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+        });
+    } catch (e) {
+        console.error('Error initializing form toggles:', e);
+    }
 
-    document.getElementById('show-login')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('register-form').style.display = 'none';
-        document.getElementById('login-form').style.display = 'block';
-    });
-
-    // Form submissions
-    loginForm.addEventListener('submit', handleLogin);
-    registerForm.addEventListener('submit', handleRegister);
-
-    // Check existing session
+    // 4. Check existing session
     checkSession();
 }
 

@@ -607,3 +607,21 @@ body {
 .toggle-password {
     z-index: 20 !important;
 }
+
+/* CRITICAL FIXES FOR LOGIN */
+.password-field input {
+    position: relative;
+    z-index: 1;
+}
+
+.toggle-password {
+    z-index: 100 !important; /* Ensure it is definitely above inputs */
+    cursor: pointer !important;
+    pointer-events: auto !important; /* Force pointer events */
+}
+
+/* Ensure form is relative so z-index context works */
+.auth-form {
+    position: relative;
+    z-index: 5;
+}
