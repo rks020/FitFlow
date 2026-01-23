@@ -19,7 +19,7 @@ const pageLoaders = {
 };
 
 // Initialize App
-window.addEventListener('DOMContentLoaded', () => {
+function init() {
     // Initialize authentication
     initAuth();
 
@@ -31,7 +31,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Handle hash navigation
     window.addEventListener('hashchange', handleNavigation);
-});
+}
+
+// Handle race condition: check if DOM is already loaded
+// Module scripts are deferred by default, so DOMContentLoaded might have already fired
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', init);
+} else {
+    // DOM is already loaded, initialize immediately
+    init();
+}
 
 // Setup Navigation
 function setupNavigation() {
