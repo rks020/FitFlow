@@ -86,24 +86,55 @@ window.editTrainer = async (id) => {
     showToast('Düzenleme özelliği yakında eklenecek', 'info');
 };
 
+// Custom Modal Helper
+function showConfirmation(title, message, onConfirm) {
+    const modal = document.getElementById('confirm-modal');
+    if (!modal) return;
+
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+
+    modal.classList.add('active');
+
+    // Clean up old listeners
+    const yesBtn = document.getElementById('confirm-yes');
+    const cancelBtn = document.getElementById('confirm-cancel');
+    const newYesBtn = yesBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+
+    yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    newYesBtn.addEventListener('click', async () => {
+        modal.classList.remove('active');
+        await onConfirm();
+    });
+
+    newCancelBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+}
+
 window.deleteTrainer = async (id) => {
-    if (!confirm('Bu antrenörü ve hesabını kalıcı olarak silmek istediğinizden emin misiniz?')) return;
+    showConfirmation('Antrenörü Sil', 'Bu antrenörü ve hesabını kalıcı olarak silmek istediğinizden emin misiniz?', async () => {
+        try {
+            showToast('Siliniyor...', 'info');
 
-    try {
-        const { data, error } = await supabaseClient.functions.invoke('delete-user', {
-            body: { user_id: id }
-        });
+            const { data, error } = await supabaseClient.functions.invoke('delete-user', {
+                body: { user_id: id }
+            });
 
-        if (error) {
-            console.error('Edge Function Error:', error);
-            throw error;
+            if (error) {
+                console.error('Edge Function Error:', error);
+                throw error;
+            }
+
+            showToast('Antrenör başarıyla silindi', 'success');
+            await loadTrainersList();
+
+        } catch (error) {
+            console.error('Error deleting trainer:', error);
+            showToast('Antrenör silinirken hata oluştu: ' + error.message, 'error');
         }
-
-        showToast('Antrenör başarıyla silindi', 'success');
-        await loadTrainersList();
-
-    } catch (error) {
-        console.error('Error deleting trainer:', error);
-        showToast('Antrenör silinirken hata oluştu: ' + error.message, 'error');
-    }
+    });
 };
