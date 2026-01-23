@@ -162,7 +162,7 @@ function setupModal() {
     const form = document.getElementById('announcement-form');
 
     btn.onclick = () => {
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         setTimeout(() => modal.classList.add('show'), 10);
     };
 

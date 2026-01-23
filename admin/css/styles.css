@@ -425,7 +425,8 @@ body {
     font-weight: 500;
 }
 
-.form-group input {
+.form-group input,
+.form-group textarea {
     width: 100%;
     padding: 12px 16px;
     background: rgba(0, 0, 0, 0.3);
@@ -433,9 +434,11 @@ body {
     border-radius: 12px;
     color: white;
     font-family: inherit;
+    resize: vertical;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group textarea:focus {
     outline: none;
     border-color: var(--primary-yellow);
 }
