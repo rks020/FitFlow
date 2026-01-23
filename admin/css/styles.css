@@ -481,3 +481,83 @@ body {
         justify-content: center;
     }
 }
+/* Auth Container Updates */
+.auth-container {
+    max-width: 440px !important;
+    padding: 40px !important;
+    background: rgba(20, 20, 25, 0.95) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8) !important;
+}
+
+/* Password Field */
+.password-field {
+    position: relative;
+    width: 100%;
+}
+
+.password-field input {
+    padding-right: 48px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 48px;
+    background: none !important;
+    border: none !important;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    font-size: 18px;
+}
+
+.toggle-password:hover {
+    color: var(--text-primary);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--gradient-gold);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.35);
+}
+
+/* Auth Footer Links */
+.auth-footer {
+    margin-top: 24px;
+    text-align: center;
+}
+
+.auth-footer a {
+    color: var(--text-secondary) !important;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+
+.auth-footer a:hover {
+    color: var(--text-primary) !important;
+}
+
+.auth-footer a strong {
+    color: var(--primary-yellow);
+    font-weight: 600;
+}
