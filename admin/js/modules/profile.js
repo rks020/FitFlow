@@ -48,6 +48,9 @@ export async function loadProfile() {
             </div>
         </div>
 
+        <!-- Hidden File Input for Avatar Upload -->
+        <input type="file" id="avatar-input" hidden accept="image/*">
+
         <style>
             .profile-container {
                 max-width: 500px;
