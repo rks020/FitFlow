@@ -34,7 +34,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _memberCount = 0;
   int _trainerCount = 0;
   String _subscriptionTier = 'FREE';
+  String? _subscriptionType;
   DateTime? _trialEndDate;
+  DateTime? _subscriptionEndDate;
 
   @override
   void initState() {
@@ -80,10 +82,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .eq('organization_id', _profile!.organizationId!)
           .eq('role', 'trainer');
       
-      // Get subscription tier from organization
+      // Get subscription info from organization
       final orgResponse = await Supabase.instance.client
           .from('organizations')
-          .select('subscription_tier, trial_end_date')
+          .select('subscription_tier, subscription_type, trial_end_date, subscription_end_date')
           .eq('id', _profile!.organizationId!)
           .single();
       
@@ -92,8 +94,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _memberCount = (membersResponse as List).length;
           _trainerCount = (trainersResponse as List).length;
           _subscriptionTier = (orgResponse['subscription_tier'] ?? 'free').toString().toUpperCase();
+          _subscriptionType = orgResponse['subscription_type'];
           if (orgResponse['trial_end_date'] != null) {
             _trialEndDate = DateTime.parse(orgResponse['trial_end_date']);
+          }
+          if (orgResponse['subscription_end_date'] != null) {
+            _subscriptionEndDate = DateTime.parse(orgResponse['subscription_end_date']);
           }
         });
         debugPrint('Subscription loaded: Members=$_memberCount, Trainers=$_trainerCount, Tier=$_subscriptionTier');
@@ -108,6 +114,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final now = DateTime.now();
     final difference = _trialEndDate!.difference(now);
     return difference.inDays.clamp(0, 30);
+  }
+
+  int _getSubscriptionDaysLeft() {
+    if (_subscriptionEndDate == null) return 0;
+    final now = DateTime.now();
+    final difference = _subscriptionEndDate!.difference(now);
+    return difference.inDays.clamp(0, 999);
   }
 
   Future<void> _logout() async {
@@ -357,7 +370,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                           if (_subscriptionTier == 'PRO')
                                             Text(
-                                              '₺399/ay',
+                                              _subscriptionType == 'yearly' 
+                                                ? 'Yıllık abonelik - kalan gün: ${_getSubscriptionDaysLeft()}'
+                                                : 'Aylık abonelik - kalan gün: ${_getSubscriptionDaysLeft()}',
                                               style: AppTextStyles.caption1.copyWith(
                                                 color: AppColors.primaryYellow,
                                               ),
