@@ -50,61 +50,61 @@ export async function loadProfile() {
 
         <!-- Pro Upgrade Modal -->
         <div id="pro-upgrade-modal" class="modal">
-            <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h2 style="margin: 0; color: var(--neon-cyan); flex: 1;">Pro'ya Yükselt 🏆</h2>
-                    <span class="close-modal close-pro-modal" style="position: static; margin-left: 10px;">&times;</span>
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header" style="position: relative; padding: 20px;">
+                    <span class="close-modal close-pro-modal" style="position: absolute; left: 15px; top: 15px; cursor: pointer; font-size: 28px; color: #999; transition: color 0.3s;">&times;</span>
+                    <h2 style="margin: 0; color: var(--neon-cyan); text-align: center;">Pro'ya Yükselt 🏆</h2>
                 </div>
-                <div class="modal-body" style="padding: 30px;">
-                    <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(33, 150, 243, 0.1)); padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 2px solid rgba(255, 215, 0, 0.3); text-align: center;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">📱</div>
-                        <h3 style="color: var(--neon-cyan); margin: 0 0 10px 0;">Mobil Uygulama Üzerinden Abone Olun</h3>
-                        <p style="margin: 0; color: #ccc; line-height: 1.6;">Pro'ya geçmek için FitFlow mobil uygulamasını indirin ve abonelik satın alın. Web panelinden abonelik satın alınamaz.</p>
+                <div class="modal-body" style="padding: 20px;">
+                    <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(33, 150, 243, 0.1)); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 2px solid rgba(255, 215, 0, 0.3); text-align: center;">
+                        <div style="font-size: 36px; margin-bottom: 8px;">📱</div>
+                        <h3 style="color: var(--neon-cyan); margin: 0 0 8px 0; font-size: 18px;">Mobil Uygulama Üzerinden Abone Olun</h3>
+                        <p style="margin: 0; color: #ccc; line-height: 1.5; font-size: 14px;">Pro'ya geçmek için FitFlow mobil uygulamasını indirin ve abonelik satın alın. Web panelinden abonelik satın alınamaz.</p>
                     </div>
 
-                    <h3 style="color: var(--primary-yellow); margin: 0 0 20px 0; text-align: center;">Pro vs Ücretsiz Karşılaştırma</h3>
+                    <h3 style="color: var(--primary-yellow); margin: 0 0 15px 0; text-align: center; font-size: 18px;">Pro vs Ücretsiz Karşılaştırma</h3>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <!-- Free Plan -->
-                        <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 12px; border: 2px solid rgba(33, 150, 243, 0.3);">
-                            <div style="text-align: center; margin-bottom: 15px;">
-                                <div style="font-size: 32px; margin-bottom: 8px;">🏅</div>
-                                <h4 style="margin: 0; color: #2196F3;">Ücretsiz Paket</h4>
-                                <p style="margin: 5px 0 0 0; color: #999; font-size: 14px;">30 Gün Deneme</p>
+                        <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; border: 2px solid rgba(33, 150, 243, 0.3);">
+                            <div style="text-align: center; margin-bottom: 12px;">
+                                <div style="font-size: 28px; margin-bottom: 6px;">🏅</div>
+                                <h4 style="margin: 0; color: #2196F3; font-size: 16px;">Ücretsiz Paket</h4>
+                                <p style="margin: 4px 0 0 0; color: #999; font-size: 12px;">30 Gün Deneme</p>
                             </div>
-                            <ul style="list-style: none; padding: 0; margin: 0; color: #ccc;">
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ 10 Üye Limiti</li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ 2 Antrenör Limiti</li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Temel Özellikler</li>
-                                <li style="padding: 8px 0; color: #666;">✗ Sınırsız Üye</li>
-                                <li style="padding: 8px 0; color: #666;">✗ Sınırsız Antrenör</li>
-                                <li style="padding: 8px 0; color: #666;">✗ Gelişmiş Raporlar</li>
-                                <li style="padding: 8px 0; color: #666;">✗ Öncelikli Destek</li>
+                            <ul style="list-style: none; padding: 0; margin: 0; color: #ccc; font-size: 13px;">
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ 10 Üye Limiti</li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ 2 Antrenör Limiti</li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Temel Özellikler</li>
+                                <li style="padding: 6px 0; color: #666;">✗ Sınırsız Üye</li>
+                                <li style="padding: 6px 0; color: #666;">✗ Sınırsız Antrenör</li>
+                                <li style="padding: 6px 0; color: #666;">✗ Gelişmiş Raporlar</li>
+                                <li style="padding: 6px 0; color: #666;">✗ Öncelikli Destek</li>
                             </ul>
                         </div>
 
                         <!-- Pro Plan -->
-                        <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(33, 150, 243, 0.1)); padding: 20px; border-radius: 12px; border: 2px solid var(--primary-yellow); position: relative;">
-                            <div style="position: absolute; top: -12px; right: 20px; background: var(--primary-yellow); color: #000; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">ÖNERİLEN</div>
-                            <div style="text-align: center; margin-bottom: 15px;">
-                                <div style="font-size: 32px; margin-bottom: 8px;">🏆</div>
-                                <h4 style="margin: 0; color: var(--primary-yellow);">Pro Paket</h4>
-                                <p style="margin: 5px 0 0 0; color: #999; font-size: 14px;">Aylık/Yıllık</p>
+                        <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(33, 150, 243, 0.1)); padding: 15px; border-radius: 10px; border: 2px solid var(--primary-yellow); position: relative;">
+                            <div style="position: absolute; top: -10px; right: 15px; background: var(--primary-yellow); color: #000; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: bold;">ÖNERİLEN</div>
+                            <div style="text-align: center; margin-bottom: 12px;">
+                                <div style="font-size: 28px; margin-bottom: 6px;">🏆</div>
+                                <h4 style="margin: 0; color: var(--primary-yellow); font-size: 16px;">Pro Paket</h4>
+                                <p style="margin: 4px 0 0 0; color: #999; font-size: 12px;">Aylık/Yıllık</p>
                             </div>
                             <ul style="list-style: none; padding: 0; margin: 0; color: #ccc;">
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ <strong style="color: var(--primary-yellow);">Sınırsız Üye</strong></li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ <strong style="color: var(--primary-yellow);">Sınırsız Antrenör</strong></li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Tüm Temel Özellikler</li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Gelişmiş Raporlar</li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Öncelikli Destek</li>
-                                <li style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Özel Antrenman Planları</li>
-                                <li style="padding: 8px 0;">✓ API Erişimi</li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ <strong style="color: var(--primary-yellow);">Sınırsız Üye</strong></li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ <strong style="color: var(--primary-yellow);">Sınırsız Antrenör</strong></li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Tüm Temel Özellikler</li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Gelişmiş Raporlar</li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Öncelikli Destek</li>
+                                <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">✓ Özel Antrenman Planları</li>
+                                <li style="padding: 6px 0;">✓ API Erişimi</li>
                             </ul>
                         </div>
                     </div>
 
-                    <div style="margin-top: 25px; padding: 15px; background: rgba(255, 215, 0, 0.05); border-left: 4px solid var(--primary-yellow); border-radius: 8px;">
-                        <p style="margin: 0; color: #ccc; font-size: 14px; line-height: 1.6;">
+                    <div style="margin-top: 18px; padding: 12px; background: rgba(255, 215, 0, 0.05); border-left: 3px solid var(--primary-yellow); border-radius: 6px;">
+                        <p style="margin: 0; color: #ccc; font-size: 13px; line-height: 1.5;">
                             <strong style="color: var(--primary-yellow);">💡 İpucu:</strong> Mobil uygulamayı App Store veya Google Play Store'dan indirerek hemen Pro'ya geçebilir ve tüm özelliklerin keyfini çıkarabilirsiniz.
                         </p>
                     </div>

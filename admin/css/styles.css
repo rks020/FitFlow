@@ -873,3 +873,36 @@ select option {
     box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
     filter: brightness(1.1);
 }
+
+/* Pro Upgrade Button */
+.pro-upgrade-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary-yellow) 0%, #FFA500 100%);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    margin-top: 20px;
+}
+
+.pro-upgrade-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.5);
+    filter: brightness(1.1);
+}
+
+.pro-upgrade-btn:active {
+    transform: translateY(0);
+}
+
+/* Modal Close Button Hover */
+.close-modal:hover,
+.close-pro-modal:hover {
+    color: var(--primary-yellow) !important;
+    transform: scale(1.2);
+}
