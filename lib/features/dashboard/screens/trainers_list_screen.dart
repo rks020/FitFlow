@@ -457,7 +457,31 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
         throw Exception("Salon sahibi bir organizasyona sahip değil.");
       }
 
-      // 2. Create trainer via Edge Function with temporary password
+      // 2. Check subscription tier and trainer limit
+      final orgResponse = await _supabase
+          .from('organizations')
+          .select('subscription_tier')
+          .eq('id', orgId)
+          .single();
+      
+      final subscriptionTier = orgResponse['subscription_tier'] as String?;
+      
+      // If free tier, check trainer count
+      if (subscriptionTier == 'free') {
+        final trainerCountResponse = await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('organization_id', orgId)
+            .or('role.eq.trainer,role.eq.admin,role.eq.owner,role.eq.manager');
+        
+        final currentTrainerCount = (trainerCountResponse as List).length;
+        
+        if (currentTrainerCount >= 2) {
+          throw Exception('Ücretsiz planda maksimum 2 eğitmen ekleyebilirsiniz. Pro\'ya geçerek sınırsız eğitmen ekleyebilirsiniz.');
+        }
+      }
+
+      // 3. Create trainer via Edge Function with temporary password
       final response = await _supabase.functions.invoke(
         'create-trainer',
         body: {
