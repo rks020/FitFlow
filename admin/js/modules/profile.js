@@ -417,12 +417,12 @@ function renderProfile(user, profile, membersCount, trainersCount) {
                 <div class="stat-box">
                     <div class="stat-box-icon">👥</div>
                     <div class="stat-box-label">Üye</div>
-                    <div class="stat-box-value">${membersCount} <span style="font-size: 12px; color: #666;">/ 10</span></div>
+                    <div class="stat-box-value">${membersCount} <span style="font-size: 12px; color: #666;">/ ${org.subscription_tier === 'pro' ? '∞' : '10'}</span></div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-box-icon">💪</div>
                     <div class="stat-box-label">Antrenör</div>
-                    <div class="stat-box-value">${trainersCount} <span style="font-size: 12px; color: #666;">/ 2</span></div>
+                    <div class="stat-box-value">${trainersCount} <span style="font-size: 12px; color: #666;">/ ${org.subscription_tier === 'pro' ? '∞' : '2'}</span></div>
                 </div>
             </div>
         </div>
