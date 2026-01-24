@@ -149,24 +149,26 @@ class IAPManager extends ChangeNotifier {
       final orgId = profile['organization_id'];
       if (orgId == null) return;
       
-      // Determine duration
+      // Determine subscription type and duration
       final productId = purchaseDetails.productID;
       final isYearly = productId.contains('yearly');
+      final subscriptionType = isYearly ? 'yearly' : 'monthly';
       
       final now = DateTime.now();
       final expiryDate = isYearly 
           ? DateTime(now.year + 1, now.month, now.day)
           : DateTime(now.year, now.month + 1, now.day);
 
-      // Update Database
+      // Update Database with all subscription fields
       await Supabase.instance.client.from('organizations').update({
-        'subscription_tier': 'PRO',
+        'subscription_tier': 'pro',
+        'subscription_type': subscriptionType,
+        'subscription_end_date': expiryDate.toIso8601String(),
         'subscription_status': 'active',
-        'trial_end_date': expiryDate.toIso8601String(), // Using trial_end_date as expiry for simpler logic or add a new field
         'updated_at': now.toIso8601String(),
       }).eq('id', orgId);
       
-      debugPrint('Subscription updated successfully for Org: $orgId');
+      debugPrint('Subscription updated successfully for Org: $orgId - Type: $subscriptionType, Expiry: $expiryDate');
 
     } catch (e) {
       debugPrint('Error updating subscription: $e');
