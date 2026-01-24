@@ -109,6 +109,30 @@ export async function loadProfile() {
                         </p>
                     </div>
                 </div>
+
+        <!-- Delete Account Confirmation Modal -->
+        <div id="delete-account-modal" class="modal">
+            <div class="modal-content" style="max-width: 420px;">
+                <div class="modal-header" style="position: relative; padding: 20px; border-bottom: 1px solid var(--glass-border);">
+                    <span class="close-modal close-delete-modal" style="position: absolute; right: 15px; top: 15px; cursor: pointer; font-size: 28px; color: #999; transition: color 0.3s;">&times;</span>
+                    <h2 style="margin: 0; color: #ff4444; text-align: center; font-size: 22px;">⚠️ Hesabı Sil</h2>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <p style="color: var(--text-primary); margin-bottom: 16px; line-height: 1.6;">
+                        Hesabınızı silmek istediğinize emin misiniz?
+                    </p>
+                    <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+                        <p style="color: #ff4444; margin: 0; font-size: 14px; line-height: 1.5;">
+                            <strong>⚠️ Uyarı:</strong> Bu işlem geri alınamaz! Tüm verileriniz kalıcı olarak silinecektir.
+                        </p>
+                    </div>
+                    <div class="form-actions" style="display: flex; gap: 12px;">
+                        <button type="button" class="btn btn-secondary close-delete-modal" style="flex: 1;">İptal</button>
+                        <button type="button" class="btn" id="confirm-delete-btn" style="flex: 1; background: #ff4444; color: white;">Evet, Sil</button>
+                    </div>
+                </div>
+            </div>
+        </div>
             </div>
         </div>
 
@@ -458,7 +482,7 @@ function renderProfile(user, profile, membersCount, trainersCount) {
     document.getElementById('edit-hobbies').value = profile.hobbies || '';
 
     // Setup Delete Listener
-    document.getElementById('delete-account-btn').addEventListener('click', () => handleDeleteAccount(user.id));
+    document.getElementById('delete-account-btn').addEventListener('click', () => showDeleteAccountModal(user.id));
 
     // Setup Pro Upgrade Modal
     setupProUpgradeModal();
@@ -577,25 +601,59 @@ function setupEditModal() {
     };
 }
 
-async function handleDeleteAccount(userId) {
-    if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
-        try {
-            const { error } = await supabaseClient.functions.invoke('delete-user', {
-                body: { user_id: userId }
-            });
+function showDeleteAccountModal(userId) {
+    const modal = document.getElementById('delete-account-modal');
+    const confirmBtn = document.getElementById('confirm-delete-btn');
+    const closeBtns = document.querySelectorAll('.close-delete-modal');
 
-            if (error) throw error;
+    // Show modal
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
 
-            showToast('Hesabınız başarıyla silindi.', 'success');
-            setTimeout(() => {
-                supabaseClient.auth.signOut();
-                window.location.href = 'login.html';
-            }, 1500);
+    // Close modal function
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    };
 
-        } catch (error) {
-            console.error('Delete error:', error);
-            showToast('Hesap silinirken hata oluştu', 'error');
+    // Confirm button handler
+    confirmBtn.onclick = async () => {
+        closeModal();
+        await handleDeleteAccount(userId);
+    };
+
+    // Close button handlers
+    closeBtns.forEach(btn => {
+        btn.onclick = closeModal;
+    });
+
+    // Close on background click
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            closeModal();
         }
+    };
+}
+
+async function handleDeleteAccount(userId) {
+    try {
+        const { error } = await supabaseClient.functions.invoke('delete-user', {
+            body: { user_id: userId }
+        });
+
+        if (error) throw error;
+
+        showToast('Hesabınız başarıyla silindi.', 'success');
+        setTimeout(() => {
+            supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        }, 1500);
+
+    } catch (error) {
+        console.error('Delete error:', error);
+        showToast('Hesap silinirken hata oluştu', 'error');
     }
 }
 

@@ -932,3 +932,29 @@ select option {
     color: var(--primary-yellow) !important;
     transform: scale(1.2);
 }
+
+/* Delete Account Button */
+.delete-account-link {
+    width: 100%;
+    padding: 14px;
+    background: rgba(255, 68, 68, 0.15);
+    color: #ff4444;
+    border: 2px solid rgba(255, 68, 68, 0.3);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 12px;
+}
+
+.delete-account-link:hover {
+    background: rgba(255, 68, 68, 0.25);
+    border-color: #ff4444;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 68, 68, 0.2);
+}
+
+.delete-account-link:active {
+    transform: translateY(0);
+}
