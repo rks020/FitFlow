@@ -46,8 +46,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('trainer-id').value = trainer.id;
         document.getElementById('trainer-firstname').value = trainer.first_name;
         document.getElementById('trainer-lastname').value = trainer.last_name;
-        document.getElementById('trainer-email').value = trainer.email || ''; // Email usually in auth.users, but profiles might have it if synced. If not, we might need to leave it blank or fetch from somewhere else if possible. Wait, profiles table DOES have email usually if we put it there. Let's assume it is there.
         document.getElementById('trainer-specialty').value = trainer.specialty || '';
+
+        // Handle Email
+        if (trainer.email) {
+            document.getElementById('trainer-email').value = trainer.email;
+        } else {
+            // Fetch email from Auth via Edge Function
+            try {
+                const { data, error } = await supabaseClient.functions.invoke('admin-get-user', {
+                    body: { user_id: trainerId }
+                });
+
+                if (data && data.user && data.user.email) {
+                    document.getElementById('trainer-email').value = data.user.email;
+                }
+            } catch (err) {
+                console.warn('Could not fetch email from auth:', err);
+                document.getElementById('trainer-email').placeholder = 'Email unavailable';
+            }
+        }
 
     } catch (error) {
         console.error('Error loading trainer:', error);
