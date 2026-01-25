@@ -21,6 +21,27 @@ Deno.serve(async (req) => {
 
         const { full_name, email, message } = await req.json();
 
+        // Server-Side Validation
+        if (email) {
+            const invalidDomains = ['test.com', 'example.com', 'deneme.com', 'mail.com'];
+            const invalidUsers = ['test', 'admin', 'user', 'deneme', 'asd', '123'];
+            const emailLower = email.toLowerCase().trim();
+            const [userPart, domainPart] = emailLower.split('@');
+
+            if (invalidDomains.includes(domainPart) ||
+                invalidUsers.includes(userPart) ||
+                userPart.length < 3 ||
+                !domainPart.includes('.')) {
+                return new Response(
+                    JSON.stringify({ error: "Geçersiz e-posta adresi. Lütfen gerçek bir adres kullanın." }),
+                    {
+                        status: 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    }
+                );
+            }
+        }
+
         if (!email || !message) {
             return new Response(
                 JSON.stringify({ error: "Email and message are required" }),

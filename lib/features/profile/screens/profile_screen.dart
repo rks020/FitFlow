@@ -16,6 +16,7 @@ import 'signature_log_screen.dart';
 import 'trainer_schedule_screen.dart';
 import 'change_password_screen.dart';
 import 'upgrade_to_pro_screen.dart';
+import 'support_screen.dart';
 
 import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 import 'package:fitflow/shared/widgets/ambient_background.dart';
@@ -497,7 +498,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _ProfileOption(
                               icon: Icons.help_rounded,
                               title: 'Yardım / Destek',
-                              onTap: () {},
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SupportScreen(),
+                                  ),
+                                );
+                              },
                             ),
                             // Delete Organization (Owner Only)
                             if (_profile?.role == 'owner') ...[
