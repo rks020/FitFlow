@@ -26,32 +26,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   void initState() {
     super.initState();
-    // If this screen is opened (via link), it means the user has clicked the invitation.
-    // We strictly mark their profile as 'password_changed: true' (even before they type a new one)
-    // to allow them to switch to Google Login if they wish.
-    if (widget.isFirstLogin) {
-      _markInvitationAccepted();
-    }
-  }
-
-  Future<void> _markInvitationAccepted() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId != null) {
-        debugPrint('Marking invitation as accepted for user: $userId');
-        await Supabase.instance.client.from('profiles').update({
-          'password_changed': true,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', userId);
-        
-        // Also update Auth Metadata
-        await Supabase.instance.client.auth.updateUser(
-          UserAttributes(data: {'password_changed': true}),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error marking invitation accepted: $e');
-    }
+    // Password will be marked as changed only when user actually updates it (in _updatePassword)
   }
 
   @override
@@ -122,7 +97,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // Prevent back button on first login - user must change password
+        if (widget.isFirstLogin) {
+          CustomSnackBar.showError(context, 'Lütfen önce şifrenizi belirleyin');
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
@@ -180,6 +164,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }
+```
