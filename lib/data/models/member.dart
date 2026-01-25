@@ -12,6 +12,8 @@ class Member {
   final String? trainerId;
   final String? trainerName;
   final String? subscriptionPackage;
+  final int? sessionCount;
+  final String? organizationId;
   final bool passwordChanged;
   
   Member({

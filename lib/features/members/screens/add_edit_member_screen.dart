@@ -410,9 +410,8 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                       const SizedBox(height: 12),
                       CustomButton(
                         text: 'Şifreyi Güncelle',
-                        textColor: Colors.black,
+                        foregroundColor: Colors.black,
                         backgroundColor: AppColors.primaryYellow,
-                        height: 40,
                         onPressed: () {
                           _showResetPasswordDialog(context);
                         },
