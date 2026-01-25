@@ -12,8 +12,7 @@ class Member {
   final String? trainerId;
   final String? trainerName;
   final String? subscriptionPackage;
-  final int? sessionCount;
-  final String? organizationId;
+  final bool passwordChanged;
   
   Member({
     required this.id,
@@ -31,6 +30,7 @@ class Member {
     this.subscriptionPackage,
     this.sessionCount,
     this.organizationId,
+    this.passwordChanged = true, // Default to true to be safe/hide option if unknown
   });
   
   Map<String, dynamic> toMap() {
@@ -64,11 +64,27 @@ class Member {
       notes: map['notes'] as String?,
       subscriptionPackage: map['subscription_package'] as String?,
       sessionCount: map['session_count'] as int?,
+      passwordChanged: map['passwordChanged'] as bool? ?? true,
     );
   }
 
   // Supabase uses snake_case
   factory Member.fromSupabaseMap(Map<String, dynamic> map) {
+    // Check if profiles data is joined and available
+    // It might be in 'profiles' object or flat if view
+    // Based on repository query, it will be in 'profiles' object if joined by id
+    // BUT we already join 'profiles' for trainer_id.
+    // We need to differentiate the joins in Repository.
+    // For now, let's assume we map it from 'profile_data' or similar if we alias it.
+    
+    // Check for password_changed in top level (if view) or joined profile
+    bool pwdChanged = true;
+    if (map['password_changed'] != null) {
+        pwdChanged = map['password_changed'] as bool;
+    } else if (map['auth_profile'] != null) { // We will use alias 'auth_profile' for the member's own profile
+        pwdChanged = map['auth_profile']['password_changed'] as bool? ?? true;
+    }
+
     return Member(
       id: map['id'] as String,
       name: map['name'] as String,
@@ -87,6 +103,7 @@ class Member {
       subscriptionPackage: map['subscription_package'] as String?,
       sessionCount: map['session_count'] as int?,
       organizationId: map['organization_id'] as String?,
+      passwordChanged: pwdChanged,
     );
   }
   
@@ -104,6 +121,7 @@ class Member {
     String? subscriptionPackage,
     int? sessionCount,
     String? organizationId,
+    bool? passwordChanged,
   }) {
     return Member(
       id: id ?? this.id,
@@ -119,6 +137,7 @@ class Member {
       subscriptionPackage: subscriptionPackage ?? this.subscriptionPackage,
       sessionCount: sessionCount ?? this.sessionCount,
       organizationId: organizationId ?? this.organizationId,
+      passwordChanged: passwordChanged ?? this.passwordChanged,
     );
   }
 }

@@ -86,6 +86,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Load Trainers and set selected
         await loadTrainers(member.trainer_id);
 
+        // Show Password Reset Section if eligible
+        const passwordSection = document.getElementById('password-change-section');
+        if (member.password_changed === false) { // Explicit check for false
+            passwordSection.style.display = 'block';
+
+            // Handle Password Update
+            const updatePassBtn = document.getElementById('update-password-btn');
+            updatePassBtn.addEventListener('click', async () => {
+                const newPassInput = document.getElementById('new-temp-password');
+                const newPass = newPassInput.value.trim();
+
+                if (newPass.length < 6) {
+                    showToast('Şifre en az 6 karakter olmalıdır', 'error');
+                    return;
+                }
+
+                try {
+                    updatePassBtn.textContent = 'Güncelleniyor...';
+                    updatePassBtn.disabled = true;
+
+                    const { error } = await supabaseClient.functions.invoke('update-user-password', {
+                        body: { userId: memberId, newPassword: newPass }
+                    });
+
+                    if (error) throw error;
+
+                    showToast('Geçici şifre başarıyla güncellendi', 'success');
+                    newPassInput.value = ''; // operations security
+
+                } catch (error) {
+                    console.error('Password update error:', error);
+                    showToast('Şifre güncellenemedi: ' + error.message, 'error');
+                } finally {
+                    updatePassBtn.textContent = 'Şifreyi Güncelle';
+                    updatePassBtn.disabled = false;
+                }
+            });
+        }
+
     } catch (error) {
         console.error('Error loading member:', error);
         showToast('Üye bilgileri yüklenemedi', 'error');

@@ -379,7 +379,47 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                     }
                     return null;
                   },
-                ),
+                )
+              else if (widget.member != null && !widget.member!.passwordChanged)
+                 Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryYellow.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primaryYellow.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.lock_reset_rounded, color: AppColors.primaryYellow),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Geçici Şifre Güncelleme',
+                            style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Kullanıcı henüz kendi şifresini belirlememiş. Buradan yeni bir geçici şifre atayabilirsiniz.',
+                        style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 12),
+                      CustomButton(
+                        text: 'Şifreyi Güncelle',
+                        textColor: Colors.black,
+                        backgroundColor: AppColors.primaryYellow,
+                        height: 40,
+                        onPressed: () {
+                          _showResetPasswordDialog(context);
+                        },
+                      ),
+                    ],
+                  ),
+                 ),
               if (widget.member == null)
                 const SizedBox(height: 20),
               CustomTextField(
@@ -546,6 +586,83 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
           ),
         ),
       ),
+      ),
+    );
+  }
+
+  Future<void> _showResetPasswordDialog(BuildContext context) async {
+    final passController = TextEditingController();
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: Text('Yeni Geçici Şifre', style: AppTextStyles.title3),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'En az 6 karakter olmalıdır.',
+              style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+             CustomTextField(
+                label: 'Yeni Şifre',
+                hint: '******',
+                controller: passController,
+                obscureText: true,
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                validator: (val) => null,
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('İptal', style: AppTextStyles.callout),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newPass = passController.text.trim();
+              if (newPass.length < 6) {
+                CustomSnackBar.showError(context, 'Şifre en az 6 karakter olmalıdır');
+                return;
+              }
+              
+              Navigator.pop(context); // Close dialog
+              
+              try {
+                setState(() => _isLoading = true);
+                
+                final response = await Supabase.instance.client.functions.invoke(
+                  'update-user-password',
+                  body: {
+                    'userId': widget.member!.id,
+                    'newPassword': newPass,
+                  },
+                );
+
+                if (response.status != 200) {
+                  throw Exception(response.data['error'] ?? 'Güncelleme başarısız');
+                }
+                
+                if (mounted) {
+                   CustomSnackBar.showSuccess(context, 'Geçici şifre başarıyla güncellendi');
+                }
+              } catch (e) {
+                if (mounted) {
+                  CustomSnackBar.showError(context, 'Hata: $e');
+                }
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
+              }
+            },
+            child: Text(
+              'Güncelle', 
+              style: AppTextStyles.callout.copyWith(color: AppColors.primaryYellow),
+            ),
+          ),
+        ],
       ),
     );
   }
