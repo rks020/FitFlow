@@ -310,6 +310,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   icon: Icons.calendar_today_rounded,
                   color: const Color(0xFFFACC15), // Yellow
                   onTap: () => widget.onTabChange(1), // Tab 1: Schedule
+                  backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
                 ),
                 
                 // Beslenme / Diyetim
@@ -319,6 +320,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   icon: Icons.restaurant_menu_rounded,
                   color: const Color(0xFFF472B6), // Pink/Red
                   onTap: () => widget.onTabChange(2), // Tab 2: Diet
+                  backgroundImage: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1470&auto=format&fit=crop',
                 ),
 
                 // Gelişimim
@@ -328,6 +330,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   icon: Icons.show_chart_rounded,
                   color: const Color(0xFF34D399), // Green
                   onTap: () => widget.onTabChange(3), // Tab 3: Measurements
+                  backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
                 ),
 
                 // Duyurular
@@ -342,6 +345,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                       MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
                     );
                   },
+                  backgroundImage: 'assets/images/pt_megaphone_announcement.png',
                 ),
               ],
             ),
