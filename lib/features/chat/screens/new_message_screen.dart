@@ -148,9 +148,22 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
   }
 
   Widget _buildUserItem(Profile user) {
-    final isTrainer = user.role == 'trainer' || user.role == 'owner';
-    final badgeColor = isTrainer ? AppColors.accentOrange : AppColors.success;
-    final badgeText = isTrainer ? 'Antrenör' : 'Üye';
+    final isOwner = user.role == 'owner';
+    final isTrainer = user.role == 'trainer';
+    
+    final Color badgeColor;
+    final String badgeText;
+
+    if (isOwner) {
+      badgeColor = AppColors.primaryYellow; // Gold/Yellow for Owner
+      badgeText = 'Salon Sahibi';
+    } else if (isTrainer) {
+      badgeColor = AppColors.accentOrange;  // Orange for Trainer
+      badgeText = 'Antrenör';
+    } else {
+      badgeColor = AppColors.success;       // Green for Member
+      badgeText = 'Üye';
+    }
 
     return GlassCard(
       child: ListTile(
