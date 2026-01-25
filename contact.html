@@ -113,14 +113,26 @@
             const email = document.getElementById('email').value;
             const message = document.getElementById('message').value;
 
+
             try {
-                const { error } = await supabase
+                // 1. Save to Database
+                const { error: dbError } = await supabase
                     .from('contact_messages')
                     .insert([
                         { full_name: fullName, email: email, message: message }
                     ]);
 
-                if (error) throw error;
+                if (dbError) throw dbError;
+
+                // 2. Send Email via Edge Function
+                const { error: funcError } = await supabase.functions.invoke('send-contact-email', {
+                    body: { full_name: fullName, email: email, message: message }
+                });
+
+                if (funcError) {
+                    console.error('Email sending failed:', funcError);
+                    // We don't block success modal if DB save worked, but we log it
+                }
 
                 // Show success modal
                 document.getElementById('successModal').classList.add('active');
