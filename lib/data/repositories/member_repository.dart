@@ -37,6 +37,42 @@ class MemberRepository {
     });
   }
 
+  // Helper method to enrich member data with password_changed from profiles
+  Future<List<Map<String, dynamic>>> _enrichWithPasswordChanged(List<dynamic> memberData) async {
+    if (memberData.isEmpty) return [];
+    
+    try {
+      // Get all member IDs
+      final memberIds = memberData.map((m) => m['id'] as String).toList();
+      
+      // Fetch password_changed for all members in one query
+      final profilesResponse = await _client
+          .from('profiles')
+          .select('id, password_changed')
+          .in_('id', memberIds);
+      
+      // Create a map of id -> password_changed
+      final passwordChangedMap = <String, bool>{};
+      for (final profile in profilesResponse as List) {
+        passwordChangedMap[profile['id']] = profile['password_changed'] as bool? ?? true;
+      }
+      
+      // Enrich member data with password_changed
+      final enrichedData = <Map<String, dynamic>>[];
+      for (final member in memberData) {
+        final memberMap = Map<String, dynamic>.from(member);
+        memberMap['password_changed'] = passwordChangedMap[member['id']] ?? true;
+        enrichedData.add(memberMap);
+      }
+      
+      return enrichedData;
+    } catch (e) {
+      print('Error enriching with password_changed: $e');
+      // Return original data if enrichment fails
+      return memberData.map((m) => Map<String, dynamic>.from(m)).toList();
+    }
+  }
+
   // Read all members
   Future<List<Member>> getAll() async {
     final response = await _client
@@ -44,9 +80,8 @@ class MemberRepository {
         .select('*, profiles:trainer_id(first_name, last_name)')
         .order('name', ascending: true);
     
-    return (response as List)
-        .map((json) => Member.fromSupabaseMap(json))
-        .toList();
+    final enrichedData = await _enrichWithPasswordChanged(response as List);
+    return enrichedData.map((json) => Member.fromSupabaseMap(json)).toList();
   }
 
   // Read active members
@@ -57,9 +92,8 @@ class MemberRepository {
         .eq('is_active', true)
         .order('name', ascending: true);
     
-    return (response as List)
-        .map((json) => Member.fromSupabaseMap(json))
-        .toList();
+    final enrichedData = await _enrichWithPasswordChanged(response as List);
+    return enrichedData.map((json) => Member.fromSupabaseMap(json)).toList();
   }
 
   // Read active members for a specific trainer
@@ -71,9 +105,8 @@ class MemberRepository {
         .eq('trainer_id', trainerId)
         .order('name', ascending: true);
     
-    return (response as List)
-        .map((json) => Member.fromSupabaseMap(json))
-        .toList();
+    final enrichedData = await _enrichWithPasswordChanged(response as List);
+    return enrichedData.map((json) => Member.fromSupabaseMap(json)).toList();
   }
 
   // Read single member
