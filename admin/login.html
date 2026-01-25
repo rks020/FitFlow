@@ -4,6 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://hrywsorgjitwedsnlbyp.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://hrywsorgjitwedsnlbyp.supabase.co wss://hrywsorgjitwedsnlbyp.supabase.co;">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="x-content-type-options" content="nosniff">
     <title>Giriş Yap - FitFlow Yönetim Paneli</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -23,7 +27,7 @@
             <!-- Login Form -->
             <div class="auth-form">
                 <h2>Giriş Yap</h2>
-                <form id="login-form-element">
+                <form id="login-form-element" method="POST">
                     <div class="form-group">
                         <label>Email</label>
                         <input type="email" id="login-email" required placeholder="ornek@gmail.com">
