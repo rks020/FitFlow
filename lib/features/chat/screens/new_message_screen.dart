@@ -35,11 +35,31 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
 
   Future<void> _loadUsers() async {
     try {
+      // 1. Get current user profile to check role
+      final currentUser = await _repository.getProfile();
+      final isMember = currentUser?.role == 'member';
+
+      // 2. Get all organization users
       final users = await _repository.getOrganizationUsers();
+      
+      // 3. Filter users based on role
+      List<Profile> visibleUsers = users;
+      
+      if (isMember) {
+        // Members can ONLY see Trainers and Owners
+        visibleUsers = users.where((u) => u.role == 'trainer' || u.role == 'owner').toList();
+      }
+
+      // Remove self from list (always good practice)
+      final currentUserId = currentUser?.id;
+      if (currentUserId != null) {
+        visibleUsers = visibleUsers.where((u) => u.id != currentUserId).toList();
+      }
+
       if (mounted) {
         setState(() {
-          _allUsers = users;
-          _filteredUsers = users;
+          _allUsers = visibleUsers;
+          _filteredUsers = visibleUsers;
           _isLoading = false;
         });
       }
