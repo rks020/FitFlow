@@ -15,6 +15,29 @@ import 'features/profile/screens/change_password_screen.dart';
 import 'features/auth/screens/account_pending_screen.dart';
 import 'features/auth/screens/auth_check_screen.dart';
 
+// Helper function to check password_changed from database
+Future<bool> _checkPasswordChanged(String userId) async {
+  try {
+    final response = await Supabase.instance.client
+        .from('profiles')
+        .select('password_changed')
+        .eq('id', userId)
+        .maybeSingle();
+    
+    if (response == null) {
+      debugPrint('Profile not found for user $userId, defaulting to true');
+      return true; // Default to true if profile not found
+    }
+    
+    final passwordChanged = response['password_changed'] as bool? ?? true;
+    debugPrint('Fetched password_changed from DB: $passwordChanged for user $userId');
+    return passwordChanged;
+  } catch (e) {
+    debugPrint('Error fetching password_changed: $e');
+    return true; // Default to true on error to avoid blocking users
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -183,20 +206,30 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> {
           if (session != null) {
             final user = session.user;
             
-            // Check if user has completed invitation (changed password)
-            // If password_changed is null, assume true (legacy user or standard signup)
-            // Only block if explicitly set to false (invited user who hasn't accepted yet)
-            final userMetadata = user.userMetadata;
-            final passwordChanged = userMetadata?['password_changed'];
-            
-            if (passwordChanged == false) {
-              // Not completed invitation - show Change Password screen for first login
-              debugPrint('User password_changed is false, showing ChangePasswordScreen');
-              return const ChangePasswordScreen(isFirstLogin: true);
-            }
-            
-            // Completed invitation - check profile validity before showing dashboard
-            return const AuthCheckScreen(); // Was DashboardScreen();
+            // Fetch fresh password_changed value from database instead of stale session metadata
+            return FutureBuilder<bool>(
+              future: _checkPasswordChanged(user.id),
+              builder: (context, passwordSnapshot) {
+                // Show loading while checking
+                if (passwordSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                
+                // Default to true if error (allow access to avoid blocking users)
+                final passwordChanged = passwordSnapshot.data ?? true;
+                
+                if (passwordChanged == false) {
+                  // Not completed invitation - show Change Password screen for first login
+                  debugPrint('User password_changed is false, showing ChangePasswordScreen');
+                  return const ChangePasswordScreen(isFirstLogin: true);
+                }
+                
+                // Completed invitation - check profile validity before showing dashboard
+                return const AuthCheckScreen();
+              },
+            );
           }
           
           // No session - show welcome screen
