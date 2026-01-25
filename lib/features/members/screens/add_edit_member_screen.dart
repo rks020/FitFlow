@@ -63,6 +63,11 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
       _sessionCountController.text = widget.member!.sessionCount?.toString() ?? '';
       _selectedTrainerId = widget.member!.trainerId; // Set initial trainer
       
+      // DEBUG: Check password_changed value
+      print('DEBUG: Member passwordChanged = ${widget.member!.passwordChanged}');
+      print('DEBUG: Member email = ${widget.member!.email}');
+      print('DEBUG: Member id = ${widget.member!.id}');
+      
       // Add current package to list if it's not already there (legacy data support)
       if (_selectedPackage != null && !_packages.contains(_selectedPackage)) {
         _packages.add(_selectedPackage!);

@@ -72,6 +72,11 @@ class Member {
 
   // Supabase uses snake_case
   factory Member.fromSupabaseMap(Map<String, dynamic> map) {
+    // DEBUG: Print raw map data
+    print('DEBUG fromSupabaseMap: Full map keys = ${map.keys.toList()}');
+    print('DEBUG fromSupabaseMap: auth_profile = ${map['auth_profile']}');
+    print('DEBUG fromSupabaseMap: password_changed (top level) = ${map['password_changed']}');
+    
     // Check if profiles data is joined and available
     // It might be in 'profiles' object or flat if view
     // Based on repository query, it will be in 'profiles' object if joined by id
@@ -83,8 +88,12 @@ class Member {
     bool pwdChanged = true;
     if (map['password_changed'] != null) {
         pwdChanged = map['password_changed'] as bool;
+        print('DEBUG fromSupabaseMap: Using top-level password_changed = $pwdChanged');
     } else if (map['auth_profile'] != null) { // We will use alias 'auth_profile' for the member's own profile
         pwdChanged = map['auth_profile']['password_changed'] as bool? ?? true;
+        print('DEBUG fromSupabaseMap: Using auth_profile.password_changed = $pwdChanged');
+    } else {
+        print('DEBUG fromSupabaseMap: No password_changed found, defaulting to true');
     }
 
     return Member(

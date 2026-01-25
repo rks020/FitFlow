@@ -41,7 +41,7 @@ class MemberRepository {
   Future<List<Member>> getAll() async {
     final response = await _client
         .from('members')
-        .select('*, profiles:trainer_id(first_name, last_name), auth_profile:profiles!id(password_changed)')
+        .select('*, profiles:trainer_id(first_name, last_name)')
         .order('name', ascending: true);
     
     return (response as List)
@@ -53,7 +53,7 @@ class MemberRepository {
   Future<List<Member>> getActive() async {
     final response = await _client
         .from('members')
-        .select('*, profiles:trainer_id(first_name, last_name), auth_profile:profiles!id(password_changed)')
+        .select('*, profiles:trainer_id(first_name, last_name)')
         .eq('is_active', true)
         .order('name', ascending: true);
     
@@ -66,7 +66,7 @@ class MemberRepository {
   Future<List<Member>> getActiveByTrainer(String trainerId) async {
     final response = await _client
         .from('members')
-        .select('*, profiles:trainer_id(first_name, last_name), auth_profile:profiles!id(password_changed)')
+        .select('*, profiles:trainer_id(first_name, last_name)')
         .eq('is_active', true)
         .eq('trainer_id', trainerId)
         .order('name', ascending: true);
@@ -80,11 +80,28 @@ class MemberRepository {
   Future<Member?> getById(String id) async {
     final response = await _client
         .from('members')
-        .select('*, profiles:trainer_id(first_name, last_name), auth_profile:profiles!id(password_changed)')
+        .select('*, profiles:trainer_id(first_name, last_name)')
         .eq('id', id)
         .maybeSingle();
     
     if (response == null) return null;
+    
+    // Fetch password_changed from profiles table separately
+    try {
+      final profileResponse = await _client
+          .from('profiles')
+          .select('password_changed')
+          .eq('id', id)
+          .maybeSingle();
+      
+      if (profileResponse != null) {
+        response['password_changed'] = profileResponse['password_changed'];
+      }
+    } catch (e) {
+      print('Error fetching password_changed: $e');
+      // Continue without password_changed data
+    }
+    
     return Member.fromSupabaseMap(response);
   }
 
