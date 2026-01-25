@@ -187,9 +187,9 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> {
             // If password_changed is null, assume true (legacy user or standard signup)
             // Only block if explicitly set to false (invited user who hasn't accepted yet)
             final userMetadata = user.userMetadata;
-            final passwordChanged = userMetadata?['password_changed'];
+            final changePasswordRequired = userMetadata?['change_password_required'];
             
-            if (passwordChanged == false) {
+            if (changePasswordRequired == true) {
               // Not completed invitation - show Change Password screen for first login
               debugPrint('User password_changed is false, showing ChangePasswordScreen');
               return const ChangePasswordScreen(isFirstLogin: true);

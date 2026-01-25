@@ -274,9 +274,9 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
           // If password_changed is null, assume true (legacy user or standard signup)
           // Block only if explicitly set to false (invited user who hasn't accepted yet)
           final userMetadata = response.session!.user.userMetadata;
-          final passwordChanged = userMetadata?['password_changed'];
-
-          if (passwordChanged == false) {
+          final changePasswordRequired = userMetadata?['change_password_required'];
+          
+          if (changePasswordRequired == true) {
              // User needs to change temporary password
              Navigator.of(context).pushAndRemoveUntil(
                MaterialPageRoute(builder: (context) => const ChangePasswordScreen(isFirstLogin: true)),
@@ -385,9 +385,9 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
 
           // Check if user has completed invitation (changed password)
           // We use profileData because session metadata might be unreliable during OAuth/Google Sign-In
-          final passwordChanged = profileData['password_changed'];
-
-          if (passwordChanged == false) {
+          final changePasswordRequired = profileData['change_password_required'];
+          
+          if (changePasswordRequired == true) {
              await _supabase.auth.signOut();
              if (mounted) {
                CustomSnackBar.showError(

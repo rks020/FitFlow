@@ -14,7 +14,7 @@ class Member {
   final String? subscriptionPackage;
   final int? sessionCount;
   final String? organizationId;
-  final bool passwordChanged;
+  final bool changePasswordRequired; // TRUE = user must change password
   
   Member({
     required this.id,
@@ -32,7 +32,7 @@ class Member {
     this.subscriptionPackage,
     this.sessionCount,
     this.organizationId,
-    this.passwordChanged = true, // Default to true to be safe/hide option if unknown
+    this.changePasswordRequired = false, // Default to false (no password change required)
   });
   
   Map<String, dynamic> toMap() {
@@ -66,7 +66,7 @@ class Member {
       notes: map['notes'] as String?,
       subscriptionPackage: map['subscription_package'] as String?,
       sessionCount: map['session_count'] as int?,
-      passwordChanged: map['passwordChanged'] as bool? ?? true,
+      changePasswordRequired: map['changePasswordRequired'] as bool? ?? false,
     );
   }
 
@@ -84,16 +84,16 @@ class Member {
     // We need to differentiate the joins in Repository.
     // For now, let's assume we map it from 'profile_data' or similar if we alias it.
     
-    // Check for password_changed in top level (if view) or joined profile
-    bool pwdChanged = true;
-    if (map['password_changed'] != null) {
-        pwdChanged = map['password_changed'] as bool;
-        print('DEBUG fromSupabaseMap: Using top-level password_changed = $pwdChanged');
-    } else if (map['auth_profile'] != null) { // We will use alias 'auth_profile' for the member's own profile
-        pwdChanged = map['auth_profile']['password_changed'] as bool? ?? true;
-        print('DEBUG fromSupabaseMap: Using auth_profile.password_changed = $pwdChanged');
+    // Check for change_password_required in top level (if view) or joined profile
+    bool changePwdRequired = false; // Default: no password change required
+    if (map['change_password_required'] != null) {
+        changePwdRequired = map['change_password_required'] as bool;
+        print('DEBUG fromSupabaseMap: Using top-level change_password_required = $changePwdRequired');
+    } else if (map['auth_profile'] != null) {
+        changePwdRequired = map['auth_profile']['change_password_required'] as bool? ?? false;
+        print('DEBUG fromSupabaseMap: Using auth_profile.change_password_required = $changePwdRequired');
     } else {
-        print('DEBUG fromSupabaseMap: No password_changed found, defaulting to true');
+        print('DEBUG fromSupabaseMap: No change_password_required found, defaulting to false');
     }
 
     return Member(
@@ -114,7 +114,7 @@ class Member {
       subscriptionPackage: map['subscription_package'] as String?,
       sessionCount: map['session_count'] as int?,
       organizationId: map['organization_id'] as String?,
-      passwordChanged: pwdChanged,
+      changePasswordRequired: changePwdRequired,
     );
   }
   
@@ -132,7 +132,7 @@ class Member {
     String? subscriptionPackage,
     int? sessionCount,
     String? organizationId,
-    bool? passwordChanged,
+    bool? changePasswordRequired,
   }) {
     return Member(
       id: id ?? this.id,
@@ -148,7 +148,7 @@ class Member {
       subscriptionPackage: subscriptionPackage ?? this.subscriptionPackage,
       sessionCount: sessionCount ?? this.sessionCount,
       organizationId: organizationId ?? this.organizationId,
-      passwordChanged: passwordChanged ?? this.passwordChanged,
+      changePasswordRequired: changePasswordRequired ?? this.changePasswordRequired,
     );
   }
 }

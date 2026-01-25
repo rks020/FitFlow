@@ -97,10 +97,11 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
 
         // Use safe access with null check, default to true if null (for legacy users)
         // Only block/redirect if explicitly false
-        final passwordChanged = userMetadata?['password_changed'];
-
+        final changePasswordRequired = userMetadata?['change_password_required'];
+        
+        // Navigate based on password status
         if (mounted) {
-          if (passwordChanged == false) {
+          if (changePasswordRequired == true) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                   builder: (context) =>

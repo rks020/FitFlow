@@ -48,7 +48,7 @@ class MemberRepository {
       // Fetch password_changed for all members in one query
       final profilesResponse = await _client
           .from('profiles')
-          .select('id, password_changed')
+          .select('id, change_password_required')
           .inFilter('id', memberIds);
       
       // Create a map of id -> password_changed
@@ -61,7 +61,7 @@ class MemberRepository {
       final enrichedData = <Map<String, dynamic>>[];
       for (final member in memberData) {
         final memberMap = Map<String, dynamic>.from(member);
-        memberMap['password_changed'] = passwordChangedMap[member['id']] ?? true;
+        memberMap['change_password_required'] = passwordChangedMap[member['id']] ?? false;
         enrichedData.add(memberMap);
       }
       
@@ -123,12 +123,12 @@ class MemberRepository {
     try {
       final profileResponse = await _client
           .from('profiles')
-          .select('password_changed')
+          .select('change_password_required')
           .eq('id', id)
           .maybeSingle();
       
       if (profileResponse != null) {
-        response['password_changed'] = profileResponse['password_changed'];
+        response['change_password_required'] = profileResponse['change_password_required'];
       }
     } catch (e) {
       print('Error fetching password_changed: $e');
