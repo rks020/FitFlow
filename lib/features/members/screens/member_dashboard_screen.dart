@@ -11,8 +11,8 @@ import '../../chat/screens/inbox_screen.dart';
 import '../../../data/models/profile.dart';
 import '../../../data/repositories/message_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
-import '../widgets/stat_card.dart';
-import 'announcements_screen.dart';
+import 'package:fitflow/features/dashboard/widgets/stat_card.dart';
+import 'package:fitflow/features/dashboard/screens/announcements_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({super.key});
