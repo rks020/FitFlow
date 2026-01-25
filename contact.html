@@ -111,8 +111,25 @@
             submitBtn.innerHTML = 'Gönderiliyor...';
 
             const fullName = document.getElementById('fullName').value;
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.trim().toLowerCase();
             const message = document.getElementById('message').value;
+
+            // Email Validation Logic
+            const invalidDomains = ['test.com', 'example.com', 'deneme.com', 'mail.com'];
+            const invalidUsers = ['test', 'admin', 'user', 'deneme', 'asd', '123'];
+
+            const [userPart, domainPart] = email.split('@');
+
+            if (invalidDomains.includes(domainPart) ||
+                invalidUsers.includes(userPart) ||
+                userPart.length < 3 ||
+                !domainPart.includes('.')) {
+
+                alert('Lütfen geçerli bir e-posta adresi giriniz. (Örn: adiniz@firma.com)');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Gönder';
+                return;
+            }
 
 
             try {
