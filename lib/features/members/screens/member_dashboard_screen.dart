@@ -257,27 +257,36 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   ],
                 ),
                 // Avatar
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primaryYellow, width: 2),
-                    image: _profile?.avatarUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(_profile!.avatarUrl!),
-                            fit: BoxFit.cover,
+                GestureDetector(
+                  onTap: () => widget.onTabChange(4), // Navigate to Profile (Index 4)
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primaryYellow, width: 2),
+                      image: _profile?.avatarUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(_profile!.avatarUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: _profile?.avatarUrl == null
+                        ? Center(
+                            child: Text(
+                              firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
+                              style: const TextStyle(
+                                color: AppColors.primaryYellow,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
                           )
                         : null,
                   ),
-                  child: _profile?.avatarUrl == null
-                      ? Center(
-                          child: Text(
-                            firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
-                            style: const TextStyle(
-                              color: AppColors.primaryYellow,
-                              fontWeight: FontWeight.bold,
+                ),
                               fontSize: 20,
                             ),
                           ),

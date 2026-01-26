@@ -22,6 +22,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void initState() {
@@ -139,16 +141,30 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     controller: _passwordController,
                     label: 'Yeni Şifre',
                     hint: '******',
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryYellow),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   CustomTextField(
                     controller: _confirmPasswordController,
                     label: 'Yeni Şifre (Tekrar)',
                     hint: '******',
-                    obscureText: true,
+                    obscureText: _obscureConfirm,
                     prefixIcon: const Icon(Icons.lock_reset, color: AppColors.primaryYellow),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
                   ),
                   const SizedBox(height: 32),
                   CustomButton(
