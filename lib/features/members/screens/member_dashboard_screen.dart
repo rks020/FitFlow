@@ -287,14 +287,9 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                         : null,
                   ),
                 ),
-                              fontSize: 20,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
               ],
             ),
+
             
             const SizedBox(height: 32),
             Text(
