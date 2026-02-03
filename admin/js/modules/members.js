@@ -124,7 +124,7 @@ async function loadMembersList(searchQuery = '') {
         }
 
         listContainer.innerHTML = members.map(member => `
-            <div class="member-card" style="position: relative; padding-bottom: 50px;">
+            <div class="member-card" style="position: relative; padding-bottom: 80px;">
                 <div class="member-header" onclick="editMember('${member.id}')" style="cursor: pointer;">
                     <div class="member-avatar">
                         ${(member.name?.[0] || 'Ü').toUpperCase()}

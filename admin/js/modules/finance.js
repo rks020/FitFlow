@@ -69,6 +69,7 @@ async function loadPaymentsList() {
         if (error) throw error;
 
         const tableBody = document.getElementById('payments-table-body');
+        if (!tableBody) return; // Stop if user navigated away
 
         // Filter by frontend if RLS isn't perfect relation-wise, but members join should help check org
         // Ideally backend RLS ensures we only see our org's payments. 
