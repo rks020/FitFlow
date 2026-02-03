@@ -205,8 +205,7 @@ function setupPaymentModal() {
                     payment_method: method,
                     category: category,
                     notes: description,
-                    date: new Date(),
-                    created_by: user.id
+                    date: new Date()
                 });
 
             if (error) throw error;
