@@ -31,8 +31,9 @@ export async function loadClasses() {
 
             <!-- Selected Day Sessions -->
             <div class="day-sessions-container">
-                <div class="day-header" id="selected-day-header">
-                    Bugünkü Program
+                <div class="day-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="selected-day-header">Bugünkü Program</span>
+                    <button id="add-class-btn" class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;">+ Ders Ekle</button>
                 </div>
                 <div id="day-sessions-list" class="sessions-list">
                     <div class="text-center text-secondary">Yükleniyor...</div>
@@ -195,6 +196,7 @@ export async function loadClasses() {
 
     // Initialize logic
     setupEventListeners();
+    setupCreateClassModal(); // Setup Modal Logic
     await fetchMonthSessions(currentDate);
     renderCalendar();
     renderDaySessions(selectedDate);
@@ -209,6 +211,11 @@ function setupEventListeners() {
     document.getElementById('next-month').addEventListener('click', () => {
         currentDate.setMonth(currentDate.getMonth() + 1);
         handleMonthChange();
+    });
+
+    // Add Class Button Listener
+    document.getElementById('add-class-btn').addEventListener('click', () => {
+        openCreateClassModal(selectedDate);
     });
 }
 
@@ -369,4 +376,137 @@ function renderDaySessions(date) {
             </div>
         `;
     }).join('');
+}
+
+// --- CREATE CLASS LOGIC ---
+
+function setupCreateClassModal() {
+    const modal = document.getElementById('create-class-modal');
+    const closeBtn = document.getElementById('close-create-class-modal');
+    const form = document.getElementById('create-class-form');
+
+    if (!modal) return;
+
+    closeBtn.onclick = () => modal.classList.remove('active');
+    window.onclick = (event) => {
+        if (event.target == modal) modal.classList.remove('active');
+    };
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Oluşturuluyor...';
+
+        try {
+            await createClass();
+            modal.classList.remove('active');
+            showToast('Ders başarıyla oluşturuldu!', 'success');
+            // Refresh
+            await fetchMonthSessions(currentDate);
+            renderCalendar();
+            renderDaySessions(selectedDate);
+        } catch (error) {
+            console.error(error);
+            showToast(error.message || 'Ders oluşturulamadı', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Dersi Oluştur';
+        }
+    };
+}
+
+async function openCreateClassModal(date) {
+    const modal = document.getElementById('create-class-modal');
+
+    // Set Date Input
+    const dateInput = document.getElementById('class-date');
+    // Format YYYY-MM-DD (Local)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    dateInput.value = `${year}-${month}-${day}`;
+
+    // Set Default Times (Next hour)
+    const now = new Date();
+    // If selected date is today, start from next hour
+    let startHour = 9;
+    if (date.toDateString() === now.toDateString()) {
+        startHour = now.getHours() + 1;
+    }
+
+    document.getElementById('class-start-time').value = `${String(startHour).padStart(2, '0')}:00`;
+    document.getElementById('class-end-time').value = `${String(startHour + 1).padStart(2, '0')}:00`;
+
+    // Load Members
+    await loadMembersForDropdown();
+
+    modal.classList.add('active');
+}
+
+async function loadMembersForDropdown() {
+    const select = document.getElementById('class-member-select');
+    select.innerHTML = '<option value="">Yükleniyor...</option>';
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single();
+
+        const { data: members, error } = await supabaseClient
+            .from('members')
+            .select('id, name')
+            .eq('organization_id', profile.organization_id)
+            .eq('is_active', true)
+            .order('name');
+
+        if (error) throw error;
+
+        select.innerHTML = '<option value="">Bir üye seçin</option>';
+        members.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            select.appendChild(opt);
+        });
+
+    } catch (e) {
+        select.innerHTML = '<option value="">Hata!</option>';
+        console.error(e);
+    }
+}
+
+async function createClass() {
+    const dateVal = document.getElementById('class-date').value;
+    const startTimeVal = document.getElementById('class-start-time').value;
+    const endTimeVal = document.getElementById('class-end-time').value;
+    const memberId = document.getElementById('class-member-select').value;
+    const notes = document.getElementById('class-notes').value;
+
+    if (!memberId) throw new Error('Lütfen bir üye seçin');
+
+    // Construct Timestamps
+    const startDateTime = new Date(`${dateVal}T${startTimeVal}:00`);
+    const endDateTime = new Date(`${dateVal}T${endTimeVal}:00`);
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+
+    // Insert
+    const { error } = await supabaseClient
+        .from('class_sessions')
+        .insert({
+            title: 'Bireysel Ders',
+            trainer_id: user.id, // Assign to current user (trainer/owner)
+            member_id: memberId,
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            notes: notes,
+            status: 'scheduled'
+        });
+
+    if (error) throw error;
 }
