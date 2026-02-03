@@ -123,6 +123,75 @@
             color: #fff;
             font-size: 14px;
         }
+
+        /* Modal Scroll & Layout Fixes */
+        .modal-content {
+            background-color: #1C1C1E;
+            margin: 2% auto;
+            /* Reduced top margin */
+            padding: 0;
+            border: 1px solid #333;
+            width: 90%;
+            max-width: 500px;
+            /* Wider for schedule */
+            border-radius: 16px;
+            position: relative;
+            max-height: 90vh;
+            /* Limit height */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            /* Enable scroll */
+            flex: 1;
+        }
+
+        /* Schedule Form Styles */
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .day-checkbox {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .day-checkbox input {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .day-checkbox span {
+            display: block;
+            text-align: center;
+            padding: 8px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #888;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .day-checkbox input:checked+span {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border-color: rgba(255, 215, 0, 0.5);
+        }
     </style>
 </head>
 
@@ -270,33 +339,85 @@
         </main>
     </div>
 
-    <!-- Schedule Modal (Simplified) -->
+    <!-- Schedule Modal (Detailed Multi-Select) -->
     <div id="schedule-modal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content">
             <div class="modal-header">
-                <h2>Ders Programı Oluştur</h2>
+                <h2>Program Oluştur</h2>
                 <span class="close-modal" id="close-schedule-modal">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="schedule-form">
-                    <div class="form-group">
-                        <label>Tarih</label>
-                        <input type="date" id="schedule-date" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Saat Aralığı</label>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="time" id="schedule-start" required style="flex:1;">
-                            <span style="align-self: center;">-</span>
-                            <input type="time" id="schedule-end" required style="flex:1;">
+                    <!-- Date Range -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <div class="form-group" style="flex:1;">
+                            <label>Başlangıç Tarihi</label>
+                            <input type="date" id="schedule-start-date" required>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>Bitiş Tarihi</label>
+                            <input type="date" id="schedule-end-date" required>
                         </div>
                     </div>
+
+                    <!-- Days Selection -->
+                    <label style="display:block; margin-bottom: 10px; color:#fff;">Gün Seçimi</label>
+                    <div class="days-grid">
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="1">
+                            <span>Pzt</span>
+                        </label>
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="2">
+                            <span>Sal</span>
+                        </label>
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="3">
+                            <span>Çar</span>
+                        </label>
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="4">
+                            <span>Per</span>
+                        </label>
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="5">
+                            <span>Cum</span>
+                        </label>
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="6">
+                            <span>Cmt</span>
+                        </label>
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="days" value="0">
+                            <span>Paz</span>
+                        </label>
+                    </div>
+
+                    <!-- Time & Details -->
+                    <div class="form-group">
+                        <label>Ders Saati ve Süre</label>
+                        <div style="display: flex; gap: 10px; align-items:center;">
+                            <input type="time" id="schedule-time" value="10:00" required>
+                            <span style="color:#888;">Süre:</span>
+                            <select id="schedule-duration"
+                                style="width: auto; flex:1; background: #2C2C2E; border:1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius:8px;">
+                                <option value="30">30 dk</option>
+                                <option value="45">45 dk</option>
+                                <option value="60" selected>60 dk</option>
+                                <option value="90">90 dk</option>
+                            </select>
+                        </div>
+                        <p style="font-size:12px; color:#666; margin-top:5px;">Seçilen tüm günler için bu saat
+                            uygulanır.</p>
+                    </div>
+
                     <div class="form-group">
                         <label>Notlar</label>
-                        <textarea id="schedule-notes" rows="2"></textarea>
+                        <textarea id="schedule-notes" rows="2" placeholder="Örn: Kardiyo ağırlıklı"></textarea>
                     </div>
+
                     <button type="submit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">Oluştur</button>
+                        style="width: 100%; justify-content: center; margin-top: 10px;">Programı Oluştur</button>
                 </form>
             </div>
         </div>

@@ -53,7 +53,6 @@ async function loadMemberDetails() {
         if (error) throw error;
 
         document.getElementById('member-name').textContent = member.name;
-        document.getElementById('member-name-header').textContent = member.name; // In header too if needed
         document.getElementById('member-email').textContent = member.email || 'Email yok';
 
     } catch (error) {
@@ -85,6 +84,8 @@ async function loadHistory() {
     container.innerHTML = 'Yükleniyor...';
 
     try {
+        // Updated Query: Removed explicit join relation name to avoid errors if relation is named differently.
+        // Also added explicit error logging.
         const { data, error } = await supabaseClient
             .from('class_sessions')
             .select(`
@@ -92,48 +93,75 @@ async function loadHistory() {
                 trainer:trainer_id (first_name, last_name)
             `)
             .eq('member_id', memberId)
-            // .eq('status', 'completed') // Show all for admin? Or just completed? Let's show all past.
             .order('start_time', { ascending: false })
             .limit(20);
 
-        if (error) throw error;
+        // If join fails, try falling back or checking console
+        if (error) {
+            console.warn('First history query failed, retrying without join...', error);
+            // Fallback: No join, just basic data to show user something instead of error
+            const { data: fallbackData, error: fallbackError } = await supabaseClient
+                .from('class_sessions')
+                .select('*')
+                .eq('member_id', memberId)
+                .order('start_time', { ascending: false })
+                .limit(20);
 
-        if (!data || data.length === 0) {
-            container.innerHTML = '<p style="color:#888;">Henüz kayıtlı ders yok.</p>';
+            if (fallbackError) throw fallbackError;
+
+            // Map fallback data (trainer info missing)
+            renderHistory(fallbackData, container);
             return;
         }
 
-        container.innerHTML = data.map(session => {
-            const date = new Date(session.start_time).toLocaleDateString('tr-TR');
-            const time = new Date(session.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            const statusColor = session.status === 'completed' ? '#10B981' :
-                session.status === 'cancelled' ? '#EF4444' : '#F59E0B';
-            const statusText = session.status === 'completed' ? 'Tamamlandı' :
-                session.status === 'cancelled' ? 'İptal' : 'Planlandı';
-
-            return `
-                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-weight:600; font-size:15px; color:#fff;">${session.title || 'Ders'}</div>
-                        <div style="font-size:13px; color:#888;">${date} • ${time}</div>
-                        <div style="font-size:12px; color:#666;">Eğitmen: ${session.trainer ? session.trainer.first_name : '-'}</div>
-                    </div>
-                    <div>
-                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 8px; border-radius: 6px; font-size: 12px;">
-                            ${statusText}
-                        </span>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        renderHistory(data, container);
 
     } catch (error) {
-        console.error(error);
-        container.innerHTML = 'Hata oluştu.';
+        console.error('History Load Error:', error);
+        container.innerHTML = `<div style="color: #ff6b6b; padding: 10px; background: rgba(255,0,0,0.1); border-radius: 8px;">
+            Hata oluştu: ${error.message || 'Veriler yüklenemedi'}
+        </div>`;
     }
 }
 
-// --- Schedule Logic ---
+function renderHistory(data, container) {
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="color:#888;">Henüz kayıtlı ders yok.</p>';
+        return;
+    }
+
+    container.innerHTML = data.map(session => {
+        const date = new Date(session.start_time).toLocaleDateString('tr-TR');
+        const time = new Date(session.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        const statusColor = session.status === 'completed' ? '#10B981' :
+            session.status === 'cancelled' ? '#EF4444' : '#F59E0B';
+        const statusText = session.status === 'completed' ? 'Tamamlandı' :
+            session.status === 'cancelled' ? 'İptal' : 'Planlandı';
+
+        // Trainer Name Safe Access
+        let trainerName = '-';
+        if (session.trainer) {
+            trainerName = session.trainer.first_name || '';
+        }
+
+        return `
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:600; font-size:15px; color:#fff;">${session.title || 'Ders'}</div>
+                    <div style="font-size:13px; color:#888;">${date} • ${time}</div>
+                    <div style="font-size:12px; color:#666;">Eğitmen: ${trainerName}</div>
+                </div>
+                <div>
+                    <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 8px; border-radius: 6px; font-size: 12px;">
+                        ${statusText}
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// --- Recurring Schedule Logic ---
 function setupScheduleModal() {
     const modal = document.getElementById('schedule-modal');
     const close = document.getElementById('close-schedule-modal');
@@ -142,46 +170,88 @@ function setupScheduleModal() {
     document.getElementById('schedule-form').onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button');
-        btn.disabled = true; btn.textContent = '...';
+        btn.disabled = true; btn.textContent = 'Oluşturuluyor...';
 
         try {
-            const date = document.getElementById('schedule-date').value;
-            const start = document.getElementById('schedule-start').value;
-            const end = document.getElementById('schedule-end').value;
+            const startDateVal = document.getElementById('schedule-start-date').value;
+            const endDateVal = document.getElementById('schedule-end-date').value;
+            const timeVal = document.getElementById('schedule-time').value; // HH:MM
+            const duration = parseInt(document.getElementById('schedule-duration').value);
             const notes = document.getElementById('schedule-notes').value;
 
-            const startDt = new Date(`${date}T${start}:00`).toISOString();
-            const endDt = new Date(`${date}T${end}:00`).toISOString();
+            // Get checked days
+            const dayCheckboxes = document.querySelectorAll('input[name="days"]:checked');
+            const selectedDays = Array.from(dayCheckboxes).map(cb => parseInt(cb.value)); // 1=Mon, ..., 0=Sun
 
+            if (selectedDays.length === 0) throw new Error('Lütfen en az bir gün seçin');
+            if (!startDateVal || !endDateVal) throw new Error('Tarih aralığı seçiniz');
+            if (!timeVal) throw new Error('Saat seçiniz');
+
+            // Find valid dates
+            const startDt = new Date(startDateVal);
+            const endDt = new Date(endDateVal);
+            let sessionsToInsert = [];
+
+            // Loop through dates
+            // Clone start date to avoid modifying it if used elsewhere, though loop uses 'd'
+            for (let d = new Date(startDt); d <= endDt; d.setDate(d.getDate() + 1)) {
+                // JS getDay(): 0=Sun, 1=Mon...6=Sat.
+                // HTML values: 1=Mon...6=Sat, 0=Sun.
+                // Perfect match!
+                if (selectedDays.includes(d.getDay())) {
+                    // Create Session Object
+                    const sessionStart = new Date(d);
+                    const [hours, mins] = timeVal.split(':');
+                    sessionStart.setHours(parseInt(hours), parseInt(mins), 0, 0);
+
+                    const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
+
+                    sessionsToInsert.push({
+                        member_id: memberId,
+                        trainer_id: profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id,
+                        title: 'Bireysel Ders',
+                        start_time: sessionStart.toISOString(),
+                        end_time: sessionEnd.toISOString(),
+                        notes: notes,
+                        status: 'scheduled'
+                    });
+                }
+            }
+
+            if (sessionsToInsert.length === 0) throw new Error('Seçilen tarih aralığında ve günlerde uygun gün bulunamadı.');
+
+            // Batch Insert
             const { error } = await supabaseClient
                 .from('class_sessions')
-                .insert({
-                    member_id: memberId,
-                    trainer_id: profile.id, // Assign to creator
-                    title: 'Bireysel Ders',
-                    start_time: startDt,
-                    end_time: endDt,
-                    notes: notes,
-                    status: 'scheduled'
-                });
+                .insert(sessionsToInsert);
 
             if (error) throw error;
 
-            showToast('Ders oluşturuldu', 'success');
+            showToast(`${sessionsToInsert.length} ders başarıyla oluşturuldu!`, 'success');
             modal.classList.remove('active');
             e.target.reset();
 
+            // Refresh history if open
+            if (document.getElementById('section-history').style.display === 'block') loadHistory();
+
         } catch (error) {
-            showToast('Hata: ' + error.message, 'error');
+            console.error(error);
+            showToast('Hata: ' + (error.message || 'Ders oluşturulamadı'), 'error');
         } finally {
-            btn.disabled = false; btn.textContent = 'Oluştur';
+            btn.disabled = false; btn.textContent = 'Programı Oluştur';
         }
     };
 }
 
 function openScheduleModal() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('schedule-date').value = today;
+    const today = new Date();
+    // Start = Today
+    document.getElementById('schedule-start-date').value = today.toISOString().split('T')[0];
+    // End = Today + 30 days
+    const nextMonth = new Date();
+    nextMonth.setDate(nextMonth.getDate() + 30);
+    document.getElementById('schedule-end-date').value = nextMonth.toISOString().split('T')[0];
+
     document.getElementById('schedule-modal').classList.add('active');
 }
 
@@ -230,7 +300,8 @@ function setupMeasurementModal() {
             if (document.getElementById('section-charts').style.display === 'block') loadCharts();
 
         } catch (error) {
-            showToast('Hata: ' + error.message, 'error');
+            showToast('Hata: ' + (error.message || 'Ölçüm kaydedilemedi'), 'error');
+            console.error('Measurement Insert Error:', error);
         } finally {
             btn.disabled = false; btn.textContent = 'Kaydet';
         }
@@ -252,7 +323,7 @@ async function loadMeasurements() {
             .eq('member_id', memberId)
             .order('date', { ascending: false });
 
-        if (error) throw error;
+        if (error) throw error; // If RLS error, it throws here
 
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6">Kayıt bulunamadı.</td></tr>';
@@ -272,14 +343,14 @@ async function loadMeasurements() {
 
         return data; // Return for charts use
     } catch (error) {
-        console.error(error);
-        tbody.innerHTML = '<tr><td colspan="6">Hata oluştu.</td></tr>';
+        console.error('Measurement Load Error:', error);
+        // Show actual error message to debugging
+        tbody.innerHTML = `<tr><td colspan="6" style="color: #ff6b6b;">Hata: ${error.message} (Detaylar konsolda)</td></tr>`;
     }
 }
 
 // --- Charts Logic ---
 async function loadCharts() {
-    // Fetch data implicitly or explicitly
     const { data, error } = await supabaseClient
         .from('measurements')
         .select('date, weight, body_fat_ratio')
