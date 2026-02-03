@@ -202,7 +202,7 @@ class ClassRepository {
     
     final response = await _client
         .from('class_enrollments')
-        .select('id')
+        .select('id, class_sessions!inner(start_time)')
         .eq('member_id', memberId)
         .gte('class_sessions.start_time', startOfToday)
         .neq('status', 'cancelled')
@@ -210,6 +210,7 @@ class ClassRepository {
     
     return (response as List).isNotEmpty;
   }
+
 
   // Get completed history (Signature Log)
   Future<List<ClassSession>> getCompletedHistory() async {
