@@ -307,13 +307,19 @@
                     <div id="history-list">Yükleniyor...</div>
                 </div>
 
-                <!-- Measurements List Section -->
                 <div id="section-measurements" class="detail-section" style="display: none;">
-                    <h2 style="margin-bottom: 20px;">Ölçüm Geçmişi</h2>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0;">Ölçüm Geçmişi</h2>
+                        <button id="compare-measurements-btn" class="btn btn-primary" disabled style="opacity: 0.5;">
+                            🔀 Karşılaştır
+                        </button>
+                    </div>
                     <div style="overflow-x: auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px;">Seç</th>
                                     <th>Tarih</th>
                                     <th>Kilo (kg)</th>
                                     <th>Yağ (%)</th>
@@ -519,6 +525,21 @@
                             style="width: 100%; justify-content: center;">Kaydet</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Measurement Comparison Modal -->
+    <div id="comparison-modal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Ölçüm Karşılaştırma</h2>
+                <span class="close-modal" id="close-comparison-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="comparison-content">
+                    <!-- Will be populated by JavaScript -->
+                </div>
             </div>
         </div>
     </div>

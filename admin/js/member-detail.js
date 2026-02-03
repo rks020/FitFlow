@@ -428,7 +428,7 @@ function openMeasurementModal() {
 
 async function loadMeasurements() {
     const tbody = document.getElementById('measurements-table-body');
-    tbody.innerHTML = '<tr><td colspan="6">Yükleniyor...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Yükleniyor...</td></tr>';
 
     try {
         const { data, error } = await supabaseClient
@@ -441,18 +441,22 @@ async function loadMeasurements() {
         if (error) throw error;
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">Kayıt bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7">Kayıt bulunamadı.</td></tr>';
             return;
         }
 
+        // Store measurements globally for comparison
+        window.allMeasurements = data;
+
         tbody.innerHTML = data.map(m => `
             <tr>
+                <td><input type="checkbox" class="measurement-checkbox" data-measurement-id="${m.id}" onchange="handleMeasurementSelection()"></td>
                 <td>${new Date(m.measurement_date).toLocaleDateString('tr-TR')}</td>
                 <td>${m.weight?.toFixed(1) || '-'}</td>
-                <td>${m.body_fat_ratio?.toFixed(1) || '-'}</td>
-                <td>${m.muscle_mass?.toFixed(1) || '-'}</td>
-                <td>${m.waist_circumference?.toFixed(1) || '-'}</td>
-                <td>${m.hip_circumference?.toFixed(1) || '-'}</td>
+                <td>${m.body_fat_percentage?.toFixed(1) || '-'}</td>
+                <td>${m.bone_mass?.toFixed(1) || '-'}</td>
+                <td>${m.waist_cm?.toFixed(1) || '-'}</td>
+                <td>${m.hips_cm?.toFixed(1) || '-'}</td>
             </tr>
         `).join('');
 
@@ -532,3 +536,131 @@ const chartOptions = {
         }
     }
 };
+
+// ==================== MEASUREMENT COMPARISON ====================
+window.selectedMeasurements = [];
+
+function handleMeasurementSelection() {
+    const checkboxes = document.querySelectorAll('.measurement-checkbox:checked');
+    const compareBtn = document.getElementById('compare-measurements-btn');
+
+    if (checkboxes.length > 2) {
+        checkboxes[checkboxes.length - 1].checked = false;
+        showToast('En fazla 2 ölçüm seçebilirsiniz', 'warning');
+        return;
+    }
+
+    window.selectedMeasurements = Array.from(checkboxes).map(cb => {
+        const id = cb.dataset.measurementId;
+        return window.allMeasurements.find(m => m.id === id);
+    });
+
+    if (window.selectedMeasurements.length === 2) {
+        compareBtn.disabled = false;
+        compareBtn.style.opacity = '1';
+    } else {
+        compareBtn.disabled = true;
+        compareBtn.style.opacity = '0.5';
+    }
+}
+
+function showMeasurementComparison() {
+    if (window.selectedMeasurements.length !== 2) return;
+
+    const [m1, m2] = window.selectedMeasurements;
+    const oldM = new Date(m1.measurement_date) < new Date(m2.measurement_date) ? m1 : m2;
+    const newM = new Date(m1.measurement_date) < new Date(m2.measurement_date) ? m2 : m1;
+
+    const comparisonContent = document.getElementById('comparison-content');
+
+    comparisonContent.innerHTML = `
+        <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <div style="text-align: center; flex: 1;">
+                    <div style="color: #888; font-size: 12px; margin-bottom: 4px;">Eski Ölçüm</div>
+                    <div style="font-weight: bold;">${new Date(oldM.measurement_date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                </div>
+                <div style="color: #FFD700; font-size: 20px;">→</div>
+                <div style="text-align: center; flex: 1;">
+                    <div style="color: #888; font-size: 12px; margin-bottom: 4px;">Yeni Ölçüm</div>
+                    <div style="font-weight: bold;">${new Date(newM.measurement_date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                </div>
+            </div>
+        </div>
+        
+        <h3 style="color: #FFD700; margin: 20px 0 12px;">Temel Bilgiler</h3>
+        <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+            ${buildComparisonRow('Kilo', oldM.weight, newM.weight, 'kg', true)}
+            ${buildComparisonRow('Yağ Oranı', oldM.body_fat_percentage, newM.body_fat_percentage, '%', true)}
+            ${buildComparisonRow('BMI', oldM.weight && oldM.height ? calcBMI(oldM) : null, newM.weight && newM.height ? calcBMI(newM) : null, '', true)}
+            ${buildComparisonRow('Su', oldM.water_percentage, newM.water_percentage, '%', false)}
+            ${buildComparisonRow('Kemik', oldM.bone_mass, newM.bone_mass, 'kg', false)}
+            ${buildComparisonRow('Visceral', oldM.visceral_fat_rating, newM.visceral_fat_rating, '', true)}
+            ${buildComparisonRow('Met. Yaş', oldM.metabolic_age, newM.metabolic_age, '', true)}
+            ${buildComparisonRow('BMR', oldM.basal_metabolic_rate, newM.basal_metabolic_rate, 'kcal', false)}
+        </div>
+        
+        <h3 style="color: #FFD700; margin: 20px 0 12px;">Çevre Ölçümleri</h3>
+        <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px;">
+            ${buildComparisonRow('Göğüs', oldM.chest_cm, newM.chest_cm, 'cm', false)}
+            ${buildComparisonRow('Bel', oldM.waist_cm, newM.waist_cm, 'cm', true)}
+            ${buildComparisonRow('Kalça', oldM.hips_cm, newM.hips_cm, 'cm', true)}
+            ${buildComparisonRow('Sol Kol', oldM.left_arm_cm, newM.left_arm_cm, 'cm', false)}
+            ${buildComparisonRow('Sağ Kol', oldM.right_arm_cm, newM.right_arm_cm, 'cm', false)}
+            ${buildComparisonRow('Sol Bacak', oldM.left_thigh_cm, newM.left_thigh_cm, 'cm', false)}
+            ${buildComparisonRow('Sağ Bacak', oldM.right_thigh_cm, newM.right_thigh_cm, 'cm', false)}
+        </div>
+    `;
+
+    document.getElementById('comparison-modal').classList.add('active');
+}
+
+function calcBMI(m) {
+    if (!m.weight || !m.height) return null;
+    return m.weight / ((m.height / 100) ** 2);
+}
+
+function buildComparisonRow(label, oldVal, newVal, unit, reverseLogic = false) {
+    if (oldVal == null || newVal == null) return '';
+
+    const diff = newVal - oldVal;
+    let color, icon;
+
+    if (diff === 0) {
+        color = '#FFD700';
+        icon = '—';
+    } else {
+        const isGood = (reverseLogic && diff < 0) || (!reverseLogic && diff > 0);
+        color = isGood ? '#10B981' : '#EF4444';
+        icon = diff > 0 ? '▲' : '▼';
+    }
+
+    return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="flex: 1; color: #ddd;">${label}</div>
+            <div style="flex: 1; text-align: right;">
+                <div style="font-size: 16px; font-weight: bold;">${newVal.toFixed(1)} ${unit}</div>
+                <div style="font-size: 12px; color: #888;">${oldVal.toFixed(1)} ${unit}</div>
+            </div>
+            <div style="width: 80px; text-align: center; margin-left: 12px;">
+                <div style="background: ${color}33; color: ${color}; padding: 4px 8px; border-radius: 8px; font-size: 13px; font-weight: bold;">
+                    ${icon} ${Math.abs(diff).toFixed(1)}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Initialize comparison modal handlers
+document.getElementById('compare-measurements-btn')?.addEventListener('click', showMeasurementComparison);
+document.getElementById('close-comparison-modal')?.addEventListener('click', () => {
+    document.getElementById('comparison-modal').classList.remove('active');
+});
+document.getElementById('comparison-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'comparison-modal') {
+        document.getElementById('comparison-modal').classList.remove('active');
+    }
+});
+
+// Make functions global
+window.handleMeasurementSelection = handleMeasurementSelection;
