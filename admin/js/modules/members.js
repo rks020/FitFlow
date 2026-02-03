@@ -17,10 +17,10 @@ export async function loadMembers() {
         </div>
 
         <!-- Filter Buttons -->
-        <div class="filter-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="btn btn-filter active" data-filter="my_members" style="flex:1;">Benim</button>
-            <button class="btn btn-filter" data-filter="multisport" style="flex:1;">Multisport</button>
-            <button class="btn btn-filter" data-filter="all" style="flex:1;">Tümü</button>
+        <div class="filter-tabs" style="display: flex; gap: 15px; margin-bottom: 30px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+            <button class="btn btn-filter active" data-filter="my_members" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Üyelerim</button>
+            <button class="btn btn-filter" data-filter="multisport" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Multisport</button>
+            <button class="btn btn-filter" data-filter="all" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Tümü</button>
         </div>
 
         <div class="members-list" id="members-list">
@@ -138,14 +138,15 @@ async function loadMembersList(searchQuery = '') {
                     </div>
                 </div>
 
-                <div class="member-actions" style="position: absolute; bottom: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-small btn-success" onclick="event.stopPropagation(); showPaymentModal('${member.id}', '${member.name.replace(/'/g, "\\'")}')" title="Ödeme Al">
-                        💰
+                <div class="member-actions" style="position: absolute; bottom: 15px; right: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-small" onclick="event.stopPropagation(); showPaymentModal('${member.id}', '${member.name.replace(/'/g, "\\'")}')" 
+                        style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px 16px; width: auto; font-weight: 600;">
+                        Ödeme Al
                     </button>
-                    <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); editMember('${member.id}')">
+                    <button class="btn btn-small btn-secondary text-btn" onclick="event.stopPropagation(); editMember('${member.id}')">
                         Düzenle
                     </button>
-                    <button class="btn btn-small btn-danger" onclick="event.stopPropagation(); deleteMember('${member.id}')">
+                    <button class="btn btn-small btn-danger text-btn" onclick="event.stopPropagation(); deleteMember('${member.id}')">
                         Sil
                     </button>
                 </div>
