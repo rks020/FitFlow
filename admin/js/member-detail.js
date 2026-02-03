@@ -321,7 +321,7 @@ function setupScheduleModal() {
                         title: 'Bireysel Ders',
                         start_time: cand.start.toISOString(),
                         end_time: cand.end.toISOString(),
-                        notes: notes,
+                        description: notes,
                         status: 'scheduled'
                     })
                     .select()
