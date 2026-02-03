@@ -299,6 +299,24 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
               }
               createdCount++;
               continue;
+            } else if (action == ConflictAction.proceedAnyway) {
+               // User wants to proceed despite conflicts - create with original time
+               final session = ClassSession(
+                 title: _titleController.text,
+                 startTime: startDateTime,
+                 endTime: endDateTime,
+                 capacity: 1,
+                 trainerId: Supabase.instance.client.auth.currentUser?.id,
+                 workoutId: _dayWorkouts[startDateTime.weekday]?.id,
+               );
+               final createdSession = await _repository.createSession(session);
+               if (createdSession.id != null) {
+                 await _repository.enrollMember(createdSession.id!, widget.member.id);
+                 final safeId = (createdSession.id.hashCode.abs() % 2147483647);
+                 await NotificationService().scheduleClassReminder(safeId, _titleController.text, createdSession.startTime);
+               }
+               createdCount++;
+               continue;
             } else if (action == ConflictAction.modifyTime) {
                // Complex to handle inside loop - maybe verify conflicts earlier? 
                // For now, if "modify" -> skip this session or show manual picker?

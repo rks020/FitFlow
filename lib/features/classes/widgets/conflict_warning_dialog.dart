@@ -5,7 +5,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_button.dart';
 
-enum ConflictAction { modifyTime, skip, cancel, acceptAlternative }
+enum ConflictAction { modifyTime, skip, cancel, acceptAlternative, proceedAnyway }
 
 class ConflictWarningDialog extends StatelessWidget {
   final List<Map<String, dynamic>> conflicts;
@@ -133,6 +133,14 @@ class ConflictWarningDialog extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                     ],
+                    
+                    CustomButton(
+                      text: 'Yine de Ekle',
+                      onPressed: () => Navigator.pop(context, ConflictAction.proceedAnyway),
+                      backgroundColor: AppColors.accentOrange,
+                      foregroundColor: Colors.white,
+                    ),
+                    const SizedBox(height: 12),
                     
                     CustomButton(
                       text: 'Farklı Saat Seç',
