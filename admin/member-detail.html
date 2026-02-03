@@ -401,11 +401,10 @@
                     </div>
 
                     <!-- Time & Details -->
+                    <!-- Time & Details -->
                     <div class="form-group">
-                        <label>Ders Saati ve Süre</label>
-                        <div style="display: flex; gap: 10px; align-items:center;">
-                            <input type="time" id="schedule-time" value="10:00" required>
-                            <span style="color:#888;">Süre:</span>
+                        <div style="display: flex; gap: 10px; align-items:center; margin-bottom: 10px;">
+                            <label>Süre</label>
                             <select id="schedule-duration"
                                 style="width: auto; flex:1; background: #2C2C2E; border:1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius:8px;">
                                 <option value="30">30 dk</option>
@@ -414,8 +413,13 @@
                                 <option value="90">90 dk</option>
                             </select>
                         </div>
-                        <p style="font-size:12px; color:#666; margin-top:5px;">Seçilen tüm günler için bu saat
-                            uygulanır.</p>
+
+                        <label style="display:block; margin-bottom: 8px; color:#fff;">Ders Saatleri</label>
+                        <div id="day-times-container"
+                            style="display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                            <div style="color: #666; font-size: 13px; font-style: italic;">Lütfen yukarıdan gün seçiniz.
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">

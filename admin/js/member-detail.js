@@ -162,9 +162,58 @@ async function loadHistory() {
 function setupScheduleModal() {
     const modal = document.getElementById('schedule-modal');
     const close = document.getElementById('close-schedule-modal');
+    const form = document.getElementById('schedule-form');
+    const dayCheckboxes = document.querySelectorAll('input[name="days"]');
+    const timesContainer = document.getElementById('day-times-container');
+
     close.onclick = () => modal.classList.remove('active');
 
-    document.getElementById('schedule-form').onsubmit = async (e) => {
+    // Listen for day changes to update time inputs
+    dayCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updateTimeInputs);
+    });
+
+    function updateTimeInputs() {
+        const selected = Array.from(dayCheckboxes)
+            .filter(cb => cb.checked)
+            .sort((a, b) => {
+                // Sort Mon(1) to Sun(0 -> 7)
+                const valA = parseInt(a.value) === 0 ? 7 : parseInt(a.value);
+                const valB = parseInt(b.value) === 0 ? 7 : parseInt(b.value);
+                return valA - valB;
+            });
+
+        if (selected.length === 0) {
+            timesContainer.innerHTML = '<div style="color: #666; font-size: 13px; font-style: italic;">Lütfen yukarıdan gün seçiniz.</div>';
+            return;
+        }
+
+        // Save existing values
+        const existingValues = {};
+        document.querySelectorAll('.day-time-input').forEach(input => {
+            existingValues[input.dataset.day] = input.value;
+        });
+
+        timesContainer.innerHTML = '';
+
+        selected.forEach(cb => {
+            const dayVal = cb.value;
+            const dayName = cb.nextElementSibling.textContent; // "Pzt", "Sal" etc.
+            const savedTime = existingValues[dayVal] || '10:00';
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px;';
+
+            row.innerHTML = `
+                <span style="color: #fff; font-weight: 500;">${dayName}</span>
+                <input type="time" class="day-time-input" data-day="${dayVal}" value="${savedTime}" required 
+                    style="background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 6px; border-radius: 6px;">
+            `;
+            timesContainer.appendChild(row);
+        });
+    }
+
+    form.onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button');
         btn.disabled = true; btn.textContent = 'Oluşturuluyor...';
@@ -172,26 +221,30 @@ function setupScheduleModal() {
         try {
             const startDateVal = document.getElementById('schedule-start-date').value;
             const endDateVal = document.getElementById('schedule-end-date').value;
-            const timeVal = document.getElementById('schedule-time').value; // HH:MM
             const duration = parseInt(document.getElementById('schedule-duration').value);
             const notes = document.getElementById('schedule-notes').value;
 
-            // Get checked days
-            const dayCheckboxes = document.querySelectorAll('input[name="days"]:checked');
-            const selectedDays = Array.from(dayCheckboxes).map(cb => parseInt(cb.value)); // 1=Mon, ..., 0=Sun
-
-            if (selectedDays.length === 0) throw new Error('Lütfen en az bir gün seçin');
+            const dayTimeInputs = document.querySelectorAll('.day-time-input');
+            if (dayTimeInputs.length === 0) throw new Error('Lütfen en az bir gün seçin');
             if (!startDateVal || !endDateVal) throw new Error('Tarih aralığı seçiniz');
-            if (!timeVal) throw new Error('Saat seçiniz');
 
-            // Find valid dates
             const startDt = new Date(startDateVal);
             const endDt = new Date(endDateVal);
             let createdCount = 0;
 
+            // Map: DayValue -> TimeString
+            const dayTimes = {};
+            dayTimeInputs.forEach(input => {
+                dayTimes[parseInt(input.dataset.day)] = input.value;
+            });
+
             // Loop through dates
             for (let d = new Date(startDt); d <= endDt; d.setDate(d.getDate() + 1)) {
-                if (selectedDays.includes(d.getDay())) {
+                const currentDay = d.getDay(); // 0-6
+
+                if (dayTimes.hasOwnProperty(currentDay)) {
+                    const timeVal = dayTimes[currentDay];
+
                     // 1. Create Class Session
                     const sessionStart = new Date(d);
                     const [hours, mins] = timeVal.split(':');
@@ -201,7 +254,6 @@ function setupScheduleModal() {
                     const { data: sessionData, error: sessionError } = await supabaseClient
                         .from('class_sessions')
                         .insert({
-                            // member_id is NOT in this table
                             trainer_id: profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id,
                             title: 'Bireysel Ders',
                             start_time: sessionStart.toISOString(),
@@ -233,8 +285,8 @@ function setupScheduleModal() {
             showToast(`${createdCount} ders başarıyla oluşturuldu!`, 'success');
             modal.classList.remove('active');
             e.target.reset();
+            timesContainer.innerHTML = '<div style="color: #666; font-size: 13px; font-style: italic;">Lütfen yukarıdan gün seçiniz.</div>';
 
-            // Refresh history if open
             if (document.getElementById('section-history').style.display === 'block') loadHistory();
 
         } catch (error) {
