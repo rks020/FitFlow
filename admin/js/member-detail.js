@@ -397,7 +397,9 @@ function setupMeasurementModal() {
                 waist_cm: parseFloat(document.getElementById('meas-waist').value) || null,
                 hips_cm: parseFloat(document.getElementById('meas-hip').value) || null,
                 right_arm_cm: parseFloat(document.getElementById('meas-arm-right').value) || null,
+                left_arm_cm: parseFloat(document.getElementById('meas-arm-left').value) || null,
                 right_thigh_cm: parseFloat(document.getElementById('meas-leg-right').value) || null,
+                left_thigh_cm: parseFloat(document.getElementById('meas-leg-left').value) || null,
             };
 
             const { error } = await supabaseClient.from('measurements').insert(formData);
