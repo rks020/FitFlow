@@ -230,7 +230,6 @@ function setupScheduleModal() {
 
             const startDt = new Date(startDateVal);
             const endDt = new Date(endDateVal);
-            let createdCount = 0;
 
             // Map: DayValue -> TimeString
             const dayTimes = {};
@@ -238,49 +237,109 @@ function setupScheduleModal() {
                 dayTimes[parseInt(input.dataset.day)] = input.value;
             });
 
-            // Loop through dates
+            // 1. Generate all candidates first
+            const candidates = [];
             for (let d = new Date(startDt); d <= endDt; d.setDate(d.getDate() + 1)) {
-                const currentDay = d.getDay(); // 0-6
+                const currentDay = d.getDay();
 
                 if (dayTimes.hasOwnProperty(currentDay)) {
                     const timeVal = dayTimes[currentDay];
-
-                    // 1. Create Class Session
                     const sessionStart = new Date(d);
                     const [hours, mins] = timeVal.split(':');
                     sessionStart.setHours(parseInt(hours), parseInt(mins), 0, 0);
                     const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
 
-                    const { data: sessionData, error: sessionError } = await supabaseClient
-                        .from('class_sessions')
-                        .insert({
-                            trainer_id: profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id,
-                            title: 'Bireysel Ders',
-                            start_time: sessionStart.toISOString(),
-                            end_time: sessionEnd.toISOString(),
-                            notes: notes,
-                            status: 'scheduled'
-                        })
-                        .select()
-                        .single();
-
-                    if (sessionError) throw sessionError;
-
-                    // 2. Create Enrollment
-                    const { error: enrollError } = await supabaseClient
-                        .from('class_enrollments')
-                        .insert({
-                            class_id: sessionData.id,
-                            member_id: memberId,
-                            status: 'booked'
-                        });
-
-                    if (enrollError) throw enrollError;
-                    createdCount++;
+                    candidates.push({
+                        start: sessionStart,
+                        end: sessionEnd
+                    });
                 }
             }
 
-            if (createdCount === 0) throw new Error('Seçilen tarih aralığında ve günlerde uygun gün bulunamadı.');
+            if (candidates.length === 0) throw new Error('Seçilen tarih aralığında uygun gün bulunamadı.');
+
+            // 2. Check for conflicts
+            btn.textContent = 'Çakışma Kontrol Ediliyor...';
+
+            const rangeStart = new Date(startDt);
+            rangeStart.setHours(0, 0, 0, 0);
+            const rangeEnd = new Date(endDt);
+            rangeEnd.setHours(23, 59, 59, 999);
+
+            const trainerId = profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id;
+
+            const { data: existingSessions, error: fetchError } = await supabaseClient
+                .from('class_sessions')
+                .select('start_time, end_time, title')
+                .eq('trainer_id', trainerId)
+                .neq('status', 'cancelled')
+                .gte('start_time', rangeStart.toISOString())
+                .lte('end_time', rangeEnd.toISOString());
+
+            if (fetchError) throw fetchError;
+
+            // Find conflicts
+            const conflicts = [];
+            candidates.forEach(cand => {
+                const hasConflict = existingSessions.some(ex => {
+                    const exStart = new Date(ex.start_time);
+                    const exEnd = new Date(ex.end_time);
+                    return cand.start < exEnd && cand.end > exStart;
+                });
+                if (hasConflict) conflicts.push(cand);
+            });
+
+            // 3. If conflicts exist, ask user
+            if (conflicts.length > 0) {
+                btn.disabled = false;
+                btn.textContent = 'Programı Oluştur';
+
+                const conflictList = conflicts.slice(0, 5).map(c =>
+                    `• ${c.start.toLocaleDateString('tr-TR')} ${c.start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+                ).join('\n');
+
+                const extraMsg = conflicts.length > 5 ? `\n...ve ${conflicts.length - 5} diğer çakışma` : '';
+
+                const userConfirmed = confirm(
+                    `⚠️ ÇAKIŞMA TESPİT EDİLDİ!\n\n${conflicts.length} derste saat çakışması var:\n\n${conflictList}${extraMsg}\n\nYine de bu dersleri eklemek istiyor musunuz?`
+                );
+
+                if (!userConfirmed) return; // User cancelled
+
+                btn.disabled = true;
+            }
+
+            // 4. Create all sessions
+            btn.textContent = 'Oluşturuluyor...';
+            let createdCount = 0;
+
+            for (const cand of candidates) {
+                const { data: sessionData, error: sessionError } = await supabaseClient
+                    .from('class_sessions')
+                    .insert({
+                        trainer_id: trainerId,
+                        title: 'Bireysel Ders',
+                        start_time: cand.start.toISOString(),
+                        end_time: cand.end.toISOString(),
+                        notes: notes,
+                        status: 'scheduled'
+                    })
+                    .select()
+                    .single();
+
+                if (sessionError) throw sessionError;
+
+                const { error: enrollError } = await supabaseClient
+                    .from('class_enrollments')
+                    .insert({
+                        class_id: sessionData.id,
+                        member_id: memberId,
+                        status: 'booked'
+                    });
+
+                if (enrollError) throw enrollError;
+                createdCount++;
+            }
 
             showToast(`${createdCount} ders başarıyla oluşturuldu!`, 'success');
             modal.classList.remove('active');
