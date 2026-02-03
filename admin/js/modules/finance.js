@@ -107,12 +107,12 @@ async function loadPaymentsList() {
                         ${p.category || '-'}
                     </span>
                 </td>
-                <td style="padding: 12px; color: #ccc;">${p.payment_method || '-'}</td>
+                <td style="padding: 12px; color: #ccc;">${formatPaymentType(p.type)}</td>
                  <td style="padding: 12px; color: #4ade80; font-weight: bold;">
                     ${(p.amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
                 </td>
                 <td style="padding: 12px; color: #888; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    ${p.notes || ''}
+                    ${p.description || ''}
                 </td>
             </tr>
         `).join('');
@@ -121,4 +121,13 @@ async function loadPaymentsList() {
         console.error('Error loading payments:', error);
         showToast('Ödemeler yüklenirken hata oluştu', 'error');
     }
+}
+
+function formatPaymentType(type) {
+    const types = {
+        'cash': 'Nakit',
+        'credit_card': 'Kredi Kartı',
+        'transfer': 'Havale/EFT'
+    };
+    return types[type] || type || '-';
 }

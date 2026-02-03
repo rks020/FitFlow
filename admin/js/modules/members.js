@@ -191,9 +191,18 @@ function setupPaymentModal() {
         try {
             const memberId = document.getElementById('payment-member-id').value;
             const amount = parseFloat(document.getElementById('payment-amount').value);
-            const method = document.getElementById('payment-method').value;
-            const category = document.getElementById('payment-category').value;
+            const methodRaw = document.getElementById('payment-method').value;
+            const categoryRaw = document.getElementById('payment-category').value;
             const description = document.getElementById('payment-description').value;
+
+            // Map UI values to DB Enum values
+            let method = 'cash';
+            if (methodRaw === 'Kredi Kartı') method = 'credit_card';
+            else if (methodRaw === 'Havale/EFT') method = 'transfer';
+
+            let category = 'package_renewal';
+            if (categoryRaw === 'Tek Ders') category = 'single_session';
+            else if (categoryRaw === 'Ekstra') category = 'extra';
 
             const { data: { user } } = await supabaseClient.auth.getUser();
 
@@ -202,7 +211,7 @@ function setupPaymentModal() {
                 .insert({
                     member_id: memberId,
                     amount: amount,
-                    payment_method: method,
+                    type: method, // DB column is 'type'
                     category: category,
                     description: description,
                     date: new Date()
