@@ -184,7 +184,9 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
         ),
       ),
 
-      floatingActionButton: (_currentProfile?.role == 'admin' || _currentProfile?.role == 'owner')
+      floatingActionButton: (_currentProfile?.role == 'admin' || 
+                              _currentProfile?.role == 'owner' || 
+                              _currentProfile?.role == 'trainer')
         ? FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.push(
