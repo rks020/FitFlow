@@ -104,7 +104,7 @@ async function loadPaymentsList() {
                 <td style="padding: 12px; font-weight: bold;">${p.members.name}</td>
                 <td style="padding: 12px;">
                     <span style="background: rgba(255, 215, 0, 0.1); color: #FFD700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
-                        ${p.category || '-'}
+                        ${formatPaymentCategory(p.category)}
                     </span>
                 </td>
                 <td style="padding: 12px; color: #ccc;">${formatPaymentType(p.type)}</td>
@@ -130,4 +130,14 @@ function formatPaymentType(type) {
         'transfer': 'Havale/EFT'
     };
     return types[type] || type || '-';
+}
+
+function formatPaymentCategory(category) {
+    const categories = {
+        'package_renewal': 'Paket Yenileme',
+        'single_session': 'Tek Ders',
+        'extra': 'Ekstra',
+        'other': 'Diğer'
+    };
+    return categories[category] || category || '-';
 }
