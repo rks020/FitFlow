@@ -384,6 +384,7 @@ function setupMeasurementModal() {
                 // CORRECT FIELD: measurement_date, not date
                 measurement_date: new Date().toISOString(),
                 weight: parseFloat(document.getElementById('meas-weight').value) || null,
+                height: parseFloat(document.getElementById('meas-height').value) || null,
                 body_fat_percentage: parseFloat(document.getElementById('meas-fat').value) || null,
                 bone_mass: parseFloat(document.getElementById('meas-muscle').value) || null,
                 water_percentage: parseFloat(document.getElementById('meas-water').value) || null,
