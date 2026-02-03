@@ -192,6 +192,13 @@
             color: #FFD700;
             border-color: rgba(255, 215, 0, 0.5);
         }
+
+        /* Fix Calendar Icon Color */
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
     </style>
 </head>
 
