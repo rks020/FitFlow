@@ -1,9 +1,12 @@
 import { supabaseClient } from '../supabase-config.js';
 import { showToast, formatDate } from '../utils.js';
+import { CustomTimePicker } from '../components/time-picker.js';
 
 let currentDate = new Date();
 let selectedDate = new Date();
 let sessionsCache = [];
+let startTimePicker = null;
+let endTimePicker = null;
 
 export async function loadClasses() {
     const contentArea = document.getElementById('content-area');
@@ -387,6 +390,24 @@ function setupCreateClassModal() {
 
     if (!modal) return;
 
+    // Initialize custom time pickers
+    startTimePicker = new CustomTimePicker('start-time-picker', () => {
+        // When start time changes, optionally update end time based on duration
+        updateEndTimeFromDuration();
+    });
+    startTimePicker.init();
+
+    endTimePicker = new CustomTimePicker('end-time-picker', () => {
+        // End time changed manually
+    });
+    endTimePicker.init();
+
+    // Duration selector auto-updates end time
+    const durationSelect = document.getElementById('class-duration');
+    durationSelect.addEventListener('change', () => {
+        updateEndTimeFromDuration();
+    });
+
     closeBtn.onclick = () => modal.classList.remove('active');
     window.onclick = (event) => {
         if (event.target == modal) modal.classList.remove('active');
@@ -407,6 +428,61 @@ function setupCreateClassModal() {
             await fetchMonthSessions(currentDate);
             renderCalendar();
             renderDaySessions(selectedDate);
+            // Reset form
+            form.reset();
+            startTimePicker.setValue(10, 0);
+            endTimePicker.setValue(11, 0);
+        } catch (error) {
+            console.error(error);
+            showToast(error.message || 'Ders oluşturulamadı', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Dersi Oluştur';
+        }
+    };
+
+    // Setup conflict modal
+    setupConflictModal();
+}
+
+function updateEndTimeFromDuration() {
+    const duration = parseInt(document.getElementById('class-duration').value);
+    const startHour = startTimePicker.getHour();
+    const startMin = startTimePicker.getMinute();
+
+    const startDate = new Date();
+    startDate.setHours(startHour, startMin, 0, 0);
+    startDate.setMinutes(startDate.getMinutes() + duration);
+
+    const endHour = startDate.getHours();
+    const endMin = startDate.getMinutes();
+    endTimePicker.setValue(endHour, endMin);
+}
+
+function setupConflictModal() {
+    const modal = document.getElementById('conflict-modal');
+    const closeBtn = document.getElementById('close-conflict-modal');
+    const cancelBtn = document.getElementById('cancel-create');
+    const forceBtn = document.getElementById('force-create');
+
+    if (!modal) return;
+
+    closeBtn.onclick = () => modal.classList.remove('active');
+    cancelBtn.onclick = () => modal.classList.remove('active');
+
+    forceBtn.onclick = async () => {
+        modal.classList.remove('active');
+        const submitBtn = document.querySelector('#create-class-form button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Oluşturuluyor...';
+
+        try {
+            await createClass(true); // Force create, skip conflict check
+            document.getElementById('create-class-modal').classList.remove('active');
+            showToast('Ders başarıyla oluşturuldu!', 'success');
+            await fetchMonthSessions(currentDate);
+            renderCalendar();
+            renderDaySessions(selectedDate);
         } catch (error) {
             console.error(error);
             showToast(error.message || 'Ders oluşturulamadı', 'error');
@@ -422,23 +498,20 @@ async function openCreateClassModal(date) {
 
     // Set Date Input
     const dateInput = document.getElementById('class-date');
-    // Format YYYY-MM-DD (Local)
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     dateInput.value = `${year}-${month}-${day}`;
 
-
     // Set Default Times (Next hour)
     const now = new Date();
-    // If selected date is today, start from next hour
     let startHour = 9;
     if (date.toDateString() === now.toDateString()) {
         startHour = now.getHours() + 1;
     }
 
-    document.getElementById('class-start-time').value = `${String(startHour).padStart(2, '0')}:00`;
-    // Duration is already set to 60 dk (default) in HTML
+    startTimePicker.setValue(startHour, 0);
+    endTimePicker.setValue(startHour + 1, 0);
 
     // Load Members
     await loadMembersForDropdown();
@@ -481,14 +554,13 @@ async function loadMembersForDropdown() {
     }
 }
 
-async function createClass() {
+async function createClass(forceCreate = false) {
     const className = document.getElementById('class-name').value;
     const capacity = parseInt(document.getElementById('class-capacity').value);
     const dateVal = document.getElementById('class-date').value;
     const startTimeVal = document.getElementById('class-start-time').value;
-    const duration = parseInt(document.getElementById('class-duration').value); // in minutes
+    const endTimeVal = document.getElementById('class-end-time').value;
     const memberId = document.getElementById('class-member-select').value;
-    const notes = document.getElementById('class-notes').value || '';
 
     if (!memberId) throw new Error('Lütfen bir üye seçin');
     if (!className) throw new Error('Lütfen ders adı girin');
@@ -496,12 +568,25 @@ async function createClass() {
 
     // Construct Timestamps
     const startDateTime = new Date(`${dateVal}T${startTimeVal}:00`);
-    const endDateTime = new Date(startDateTime.getTime() + duration * 60000); // Add duration in milliseconds
+    const endDateTime = new Date(`${dateVal}T${endTimeVal}:00`);
+
+    // Validate end time is after start time
+    if (endDateTime <= startDateTime) {
+        throw new Error('Bitiş saati başlangıç saatinden sonra olmalıdır');
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
 
-    // Insert
-    // 1. Create Class Session
+    // Check conflicts (unless forced)
+    if (!forceCreate) {
+        const conflicts = await checkConflicts(startDateTime, endDateTime, user.id);
+        if (conflicts.length > 0) {
+            showConflictModal(conflicts);
+            throw new Error('CONFLICT_DETECTED'); // Stop here, user will decide
+        }
+    }
+
+    // Create class
     const { data: sessionData, error: sessionError } = await supabaseClient
         .from('class_sessions')
         .insert({
@@ -527,4 +612,39 @@ async function createClass() {
         });
 
     if (enrollError) throw enrollError;
+}
+
+// Conflict Detection
+async function checkConflicts(startTime, endTime, trainerId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('class_sessions')
+            .select('id, title, start_time, end_time')
+            .eq('trainer_id', trainerId)
+            .neq('status', 'cancelled')
+            .or(`and(start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()})`);
+        
+        if (error) {
+            console.error('Conflict check error:', error);
+            return [];
+        }
+        
+        return data || [];
+    } catch (err) {
+        console.error('Conflict check exception:', err);
+        return [];
+    }
+}
+
+function showConflictModal(conflicts) {
+    const conflictList = conflicts.map(c => {
+        const start = new Date(c.start_time);
+        const end = new Date(c.end_time);
+        const timeStr = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')} - ${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+        return `• ${timeStr} - ${c.title}`;
+    }).join('\n');
+    
+    const modal = document.getElementById('conflict-modal');
+    document.getElementById('conflict-list').textContent = conflictList;
+    modal.classList.add('active');
 }

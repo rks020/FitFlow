@@ -176,19 +176,48 @@
                             <input type="date" id="class-date" required disabled
                                 style="background: rgba(255,255,255,0.1); color: #888; cursor: not-allowed;">
                         </div>
+
+                        <!-- Start Time - Custom Picker -->
                         <div class="form-group">
                             <label>🕐 Başlangıç Saati</label>
-                            <input type="time" id="class-start-time" required>
+                            <div class="custom-time-picker" id="start-time-picker">
+                                <div class="time-display">
+                                    <span class="time-display-value">10:00</span>
+                                    <span class="clock-icon">🕐</span>
+                                </div>
+                                <div class="time-picker-dropdown">
+                                    <!-- Generated dynamically by JS -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="class-start-time" value="10:00">
                         </div>
+
+                        <!-- End Time - Custom Picker (RESTORED) -->
                         <div class="form-group">
-                            <label>⏱️ Süre</label>
-                            <select id="class-duration" required>
+                            <label>🕐 Bitiş Saati</label>
+                            <div class="custom-time-picker" id="end-time-picker">
+                                <div class="time-display">
+                                    <span class="time-display-value">11:00</span>
+                                    <span class="clock-icon">🕐</span>
+                                </div>
+                                <div class="time-picker-dropdown">
+                                    <!-- Generated dynamically by JS -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="class-end-time" value="11:00">
+                        </div>
+
+                        <!-- Duration (Quick Select) -->
+                        <div class="form-group">
+                            <label>⏱️ Süre (Hızlı Seçim)</label>
+                            <select id="class-duration">
                                 <option value="30">30 dk</option>
                                 <option value="45">45 dk</option>
                                 <option value="60" selected>60 dk</option>
                                 <option value="90">90 dk</option>
                                 <option value="120">120 dk</option>
                             </select>
+                            <small class="form-hint">Bitiş saatini otomatik ayarlar</small>
                         </div>
                     </div>
 
@@ -215,6 +244,32 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conflict Warning Modal -->
+    <div id="conflict-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 style="color: #EF4444;">⚠️ Çakışan Ders Uyarısı</h2>
+                <span class="close-modal" id="close-conflict-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 16px;">Bu saatte aşağıdaki dersler mevcut:</p>
+                <pre id="conflict-list"
+                    style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin: 16px 0; color: #FFD700; font-family: monospace; white-space: pre-wrap;"></pre>
+                <p style="color: #FFD700; font-weight: 600; margin-bottom: 24px;">Yine de eklemek ister misiniz?</p>
+                <div class="form-actions" style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button id="cancel-create" class="btn"
+                        style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                        İptal
+                    </button>
+                    <button id="force-create" class="btn btn-primary"
+                        style="flex: 1; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; font-weight: 700;">
+                        Yine de Ekle
+                    </button>
+                </div>
             </div>
         </div>
     </div>
