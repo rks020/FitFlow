@@ -958,3 +958,13 @@ select option {
 .delete-account-link:active {
     transform: translateY(0);
 }
+/* Time Picker Icon - Make white for visibility */
+input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+input[type="time"]::-moz-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
