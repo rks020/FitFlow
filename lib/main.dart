@@ -109,17 +109,59 @@ class PTBodyChangeApp extends StatefulWidget {
   State<PTBodyChangeApp> createState() => _PTBodyChangeAppState();
 }
 
-class _PTBodyChangeAppState extends State<PTBodyChangeApp> {
+class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Add observer
     _setupAuthListener();
-    
+    _updateUserPresence(true); // Set online on start
+
     // Setup Notification Interaction (Navigation)
     // Delay slightly to ensure Navigator is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().setupInteractedMessage();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Remove observer
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _updateUserPresence(true);
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        _updateUserPresence(false);
+        break;
+      case AppLifecycleState.hidden:
+        // Do nothing for hidden (iOS specific mostly)
+        break;
+    }
+  }
+
+  // Helper to update presence safely
+  Future<void> _updateUserPresence(bool isOnline) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      try {
+        await Supabase.instance.client.from('profiles').update({
+          'is_online': isOnline,
+          'last_seen': isOnline ? null : DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', user.id);
+      } catch (e) {
+        debugPrint('Error updating presence: $e');
+      }
+    }
   }
 
   void _setupAuthListener() {

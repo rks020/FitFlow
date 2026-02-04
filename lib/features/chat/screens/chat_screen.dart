@@ -48,27 +48,50 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundImage: widget.otherUser.avatarUrl != null
-                  ? NetworkImage(widget.otherUser.avatarUrl!)
-                  : null,
-              backgroundColor: AppColors.accentOrange,
-              child: widget.otherUser.avatarUrl == null
-                  ? Text(
-                      (widget.otherUser.firstName?[0] ?? '') + (widget.otherUser.lastName?[0] ?? ''),
-                      style: const TextStyle(fontSize: 12, color: Colors.white),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '${widget.otherUser.firstName} ${widget.otherUser.lastName}',
-              style: AppTextStyles.headline.copyWith(fontSize: 16),
-            ),
-          ],
+        title: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: Supabase.instance.client
+              .from('profiles')
+              .stream(primaryKey: ['id'])
+              .eq('id', widget.otherUser.id),
+          builder: (context, snapshot) {
+            // Default to passed user data, but update if stream has data
+            Profile displayUser = widget.otherUser;
+            
+            if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              // Merge stream data into current profile manually or verify fields
+              final data = snapshot.data!.first;
+              // We only care about is_online and last_seen really, but let's be safe
+              // Creating a lightweight copy or just extracting what we need
+              final isOnline = data['is_online'] as bool? ?? false;
+              final lastSeenStr = data['last_seen'] as String?;
+              final lastSeen = lastSeenStr != null ? DateTime.parse(lastSeenStr).toLocal() : null;
+              
+              // Helper widget for status text
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${widget.otherUser.firstName} ${widget.otherUser.lastName}',
+                    style: AppTextStyles.headline.copyWith(fontSize: 16),
+                  ),
+                  _buildStatusText(isOnline, lastSeen),
+                ],
+              );
+            }
+
+            // Initial state
+             return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${widget.otherUser.firstName} ${widget.otherUser.lastName}',
+                    style: AppTextStyles.headline.copyWith(fontSize: 16),
+                  ),
+                   // Show nothing or 'Offline' initially if we don't know
+                   const SizedBox.shrink(),
+                ],
+              );
+          },
         ),
         backgroundColor: Colors.transparent,
         leading: IconButton(
@@ -391,6 +414,45 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildStatusText(bool isOnline, DateTime? lastSeen) {
+    if (isOnline) {
+      return const Text(
+        'çevrimiçi',
+        style: TextStyle(
+          color: AppColors.primaryYellow, // Or green? WhatsApp uses standard text color usually, showing "online"
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
+    if (lastSeen == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Text(
+      'Son görülme: ${_formatLastSeen(lastSeen)}',
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: 11,
+      ),
+    );
+  }
+
+  String _formatLastSeen(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+    final localTime = DateFormat('HH:mm').format(time);
+
+    if (difference.inDays == 0 && now.day == time.day) {
+      return 'bugün $localTime';
+    } else if (difference.inDays < 2 && (now.day - time.day == 1 || now.day - time.day == -30)) { // Simple check
+       return 'dün $localTime';
+    } else {
+      return DateFormat('dd.MM.yyyy HH:mm').format(time);
+    }
   }
 
   void _sendMessage() async {

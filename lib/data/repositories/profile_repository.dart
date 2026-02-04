@@ -118,4 +118,26 @@ class ProfileRepository {
       return [];
     }
   }
+  // Update user presence (Online/Offline)
+  Future<void> updatePresence({required bool isOnline}) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final updates = {
+        'is_online': isOnline,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      // If going offline, update last_seen
+      if (!isOnline) {
+        updates['last_seen'] = DateTime.now().toUtc().toIso8601String();
+      }
+
+      await _supabase.from('profiles').update(updates).eq('id', userId);
+    } catch (e) {
+      debugPrint('Error updating presence: $e');
+      // Don't rethrow, strictly background task
+    }
+  }
 }
