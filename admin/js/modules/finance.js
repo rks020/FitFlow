@@ -38,6 +38,32 @@ export async function loadFinance() {
                 </tbody>
             </table>
         </div>
+
+        <!-- Breakdown Summary Table -->
+        <div class="summary-container" style="margin-top: 30px; background: #222; border-radius: 10px; padding: 20px;">
+            <h3 style="margin-bottom: 20px; color: #FFD700; font-size: 18px;">Bu Ay Ödeme Dağılımı</h3>
+            <table style="width: 100%; border-collapse: collapse; color: #eee;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #444; text-align: left;">
+                        <th style="padding: 12px; color: #888;">Ödeme Türü</th>
+                        <th style="padding: 12px; color: #888; text-align: right;">Brüt Tutar (Toplanan)</th>
+                        <th style="padding: 12px; color: #888; text-align: right;">KDV (%20)</th>
+                        <th style="padding: 12px; color: #888; text-align: right;">Net Tutar</th>
+                    </tr>
+                </thead>
+                <tbody id="finance-summary-body">
+                    <tr><td colspan="4" style="text-align: center; padding: 20px;">Hesaplanıyor...</td></tr>
+                </tbody>
+                <tfoot style="border-top: 1px solid #555; font-weight: bold;">
+                    <tr style="background: rgba(255, 215, 0, 0.05);">
+                        <td style="padding: 16px;">TOPLAM</td>
+                        <td id="sum-grand-total" style="padding: 16px; text-align: right;">0.00 TL</td>
+                        <td id="sum-grand-vat" style="padding: 16px; text-align: right;">0.00 TL</td>
+                        <td id="sum-grand-net" style="padding: 16px; text-align: right;">0.00 TL</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     `;
 
     await loadPaymentsList();
@@ -81,6 +107,11 @@ async function loadPaymentsList() {
         if (filteredPayments.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center;">Henüz ödeme yok.</td></tr>';
             document.getElementById('total-revenue').textContent = '0.00 TL';
+            // Clear summary table if no data
+            document.getElementById('finance-summary-body').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #888;">Bu ay işlem bulunamadı.</td></tr>';
+            document.getElementById('sum-grand-total').textContent = '0.00 TL';
+            document.getElementById('sum-grand-vat').textContent = '0.00 TL';
+            document.getElementById('sum-grand-net').textContent = '0.00 TL';
             return;
         }
 
@@ -121,6 +152,69 @@ async function loadPaymentsList() {
                 </td>
             </tr>
         `).join('');
+
+        // --- Calculate Breakdown for "This Month" ---
+        // Reuse 'thisMonthTotal' logic's filter
+        const monthlyPayments = filteredPayments.filter(p => {
+            const d = new Date(p.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+
+        const stats = {
+            'cash': { gross: 0, vat: 0, net: 0, label: 'Nakit' },
+            'credit_card': { gross: 0, vat: 0, net: 0, label: 'Kredi Kartı' },
+            'transfer': { gross: 0, vat: 0, net: 0, label: 'Havale/EFT' }
+        };
+
+        monthlyPayments.forEach(p => {
+            const amount = p.amount || 0;
+            const typeKey = p.type || 'cash';
+
+            // Safety fallback if unexpected type
+            if (!stats[typeKey]) return;
+
+            stats[typeKey].gross += amount;
+
+            // VAT Calculation Rules
+            // Cash: No VAT (as per user constraint "nakitte yok")
+            // Card/Transfer: %20 VAT Included in Gross.
+            // Formula: Net = Gross / 1.20 | VAT = Gross - Net
+
+            if (typeKey === 'cash') {
+                stats[typeKey].net += amount;
+                stats[typeKey].vat += 0;
+            } else {
+                const net = amount / 1.20;
+                const vat = amount - net;
+                stats[typeKey].net += net;
+                stats[typeKey].vat += vat;
+            }
+        });
+
+        // Render Summary Body
+        const summaryBody = document.getElementById('finance-summary-body');
+        const rows = Object.keys(stats).map(key => {
+            const row = stats[key];
+            return `
+                <tr style="border-bottom: 1px solid #333;">
+                    <td style="padding: 12px;">${row.label}</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 500;">${row.gross.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
+                    <td style="padding: 12px; text-align: right; color: #aaa;">${row.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
+                    <td style="padding: 12px; text-align: right; color: #4ade80;">${row.net.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
+                </tr>
+            `;
+        }).join('');
+
+        summaryBody.innerHTML = rows;
+
+        // Render Footer Totals
+        const totalGross = Object.values(stats).reduce((sum, s) => sum + s.gross, 0);
+        const totalVat = Object.values(stats).reduce((sum, s) => sum + s.vat, 0);
+        const totalNet = Object.values(stats).reduce((sum, s) => sum + s.net, 0);
+
+        document.getElementById('sum-grand-total').textContent = `${totalGross.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL`;
+        document.getElementById('sum-grand-vat').textContent = `${totalVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL`;
+        document.getElementById('sum-grand-net').textContent = `${totalNet.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL`;
 
     } catch (error) {
         console.error('Error loading payments:', error);
