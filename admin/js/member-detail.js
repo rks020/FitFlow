@@ -4,6 +4,7 @@ import { checkConflicts } from './modules/classes.js';
 import { setupClassDetailModal, openClassDetailModal, setUpdateCallback } from './modules/class-details.js';
 
 let memberId = null;
+let currentMember = null;
 let profile = null;
 let charts = {}; // Store Chart instances
 
@@ -61,8 +62,14 @@ async function loadMemberDetails() {
 
         if (error) throw error;
 
+        currentMember = member;
+
         document.getElementById('member-name').textContent = member.name;
         document.getElementById('member-email').textContent = member.email || 'Email yok';
+
+        // Debug / Info
+        // console.log('Member loaded:', member);
+        // showToast(`Limit Test: Toplam ${member.session_count}, Kullanılan ${member.used_session_count}`, 'info');
 
     } catch (error) {
         console.error('Error loading member:', error);
@@ -328,12 +335,15 @@ function setupScheduleModal() {
             // For this step I will rely on a new fetch or wait for the next step where I add window.currentMember.
             // To prevent breaking, I'll fetch it here first.
 
-            const { data: memberData } = await supabaseClient
-                .from('members')
-                .select('session_count, used_session_count')
-                .eq('id', memberId)
-                .single();
+            // Use global currentMember loaded at page start
+            // If page loaded, currentMember must be available
+            if (!currentMember) {
+                // Fallback fetch if somehow null
+                const { data } = await supabaseClient.from('members').select('*').eq('id', memberId).single();
+                currentMember = data;
+            }
 
+            const memberData = currentMember;
             const remainingSessions = (memberData?.session_count || 0) - (memberData?.used_session_count || 0);
 
             let limitReached = false;
