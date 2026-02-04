@@ -1,6 +1,7 @@
 import { supabaseClient } from './supabase-config.js';
 import { showToast, formatDate } from './utils.js';
 import { checkConflicts } from './modules/classes.js';
+import { setupClassDetailModal, openClassDetailModal, setUpdateCallback } from './modules/class-details.js';
 
 let memberId = null;
 let profile = null;
@@ -23,15 +24,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Globals for HTML access
     window.showSection = showSection;
-    window.showSection = showSection;
     window.openScheduleModal = openScheduleModal;
     window.openMeasurementModal = openMeasurementModal;
-    window.openClassDetail = openClassDetail; // Expose to window
-    window.openMeasurementModal = openMeasurementModal;
+    window.openClassDetailModal = openClassDetailModal; // Shared Modal
 
     // Setup Modals
     setupScheduleModal();
     setupMeasurementModal();
+
+    // Setup Shared Class Detail Modal
+    setupClassDetailModal();
+    setUpdateCallback(() => {
+        loadHistory(); // Refresh history list on update/delete
+    });
 });
 
 async function loadCurrentUserProfile() {
@@ -165,25 +170,32 @@ async function loadHistory() {
 // --- Recurring Schedule Logic ---
 function setupScheduleModal() {
     const modal = document.getElementById('schedule-modal');
+    if (!modal) return;
+
     const close = document.getElementById('close-schedule-modal');
+    if (close) close.onclick = () => modal.classList.remove('active');
+
     const form = document.getElementById('schedule-form');
-    const dayCheckboxes = document.querySelectorAll('input[name="days"]');
+    // Scope search to the modal to avoid conflicts
+    const dayCheckboxes = modal.querySelectorAll('input[name="days"]');
     const timesContainer = document.getElementById('day-times-container');
 
-    close.onclick = () => modal.classList.remove('active');
+    if (!timesContainer || dayCheckboxes.length === 0) return;
 
-    // Listen for day changes to update time inputs
+    // Listen for day changes
     dayCheckboxes.forEach(cb => {
         cb.addEventListener('change', updateTimeInputs);
     });
 
     function updateTimeInputs() {
+        // Use Array.from to ensure we can filter/sort
         const selected = Array.from(dayCheckboxes)
             .filter(cb => cb.checked)
             .sort((a, b) => {
-                // Sort Mon(1) to Sun(0 -> 7)
-                const valA = parseInt(a.value) === 0 ? 7 : parseInt(a.value);
-                const valB = parseInt(b.value) === 0 ? 7 : parseInt(b.value);
+                const valA = parseInt(a.value) || 0;
+                const valB = parseInt(b.value) || 0;
+                // Monday=1...Sunday=7 logic handled by value (1..7) or (0=Sunday)?
+                // Assuming values 1-7 (Mon-Sun) based on HTML
                 return valA - valB;
             });
 
@@ -192,9 +204,10 @@ function setupScheduleModal() {
             return;
         }
 
-        // Save existing values
+        // Save existing values to prevent data loss when checking new days
         const existingValues = {};
-        document.querySelectorAll('.day-time-input').forEach(input => {
+        const inputs = timesContainer.querySelectorAll('.day-time-input');
+        inputs.forEach(input => {
             existingValues[input.dataset.day] = input.value;
         });
 
@@ -202,11 +215,15 @@ function setupScheduleModal() {
 
         selected.forEach(cb => {
             const dayVal = cb.value;
-            const dayName = cb.nextElementSibling.textContent; // "Pzt", "Sal" etc.
+            // Safer sibling text retrieval
+            const span = cb.nextElementSibling;
+            const dayName = span ? span.textContent.trim() : 'Gün ' + dayVal;
+
             const savedTime = existingValues[dayVal] || '10:00';
 
             const row = document.createElement('div');
-            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px;';
+            // Inline styles for reliability
+            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px;';
 
             row.innerHTML = `
                 <span style="color: #fff; font-weight: 500;">${dayName}</span>
