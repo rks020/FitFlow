@@ -225,17 +225,18 @@
                     <div class="class-form-section">
                         <h3 class="section-title">Üye Seçin</h3>
                         <div class="form-group">
+                            <input type="text" id="member-search" class="member-search" placeholder="🔍 Üye ara...">
                             <select id="class-member-select" required>
                                 <option value="">Bir üye seçin...</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>📝 Notlar (Opsiyonel)</label>
+                            <textarea id="class-notes" rows="3"
+                                style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: #fff; resize: vertical;"></textarea>
+                        </div>
                     </div>
 
-                    <!-- Notlar -->
-                    <div class="form-group">
-                        <label>Notlar (Opsiyonel)</label>
-                        <textarea id="class-notes" rows="2" placeholder="Antrenman notları..."></textarea>
-                    </div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary"

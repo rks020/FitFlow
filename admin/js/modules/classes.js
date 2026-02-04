@@ -390,28 +390,30 @@ function setupCreateClassModal() {
 
     if (!modal) return;
 
-    // Initialize custom time pickers
-    startTimePicker = new CustomTimePicker('start-time-picker', () => {
-        // When start time changes, optionally update end time based on duration
-        updateEndTimeFromDuration();
-    });
-    startTimePicker.init();
-
-    endTimePicker = new CustomTimePicker('end-time-picker', () => {
-        // End time changed manually
-    });
-    endTimePicker.init();
-
-    // Duration selector auto-updates end time
-    const durationSelect = document.getElementById('class-duration');
-    durationSelect.addEventListener('change', () => {
-        updateEndTimeFromDuration();
-    });
-
     closeBtn.onclick = () => modal.classList.remove('active');
     window.onclick = (event) => {
         if (event.target == modal) modal.classList.remove('active');
     };
+
+    // Member search functionality
+    const memberSearch = document.getElementById('member-search');
+    const memberSelect = document.getElementById('class-member-select');
+
+    if (memberSearch) {
+        memberSearch.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const options = memberSelect.options;
+
+            for (let i = 1; i < options.length; i++) { // Skip first "Bir üye seçin..." option
+                const optionText = options[i].text.toLowerCase();
+                if (optionText.includes(searchTerm)) {
+                    options[i].style.display = '';
+                } else {
+                    options[i].style.display = 'none';
+                }
+            }
+        });
+    }
 
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -430,11 +432,14 @@ function setupCreateClassModal() {
             renderDaySessions(selectedDate);
             // Reset form
             form.reset();
-            startTimePicker.setValue(10, 0);
-            endTimePicker.setValue(11, 0);
+            if (memberSearch) memberSearch.value = '';
+            if (startTimePicker) startTimePicker.setValue(10, 0);
+            if (endTimePicker) endTimePicker.setValue(11, 0);
         } catch (error) {
             console.error(error);
-            showToast(error.message || 'Ders oluşturulamadı', 'error');
+            if (error.message !== 'CONFLICT_DETECTED') {
+                showToast(error.message || 'Ders oluşturulamadı', 'error');
+            }
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Dersi Oluştur';
@@ -495,6 +500,30 @@ function setupConflictModal() {
 
 async function openCreateClassModal(date) {
     const modal = document.getElementById('create-class-modal');
+
+    // Initialize time pickers on first open (lazy initialization)
+    if (!startTimePicker) {
+        startTimePicker = new CustomTimePicker('start-time-picker', () => {
+            updateEndTimeFromDuration();
+        });
+        startTimePicker.init();
+    }
+
+    if (!endTimePicker) {
+        endTimePicker = new CustomTimePicker('end-time-picker', () => {
+            // End time changed manually
+        });
+        endTimePicker.init();
+    }
+
+    // Setup duration auto-update (once)
+    const durationSelect = document.getElementById('class-duration');
+    if (durationSelect && !durationSelect.dataset.listenerAttached) {
+        durationSelect.addEventListener('change', () => {
+            updateEndTimeFromDuration();
+        });
+        durationSelect.dataset.listenerAttached = 'true';
+    }
 
     // Set Date Input
     const dateInput = document.getElementById('class-date');
@@ -623,12 +652,12 @@ async function checkConflicts(startTime, endTime, trainerId) {
             .eq('trainer_id', trainerId)
             .neq('status', 'cancelled')
             .or(`and(start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()})`);
-        
+
         if (error) {
             console.error('Conflict check error:', error);
             return [];
         }
-        
+
         return data || [];
     } catch (err) {
         console.error('Conflict check exception:', err);
@@ -643,7 +672,7 @@ function showConflictModal(conflicts) {
         const timeStr = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')} - ${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
         return `• ${timeStr} - ${c.title}`;
     }).join('\n');
-    
+
     const modal = document.getElementById('conflict-modal');
     document.getElementById('conflict-list').textContent = conflictList;
     modal.classList.add('active');
