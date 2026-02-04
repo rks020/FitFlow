@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/class_session.dart';
@@ -29,11 +30,44 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   
   List<ClassEnrollment> _enrollments = [];
   bool _isLoading = true;
+  late ClassSession _currentSession; // Güncel session verisi
 
   @override
   void initState() {
     super.initState();
-    _loadEnrollments();
+    _currentSession = widget.session; // Başlangıçta widget'tan al
+    _loadSessionAndEnrollments();
+  }
+
+  // Session ve enrollments'ı birlikte yükle
+  Future<void> _loadSessionAndEnrollments() async {
+    setState(() => _isLoading = true);
+    try {
+      // Session'ı yeniden yükle (workout_id güncellemesi için)
+      final response = await Supabase.instance.client
+          .from('class_sessions')
+          .select('*, profiles(first_name, last_name), workouts(name)')
+          .eq('id', widget.session.id!)
+          .single();
+      
+      final updatedSession = ClassSession.fromJson(response);
+      
+      // Enrollments'ı yükle
+      final enrollments = await _classRepository.getEnrollments(widget.session.id!);
+      
+      if (mounted) {
+        setState(() {
+          _currentSession = updatedSession;
+          _enrollments = enrollments;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        CustomSnackBar.showError(context, 'Yüklenirken hata: $e');
+      }
+    }
   }
 
   Future<void> _loadEnrollments() async {
@@ -257,37 +291,36 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       GestureDetector(
                         onTap: _handleWorkoutAction,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.black26,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: widget.session.workoutId != null 
-                                  ? AppColors.primaryYellow.withOpacity(0.3)
-                                  : Colors.grey.withOpacity(0.3)
-                            )
+                              color: _currentSession.workoutId != null 
+                                  ? AppColors.primaryYellow
+                                  : Colors.grey,
+                            ),
                           ),
                           child: Row(
                             children: [
                               Icon(
-                                widget.session.workoutId != null ? Icons.fitness_center : Icons.add_circle_outline, 
-                                size: 16, 
-                                color: widget.session.workoutId != null ? AppColors.primaryYellow : Colors.grey
+                                _currentSession.workoutId != null ? Icons.fitness_center : Icons.add_circle_outline, 
+                                size: 24, 
+                                color: _currentSession.workoutId != null ? AppColors.primaryYellow : Colors.grey
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  widget.session.workoutName != null 
-                                      ? 'Program: ${widget.session.workoutName}'
+                                  _currentSession.workoutName != null 
+                                      ? 'Program: ${_currentSession.workoutName}'
                                       : 'Program Seçilmedi (Ata)',
-                                  style: AppTextStyles.headline.copyWith(
-                                    color: widget.session.workoutId != null ? AppColors.primaryYellow : Colors.grey
+                                  style: AppTextStyles.body.copyWith(
+                                    color: _currentSession.workoutId != null ? AppColors.primaryYellow : Colors.grey
                                   ),
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                              const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
                             ],
-                        ),
+                          ),
                       ),
                     ),
                   ],
@@ -516,8 +549,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   void _handleWorkoutAction() {
-    if (widget.session.workoutId != null) {
-      _showWorkoutDetails(widget.session.workoutId!);
+    if (_currentSession.workoutId != null) {
+      _showWorkoutDetails(_currentSession.workoutId!);
     } else {
       _showAssignDialog();
     }
@@ -592,30 +625,6 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         capacity: widget.session.capacity,
         trainerId: widget.session.trainerId,
         status: widget.session.status,
-        isCancelled: widget.session.isCancelled,
-        createdAt: widget.session.createdAt,
-        trainerSignatureUrl: widget.session.trainerSignatureUrl,
-        workoutId: workout.id, // NEW
-        workoutName: workout.name, 
-        currentEnrollments: widget.session.currentEnrollments,
-      );
-
-      await _classRepository.updateSession(updatedSession);
-      CustomSnackBar.showSuccess(context, 'Program atandı: ${workout.name}');
-      
-      // Need to reload the screen -> Assuming parent can rebuild or we navigate replacement
-      // For now, simpler: Pop with result true to indicate update, or just use setState if we can update widget.session locally?
-      // widget.session is final. We should probably pop(true) or use a local state wrapper.
-      // Easiest is to pop(true) and let previous screen reload, OR navigate replacement to self.
-      // Better yet: Just Pop(true) and let the previous screen handle refresh? 
-      // User is ON this screen. They want to see the change.
-      // I cannot update `widget.session`. 
-      // Solution: Convert `ClassDetailScreen` to fetch its own session or wrap session in State.
-      // OR: Navigate Replace to self.
-      if (mounted) {
-         Navigator.pushReplacement(
-           context, 
-           MaterialPageRoute(builder: (_) => ClassDetailScreen(session: updatedSession))
          );
       }
 
