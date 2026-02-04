@@ -213,15 +213,15 @@ class _ClassScheduleScreenState extends State<ClassScheduleScreen> {
       onTap: () async {
         final currentUser = Supabase.instance.client.auth.currentUser;
         
-        // Ownership check (bypass for admin)
-        final isAdmin = _currentProfile?.role == 'admin';
-        if (!isAdmin && session.trainerId != null && currentUser?.id != session.trainerId) {
+        // Ownership check (bypass for admin and owner)
+        final isAdminOrOwner = _currentProfile?.role == 'admin' || _currentProfile?.role == 'owner';
+        if (!isAdminOrOwner && session.trainerId != null && currentUser?.id != session.trainerId) {
           CustomSnackBar.showError(context, 'Lütfen Eğitmen ile iletişime geçin');
           return;
         }
 
-        if (isAdmin && currentUser?.id != session.trainerId) {
-          CustomSnackBar.showSuccess(context, 'Admin yetkisi ile giriş yapıldı', duration: const Duration(seconds: 2));
+        if (isAdminOrOwner && currentUser?.id != session.trainerId) {
+          CustomSnackBar.showSuccess(context, 'Yönetici yetkisi ile giriş yapıldı', duration: const Duration(seconds: 2));
           await Future.delayed(const Duration(milliseconds: 500));
         }
 
