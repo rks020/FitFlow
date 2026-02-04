@@ -616,7 +616,7 @@ async function createClass(forceCreate = false) {
 }
 
 // Conflict Detection
-async function checkConflicts(startTime, endTime) {
+export async function checkConflicts(startTime, endTime) {
     try {
         const { data, error } = await supabaseClient
             .from('class_sessions')

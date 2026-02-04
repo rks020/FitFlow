@@ -601,6 +601,42 @@
         </div>
     </div>
 
+    <!-- Conflict Warning Modal -->
+    <div id="conflict-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color: #ff6b6b; display: flex; align-items: center; gap: 10px;">
+                    ⚠️ Çakışan Ders Uyarısı
+                </h2>
+                <span class="close-modal" id="close-conflict-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="color: #ccc; margin-bottom: 20px;">Bu saatte aşağıdaki dersler mevcut:</p>
+
+                <div id="conflict-list" style="
+                    background: #2C2C2E; 
+                    padding: 15px; 
+                    border-radius: 8px; 
+                    margin-bottom: 20px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    font-family: monospace;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    color: #FFE600;
+                "></div>
+
+                <p style="color: #FFD700; font-weight: bold; margin-bottom: 20px;">Yine de eklemek ister misiniz?</p>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="conflict-cancel-btn">İptal</button>
+                    <button type="button" class="btn btn-primary" id="conflict-force-btn"
+                        style="background: #FFD700; color: black;">Yine de Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container" class="toast-container"></div>
     <script type="module" src="js/member-detail.js"></script>
 </body>

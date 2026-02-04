@@ -1,5 +1,6 @@
 import { supabaseClient } from './supabase-config.js';
 import { showToast, formatDate } from './utils.js';
+import { checkConflicts } from './modules/classes.js';
 
 let memberId = null;
 let profile = null;
@@ -216,13 +217,64 @@ function setupScheduleModal() {
     form.onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button');
-        btn.disabled = true; btn.textContent = 'Oluşturuluyor...';
+
+        // 4. Helper for final creation
+        const executeCreation = async (candidatesToCreate) => {
+            btn.disabled = true; btn.textContent = 'Oluşturuluyor...';
+            try {
+                let createdCount = 0;
+                for (const cand of candidatesToCreate) {
+                    const { data: sessionData, error: sessionError } = await supabaseClient
+                        .from('class_sessions')
+                        .insert({
+                            trainer_id: cand.trainerId || (profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id),
+                            title: 'Bireysel Ders',
+                            start_time: cand.start.toISOString(),
+                            end_time: cand.end.toISOString(),
+                            description: document.getElementById('schedule-notes').value,
+                            status: 'scheduled'
+                        })
+                        .select()
+                        .single();
+
+                    if (sessionError) throw sessionError;
+
+                    const { error: enrollError } = await supabaseClient
+                        .from('class_enrollments')
+                        .insert({
+                            class_id: sessionData.id,
+                            member_id: memberId,
+                            status: 'booked'
+                        });
+
+                    if (enrollError) throw enrollError;
+                    createdCount++;
+                }
+
+                showToast(`${createdCount} ders başarıyla oluşturuldu!`, 'success');
+                modal.classList.remove('active');
+                e.target.reset();
+                timesContainer.innerHTML = '<div style="color: #666; font-size: 13px; font-style: italic;">Lütfen yukarıdan gün seçiniz.</div>';
+
+                if (document.getElementById('section-history').style.display === 'block') loadHistory();
+
+                // Close conflict modal if open
+                document.getElementById('conflict-modal').classList.remove('active');
+
+            } catch (error) {
+                console.error(error);
+                showToast('Hata: ' + (error.message || 'Ders oluşturulamadı'), 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Programı Oluştur';
+            }
+        };
+
+        btn.disabled = true; btn.textContent = 'Kontrol Ediliyor...';
 
         try {
             const startDateVal = document.getElementById('schedule-start-date').value;
             const endDateVal = document.getElementById('schedule-end-date').value;
             const duration = parseInt(document.getElementById('schedule-duration').value);
-            const notes = document.getElementById('schedule-notes').value;
 
             const dayTimeInputs = document.querySelectorAll('.day-time-input');
             if (dayTimeInputs.length === 0) throw new Error('Lütfen en az bir gün seçin');
@@ -231,17 +283,18 @@ function setupScheduleModal() {
             const startDt = new Date(startDateVal);
             const endDt = new Date(endDateVal);
 
-            // Map: DayValue -> TimeString
+            // Validate dates
+            if (endDt < startDt) throw new Error('Bitiş tarihi başlangıç tarihinden önce olamaz');
+
             const dayTimes = {};
             dayTimeInputs.forEach(input => {
                 dayTimes[parseInt(input.dataset.day)] = input.value;
             });
 
-            // 1. Generate all candidates first
+            // 1. Generate Candidates
             const candidates = [];
             for (let d = new Date(startDt); d <= endDt; d.setDate(d.getDate() + 1)) {
                 const currentDay = d.getDay();
-
                 if (dayTimes.hasOwnProperty(currentDay)) {
                     const timeVal = dayTimes[currentDay];
                     const sessionStart = new Date(d);
@@ -249,109 +302,86 @@ function setupScheduleModal() {
                     sessionStart.setHours(parseInt(hours), parseInt(mins), 0, 0);
                     const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
 
-                    candidates.push({
-                        start: sessionStart,
-                        end: sessionEnd
-                    });
+                    candidates.push({ start: sessionStart, end: sessionEnd });
                 }
             }
 
             if (candidates.length === 0) throw new Error('Seçilen tarih aralığında uygun gün bulunamadı.');
 
-            // 2. Check for conflicts
-            btn.textContent = 'Çakışma Kontrol Ediliyor...';
+            // 2. Check Conflicts (Optimized Global Check)
+            const allConflicts = [];
+            const processedConflictIds = new Set();
 
-            const rangeStart = new Date(startDt);
-            rangeStart.setHours(0, 0, 0, 0);
-            const rangeEnd = new Date(endDt);
-            rangeEnd.setHours(23, 59, 59, 999);
-
-            const trainerId = profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id;
-
-            const { data: existingSessions, error: fetchError } = await supabaseClient
-                .from('class_sessions')
-                .select('start_time, end_time, title')
-                .eq('trainer_id', trainerId)
-                .neq('status', 'cancelled')
-                .gte('start_time', rangeStart.toISOString())
-                .lte('end_time', rangeEnd.toISOString());
-
-            if (fetchError) throw fetchError;
-
-            // Find conflicts
-            const conflicts = [];
-            candidates.forEach(cand => {
-                const hasConflict = existingSessions.some(ex => {
-                    const exStart = new Date(ex.start_time);
-                    const exEnd = new Date(ex.end_time);
-                    return cand.start < exEnd && cand.end > exStart;
-                });
-                if (hasConflict) conflicts.push(cand);
-            });
-
-            // 3. If conflicts exist, ask user
-            if (conflicts.length > 0) {
-                btn.disabled = false;
-                btn.textContent = 'Programı Oluştur';
-
-                const conflictList = conflicts.slice(0, 5).map(c =>
-                    `• ${c.start.toLocaleDateString('tr-TR')} ${c.start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
-                ).join('\n');
-
-                const extraMsg = conflicts.length > 5 ? `\n...ve ${conflicts.length - 5} diğer çakışma` : '';
-
-                const userConfirmed = confirm(
-                    `⚠️ ÇAKIŞMA TESPİT EDİLDİ!\n\n${conflicts.length} derste saat çakışması var:\n\n${conflictList}${extraMsg}\n\nYine de bu dersleri eklemek istiyor musunuz?`
-                );
-
-                if (!userConfirmed) return; // User cancelled
-
-                btn.disabled = true;
-            }
-
-            // 4. Create all sessions
-            btn.textContent = 'Oluşturuluyor...';
-            let createdCount = 0;
+            // Batch check? Or Sequential? sequential is safer for now to get details
+            // For large batches this might be slow, but typically 12-20 requests.
+            // Suggestion: we could write a better single query check in classes.js but that's complex range overlap.
+            // We'll stick to sequential reuse of checkConflicts.
 
             for (const cand of candidates) {
-                const { data: sessionData, error: sessionError } = await supabaseClient
-                    .from('class_sessions')
-                    .insert({
-                        trainer_id: trainerId,
-                        title: 'Bireysel Ders',
-                        start_time: cand.start.toISOString(),
-                        end_time: cand.end.toISOString(),
-                        description: notes,
-                        status: 'scheduled'
-                    })
-                    .select()
-                    .single();
-
-                if (sessionError) throw sessionError;
-
-                const { error: enrollError } = await supabaseClient
-                    .from('class_enrollments')
-                    .insert({
-                        class_id: sessionData.id,
-                        member_id: memberId,
-                        status: 'booked'
-                    });
-
-                if (enrollError) throw enrollError;
-                createdCount++;
+                const conflicts = await checkConflicts(cand.start, cand.end);
+                conflicts.forEach(c => {
+                    if (!processedConflictIds.has(c.id)) {
+                        processedConflictIds.add(c.id);
+                        allConflicts.push(c);
+                    }
+                });
             }
 
-            showToast(`${createdCount} ders başarıyla oluşturuldu!`, 'success');
-            modal.classList.remove('active');
-            e.target.reset();
-            timesContainer.innerHTML = '<div style="color: #666; font-size: 13px; font-style: italic;">Lütfen yukarıdan gün seçiniz.</div>';
+            // 3. Handle Conflicts
+            if (allConflicts.length > 0) {
+                const conflictListHtml = allConflicts.map(c => {
+                    const start = new Date(c.start_time);
+                    const end = new Date(c.end_time);
+                    const timeStr = `${start.toLocaleDateString('tr-TR')} ${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
 
-            if (document.getElementById('section-history').style.display === 'block') loadHistory();
+                    const trainerName = c.trainer ? `${c.trainer.first_name} ${c.trainer.last_name}` : 'Bilinmeyen Hoca';
+                    const memberNames = c.class_enrollments && c.class_enrollments.length > 0
+                        ? c.class_enrollments.map(e => e.member?.name || 'Bilinmiyor').join(', ')
+                        : 'Üye Yok';
+
+                    return `• ${timeStr} | ${c.title}\n   👨‍🏫 Hoca: ${trainerName}\n   👤 Üye: ${memberNames}`;
+                }).join('\n\n');
+
+                // Show Modal
+                const conflictModal = document.getElementById('conflict-modal');
+                document.getElementById('conflict-list').style.whiteSpace = 'pre-wrap';
+                document.getElementById('conflict-list').textContent = conflictListHtml;
+
+                // Re-bind buttons
+                const forceBtn = document.getElementById('conflict-force-btn');
+                const cancelBtn = document.getElementById('conflict-cancel-btn');
+
+                // Clone buttons to clear old listeners
+                const newForceBtn = forceBtn.cloneNode(true);
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                forceBtn.parentNode.replaceChild(newForceBtn, forceBtn);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+                newForceBtn.onclick = () => {
+                    executeCreation(candidates);
+                };
+
+                newCancelBtn.onclick = () => {
+                    conflictModal.classList.remove('active');
+                };
+
+                // Close main modal listener for x
+                document.getElementById('close-conflict-modal').onclick = () => {
+                    conflictModal.classList.remove('active');
+                };
+
+
+                conflictModal.classList.add('active');
+                btn.disabled = false; btn.textContent = 'Programı Oluştur';
+                return; // Stop here, wait for modal action
+            }
+
+            // No conflicts, proceed immediately
+            executeCreation(candidates);
 
         } catch (error) {
             console.error(error);
-            showToast('Hata: ' + (error.message || 'Ders oluşturulamadı'), 'error');
-        } finally {
+            showToast('Hata: ' + (error.message || 'İşlem başarısız'), 'error');
             btn.disabled = false; btn.textContent = 'Programı Oluştur';
         }
     };
