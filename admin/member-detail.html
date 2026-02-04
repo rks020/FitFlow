@@ -620,6 +620,81 @@
         </div>
     </div>
 
+    <!-- Class Detail Modal -->
+    <div id="class-detail-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header" style="justify-content: space-between;">
+                <h3 style="color: #FFD700;">Ders Detayı</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button id="delete-class-btn"
+                        style="background: none; border: none; font-size: 20px; cursor: pointer;">🗑️</button>
+                    <span class="close-modal" id="close-detail-modal">&times;</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="detail-card"
+                    style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+                    <h2 id="detail-title" style="color: #FFD700; margin-bottom: 8px;">Bireysel Ders</h2>
+                    <div style="display: flex; align-items: center; gap: 8px; color: #aaa; margin-bottom: 4px;">
+                        <span>📅</span> <span id="detail-date">7.2.2026</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; color: #aaa;">
+                        <span>🕒</span> <span id="detail-time">10:00 - 11:00</span>
+                    </div>
+                </div>
+
+                <div class="detail-card"
+                    style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="color: #fff; margin: 0;">Katılımcılar</h4>
+                        <span>👥</span>
+                    </div>
+                    <div
+                        style="display: flex; align-items: center; gap: 12px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                        <div style="width: 32px; height: 32px; background: #FFD700; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;"
+                            id="detail-avatar">
+                            F
+                        </div>
+                        <span style="color: #fff;" id="detail-member-name">Fırat Hür</span>
+                    </div>
+                </div>
+
+                <button id="complete-class-btn" class="btn btn-primary"
+                    style="width: 100%; margin-top: 24px; background: #FFD700; color: #000;">
+                    ✅ Dersi Tamamla
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <h3>Dersi Sil</h3>
+            </div>
+            <div class="modal-body">
+                <p style="color: #ccc; margin-bottom: 20px;">Bu işlemi nasıl uygulamak istersiniz?</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="delete-program-btn" class="btn"
+                        style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid #EF4444;">
+                        Tüm Programı Sil
+                    </button>
+                    <button id="delete-single-btn" class="btn"
+                        style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid #EF4444;">
+                        Sadece Bu Dersi Sil
+                    </button>
+                    <button class="btn"
+                        onclick="document.getElementById('delete-confirm-modal').classList.remove('active')"
+                        style="background: rgba(255,255,255,0.1);">
+                        İptal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Conflict Warning Modal -->
     <div id="conflict-modal" class="modal">
         <div class="modal-content">
