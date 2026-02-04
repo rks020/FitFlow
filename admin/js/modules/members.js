@@ -139,12 +139,10 @@ async function loadMembersList(searchQuery = '') {
                 </div>
 
                 <div class="member-actions" style="position: absolute; bottom: 15px; right: 15px; display: flex; gap: 10px;">
-                    <button class="btn btn-small" onclick="event.stopPropagation(); viewMemberDetail('${member.id}')" 
-                        style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 16px; width: auto; font-weight: 600; white-space: nowrap;">
+                    <button class="btn btn-small btn-info" onclick="event.stopPropagation(); viewMemberDetail('${member.id}')">
                         Detay
                     </button>
-                    <button class="btn btn-small" onclick="event.stopPropagation(); showPaymentModal('${member.id}', '${member.name.replace(/'/g, "\\'")}')" 
-                        style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px 16px; width: auto; font-weight: 600; white-space: nowrap;">
+                    <button class="btn btn-small btn-success" onclick="event.stopPropagation(); showPaymentModal('${member.id}', '${member.name.replace(/'/g, "\\'")}')">
                         Ödeme Al
                     </button>
                     <button class="btn btn-small btn-secondary text-btn" onclick="event.stopPropagation(); editMember('${member.id}')">

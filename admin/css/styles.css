@@ -366,6 +366,30 @@ body {
     background: rgba(239, 68, 68, 0.2);
 }
 
+.btn-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.btn-info:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.btn-success:hover {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
 /* === Modals === */
 .modal {
     display: none;
@@ -958,6 +982,7 @@ select option {
 .delete-account-link:active {
     transform: translateY(0);
 }
+
 /* Time Picker Icon - Make white for visibility */
 input[type="time"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
@@ -1051,6 +1076,7 @@ input[type="time"]::-moz-calendar-picker-indicator {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1268,6 +1294,13 @@ input[type="time"]::-moz-calendar-picker-indicator {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
