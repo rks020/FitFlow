@@ -404,7 +404,7 @@ function setupCreateClassModal() {
             const searchTerm = e.target.value.toLowerCase();
             const options = memberSelect.options;
 
-            for (let i = 1; i < options.length; i++) { // Skip first "Bir üye seçin..." option
+            for (let i = 1; i < options.length; i++) {
                 const optionText = options[i].text.toLowerCase();
                 if (optionText.includes(searchTerm)) {
                     options[i].style.display = '';
@@ -434,7 +434,6 @@ function setupCreateClassModal() {
             form.reset();
             if (memberSearch) memberSearch.value = '';
             if (startTimePicker) startTimePicker.setValue(10, 0);
-            if (endTimePicker) endTimePicker.setValue(11, 0);
         } catch (error) {
             console.error(error);
             if (error.message !== 'CONFLICT_DETECTED') {
@@ -450,19 +449,8 @@ function setupCreateClassModal() {
     setupConflictModal();
 }
 
-function updateEndTimeFromDuration() {
-    const duration = parseInt(document.getElementById('class-duration').value);
-    const startHour = startTimePicker.getHour();
-    const startMin = startTimePicker.getMinute();
-
-    const startDate = new Date();
-    startDate.setHours(startHour, startMin, 0, 0);
-    startDate.setMinutes(startDate.getMinutes() + duration);
-
-    const endHour = startDate.getHours();
-    const endMin = startDate.getMinutes();
-    endTimePicker.setValue(endHour, endMin);
-}
+// End time helper removed as UI field is gone
+// End time is now calculated during creation
 
 function setupConflictModal() {
     const modal = document.getElementById('conflict-modal');
@@ -503,26 +491,9 @@ async function openCreateClassModal(date) {
 
     // Initialize time pickers on first open (lazy initialization)
     if (!startTimePicker) {
-        startTimePicker = new CustomTimePicker('start-time-picker', () => {
-            updateEndTimeFromDuration();
-        });
+        // Container, Input, Trigger
+        startTimePicker = new CustomTimePicker('start-time-picker', 'class-start-time', 'start-time-trigger');
         startTimePicker.init();
-    }
-
-    if (!endTimePicker) {
-        endTimePicker = new CustomTimePicker('end-time-picker', () => {
-            // End time changed manually
-        });
-        endTimePicker.init();
-    }
-
-    // Setup duration auto-update (once)
-    const durationSelect = document.getElementById('class-duration');
-    if (durationSelect && !durationSelect.dataset.listenerAttached) {
-        durationSelect.addEventListener('change', () => {
-            updateEndTimeFromDuration();
-        });
-        durationSelect.dataset.listenerAttached = 'true';
     }
 
     // Set Date Input
@@ -540,7 +511,6 @@ async function openCreateClassModal(date) {
     }
 
     startTimePicker.setValue(startHour, 0);
-    endTimePicker.setValue(startHour + 1, 0);
 
     // Load Members
     await loadMembersForDropdown();
@@ -588,16 +558,18 @@ async function createClass(forceCreate = false) {
     const capacity = parseInt(document.getElementById('class-capacity').value);
     const dateVal = document.getElementById('class-date').value;
     const startTimeVal = document.getElementById('class-start-time').value;
-    const endTimeVal = document.getElementById('class-end-time').value;
+    const durationVal = parseInt(document.getElementById('class-duration').value);
     const memberId = document.getElementById('class-member-select').value;
 
     if (!memberId) throw new Error('Lütfen bir üye seçin');
     if (!className) throw new Error('Lütfen ders adı girin');
     if (!capacity || capacity < 1) throw new Error('Geçerli bir kapasite girin');
+    if (!startTimeVal) throw new Error('Lütfen başlangıç saati seçin');
 
     // Construct Timestamps
     const startDateTime = new Date(`${dateVal}T${startTimeVal}:00`);
-    const endDateTime = new Date(`${dateVal}T${endTimeVal}:00`);
+    // Calculate End Time from Duration
+    const endDateTime = new Date(startDateTime.getTime() + durationVal * 60000);
 
     // Validate end time is after start time
     if (endDateTime <= startDateTime) {

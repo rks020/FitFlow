@@ -1243,3 +1243,31 @@ input[type="time"]::-moz-calendar-picker-indicator {
 .member-option.hidden {
     display: none;
 }
+
+/* Manual Time Input Styling */
+.custom-time-picker-popup {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    width: 200px;
+}
+
+.custom-time-picker-popup .time-picker-dropdown {
+    display: none;
+    background: #1C1C1E;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.custom-time-picker-popup .time-picker-dropdown.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

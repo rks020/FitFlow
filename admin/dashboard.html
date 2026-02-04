@@ -177,39 +177,29 @@
                                 style="background: rgba(255,255,255,0.1); color: #888; cursor: not-allowed;">
                         </div>
 
-                        <!-- Start Time - Custom Picker -->
+                        <!-- Start Time - Manual Input + Picker Trigger -->
                         <div class="form-group">
                             <label>🕐 Başlangıç Saati</label>
-                            <div class="custom-time-picker" id="start-time-picker">
-                                <div class="time-display">
-                                    <span class="time-display-value">10:00</span>
-                                    <span class="clock-icon">🕐</span>
-                                </div>
-                                <div class="time-picker-dropdown">
-                                    <!-- Generated dynamically by JS -->
-                                </div>
-                            </div>
-                            <input type="hidden" id="class-start-time" value="10:00">
-                        </div>
+                            <div class="time-input-group"
+                                style="position: relative; display: flex; align-items: center;">
+                                <input type="text" id="class-start-time" class="time-input" value="10:00"
+                                    placeholder="HH:MM" maxlength="5"
+                                    style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: #fff; font-size: 16px;">
+                                <span id="start-time-trigger"
+                                    style="position: absolute; right: 12px; cursor: pointer; font-size: 20px; padding: 4px;">🕐</span>
 
-                        <!-- End Time - Custom Picker (RESTORED) -->
-                        <div class="form-group">
-                            <label>🕐 Bitiş Saati</label>
-                            <div class="custom-time-picker" id="end-time-picker">
-                                <div class="time-display">
-                                    <span class="time-display-value">11:00</span>
-                                    <span class="clock-icon">🕐</span>
-                                </div>
-                                <div class="time-picker-dropdown">
-                                    <!-- Generated dynamically by JS -->
+                                <!-- Custom Picker Dropdown (Hidden by default) -->
+                                <div id="start-time-picker" class="custom-time-picker-popup">
+                                    <div class="time-picker-dropdown">
+                                        <!-- Generated dynamically by JS -->
+                                    </div>
                                 </div>
                             </div>
-                            <input type="hidden" id="class-end-time" value="11:00">
                         </div>
 
                         <!-- Duration (Quick Select) -->
                         <div class="form-group">
-                            <label>⏱️ Süre (Hızlı Seçim)</label>
+                            <label>⏱️ Süre</label>
                             <select id="class-duration">
                                 <option value="30">30 dk</option>
                                 <option value="45">45 dk</option>
@@ -217,7 +207,6 @@
                                 <option value="90">90 dk</option>
                                 <option value="120">120 dk</option>
                             </select>
-                            <small class="form-hint">Bitiş saatini otomatik ayarlar</small>
                         </div>
                     </div>
 
