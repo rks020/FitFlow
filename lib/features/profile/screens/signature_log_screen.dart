@@ -164,9 +164,9 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
                                       session['title'] ?? 'Ders',
                                       style: AppTextStyles.headline,
                                     ),
-                                ])
-                              ),
-                              // PT imza rozeti kaldırıldı
+                                  ],
+                                ),
+                                // PT imza rozeti kaldırıldı
                               ],
                             ),
                             const SizedBox(height: 16),
