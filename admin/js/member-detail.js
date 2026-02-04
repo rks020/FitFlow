@@ -139,7 +139,7 @@ async function loadHistory() {
             }
 
             return `
-                <div onclick="openClassDetail('${session.id}')" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center; cursor: pointer; transition: background 0.2s;">
+                <div onclick="openClassDetailModal('${session.id}')" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center; cursor: pointer; transition: background 0.2s;">
                     <div>
                         <div style="font-weight:600; font-size:15px; color:#fff;">${session.title || 'Ders'}</div>
                         <div style="font-size:13px; color:#888;">${date} • ${time}</div>
