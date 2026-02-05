@@ -7,6 +7,8 @@ import '../../members/screens/members_list_screen.dart';
 import '../../workouts/screens/workouts_hub_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../chat/screens/inbox_screen.dart';
+import '../../chat/screens/chat_screen.dart';
+import '../../../data/models/profile.dart';
 import '../widgets/stat_card.dart';
 import '../../../shared/widgets/glass_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +24,7 @@ import 'package:fitflow/features/members/screens/member_dashboard_screen.dart';
 import 'package:fitflow/features/profile/screens/change_password_screen.dart';
 import 'announcements_screen.dart';
 import '../../../core/services/presence_service.dart';
+import '../../../core/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -43,6 +46,58 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     WidgetsBinding.instance.addObserver(this);
     _pageController = PageController(initialPage: _selectedIndex);
     _initialLoad();
+    
+    // 🎯 Handle pending notification AFTER Navigator is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handlePendingNotification();
+    });
+  }
+  
+  void _handlePendingNotification() {
+    final pendingMessage = NotificationService.getPendingMessage();
+    
+    if (pendingMessage != null && mounted) {
+      debugPrint('🔔 DashboardScreen: Processing pending notification');
+      final data = pendingMessage.data;
+      final type = data['type'];
+      
+      if (type == 'chat') {
+        final senderId = data['sender_id'];
+        final senderName = data['sender_name'] ?? 'Kullanıcı';
+        final senderAvatar = data['sender_avatar'];
+        
+        if (senderId != null) {
+          debugPrint('🔔 DashboardScreen: Navigating to ChatScreen for sender: $senderId');
+          
+          final dummyProfile = Profile(
+            id: senderId,
+            firstName: senderName.split(' ').first,
+            lastName: senderName.split(' ').length > 1 ? senderName.split(' ').last : '',
+            avatarUrl: senderAvatar,
+          );
+          
+          // Clear pending message
+          NotificationService.clearPendingMessage();
+          
+          // Navigate to chat
+          Navigator.of(context).push(
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => ChatScreen(otherUser: dummyProfile),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        }
+      } else if (type == 'announcement') {
+        debugPrint('🔔 DashboardScreen: Navigating to Announcements');
+        NotificationService.clearPendingMessage();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
+        );
+      }
+    } else {
+      debugPrint('🔔 DashboardScreen: No pending notification');
+    }
   }
 
   @override

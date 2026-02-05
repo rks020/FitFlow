@@ -86,17 +86,25 @@ class MessageRepository {
   }
 
   // Subscribe to real-time messages
-  Stream<List<Message>> subscribeToMessages(String otherUserId) {
+  Stream<List<Message>> subscribeToMessages(String otherUserId) async* {
     final myId = _client.auth.currentUser!.id;
+
+    // 1. Yield fresh data from REST API first (Instant load)
+    try {
+      final initialMessages = await getMessages(otherUserId);
+      yield initialMessages;
+    } catch (e) {
+      // Continue to stream even if initial fetch failed
+    }
     
-    // We can't do complex OR filtering efficiently in realtime filter string,
+    // 2. We can't do complex OR filtering efficiently in realtime filter string,
     // so we typically listen to all 'messages' where we are sender or receiver
     // Filter logic needs to be client side or mapped carefully.
     // Supabase Stream API allows simple eq filters.
     // simpler approach: Simple stream query is not fully supported with complex OR yet in client lib easy way.
     // We will use the .stream() feature which is powerful.
     
-    return _client
+    yield* _client
         .from('messages')
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: true)

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/theme/colors.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../../core/utils/error_translator.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../profile/screens/trial_expired_screen.dart';
+import '../../chat/screens/chat_screen.dart';
+import '../../../data/models/profile.dart';
+import '../../../core/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 
 class AuthCheckScreen extends StatefulWidget {
@@ -90,6 +94,7 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
       }
 
       // Valid User -> Navigate to Dashboard
+      // Notification handling is now done in NotificationService.initialize()
       // We use pushReplacement to remove this check screen from stack
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const DashboardScreen()),

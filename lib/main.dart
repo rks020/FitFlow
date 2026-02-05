@@ -47,16 +47,12 @@ Future<void> main() async {
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
   
-  // Initialize Firebase (for Notifications) - ANDROID ONLY
-  if (Platform.isAndroid) {
-    try {
-      await Firebase.initializeApp();
-      debugPrint('✅ Firebase initialized for Android');
-    } catch (e) {
-      debugPrint('Firebase init error: $e');
-    }
-  } else {
-    debugPrint('ℹ️ Skipping Firebase on iOS');
+  // Initialize Firebase (for Notifications)
+  try {
+    await Firebase.initializeApp();
+    debugPrint('✅ Firebase initialized');
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
   }
 
   // Initialize Notification Service (handles platform internally)
@@ -117,12 +113,13 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
     _setupAuthListener();
     _updateUserPresence(true); // Set online on start
 
-    // Setup Notification Interaction (Navigation)
-    // Delay slightly to ensure Navigator is ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService().setupInteractedMessage();
-    });
+    // Setup Notification Interaction (Navigation) - MOVED TO DASHBOARD
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   NotificationService().setupInteractedMessage();
+    // });
+    // This prevents race condition where ChatScreen is pushed before AuthCheck/Dashboard is ready
   }
+
 
   @override
   void dispose() {

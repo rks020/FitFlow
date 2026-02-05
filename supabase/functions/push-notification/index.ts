@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     // 4. Get Sender's Profile (for Notification Title)
     const { data: sender } = await supabase
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, avatar_url')
         .eq('id', senderId)
         .single()
 
@@ -76,7 +76,10 @@ Deno.serve(async (req) => {
                                     body: body,
                                 },
                                 data: {
-                                    senderId: senderId,
+                                    type: 'chat',  // ✅ Required for Flutter routing
+                                    sender_id: senderId,  // ✅ Fixed: was 'senderId'
+                                    sender_name: sender ? `${sender.first_name} ${sender.last_name}` : 'Kullanıcı',
+                                    sender_avatar: sender?.avatar_url || '',
                                     click_action: 'FLUTTER_NOTIFICATION_CLICK',
                                 },
                             },

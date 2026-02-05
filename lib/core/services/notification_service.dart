@@ -17,6 +17,20 @@ class NotificationService {
   // _fcm removed to prevent static access before init on iOS
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
+  // 🎯 PENDING MESSAGE STORAGE (Navigation happens later when Navigator is ready)
+  static RemoteMessage? pendingMessage;
+
+  /// Get the pending notification message (if any)
+  static RemoteMessage? getPendingMessage() {
+    return pendingMessage;
+  }
+
+  /// Clear the pending message after handling
+  static void clearPendingMessage() {
+    debugPrint('🔔 NotificationService: Clearing pending message');
+    pendingMessage = null;
+  }
+
   Future<void> initialize() async {
     // 0. Initialize Timezone
     tz.initializeTimeZones();
@@ -47,10 +61,26 @@ class NotificationService {
     );
 
     // 0.3 Setup Interacted Message (Background/Terminated)
-    // REMOVED: Called manually in main.dart after app is ready
-    // setupInteractedMessage();
+    // ⚠️ IMPORTANT: We ONLY STORE the message here, NOT navigate
+    // Navigation happens later in DashboardScreen when Navigator is ready
+    debugPrint('🔔 Setting up notification interaction listeners...');
+    
+    // Listen for background taps (app in background)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('📩 Background notification tapped - STORED for later: ${message.data}');
+      pendingMessage = message;
+    });
+    
+    // Check for terminated-state launch (app was completely closed)
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      debugPrint('📩 App opened from terminated state - STORED for later: ${initialMessage.data}');
+      pendingMessage = initialMessage;
+    } else {
+      debugPrint('🔔 No initial notification found');
+    }
 
-    // 0.2 Request Android Permissions (Android 13+)
+    // 1. Request Permissions
     if (Platform.isAndroid) {
       final androidImplementation = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       await androidImplementation?.requestNotificationsPermission();
@@ -151,19 +181,22 @@ class NotificationService {
   }
 
   void setupInteractedMessage() async {
-    // 1. Terminated State
-    RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null) {
-      _handleMessage(initialMessage);
-    }
-
-    // 2. Background State
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+    // DEPRECATED: This is now handled in initialize()
+    // Kept for backward compatibility but does nothing
+    debugPrint('⚠️ setupInteractedMessage called but is deprecated - handled in initialize()');
   }
 
   void _handleMessage(RemoteMessage message) {
     debugPrint('Notification Clicked (Background/Terminated): ${message.data}');
     _handleMessageData(message.data);
+  }
+
+  void _handleMessageWithDelay(Map<String, dynamic> data) {
+    // For background taps, navigator should be ready
+    // But add small delay to be safe
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _handleMessageData(data);
+    });
   }
 
   void _handleMessageMap(Map<String, dynamic> data) {
@@ -174,28 +207,41 @@ class NotificationService {
   void _handleMessageData(Map<String, dynamic> data) {
     final type = data['type'];
     
+    debugPrint('🔔 _handleMessageData called with type: $type');
+    
     if (type == 'chat') {
       final senderId = data['sender_id'];
       final senderName = data['sender_name'] ?? 'Kullanıcı';
       final senderAvatar = data['sender_avatar'];
       
       if (senderId != null) {
-        // Navigate to Chat Screen
+        // Check if navigator is ready
         final context = navigatorKey.currentContext;
-        if (context != null) {
-          final dummyProfile = Profile(
-            id: senderId,
-            firstName: senderName.split(' ').first,
-            lastName: senderName.split(' ').length > 1 ? senderName.split(' ').last : '',
-            avatarUrl: senderAvatar,
-          );
-
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(
-               builder: (_) => ChatScreen(otherUser: dummyProfile),
-            ),
-          );
+        if (context == null) {
+          debugPrint('⚠️ Navigator context not ready, retrying...');
+          // Retry after a delay
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _handleMessageData(data);
+          });
+          return;
         }
+        
+        debugPrint('🔔 Navigating to ChatScreen for sender: $senderId');
+        // Navigate to Chat Screen
+        final dummyProfile = Profile(
+          id: senderId,
+          firstName: senderName.split(' ').first,
+          lastName: senderName.split(' ').length > 1 ? senderName.split(' ').last : '',
+          avatarUrl: senderAvatar,
+        );
+
+        navigatorKey.currentState?.push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => ChatScreen(otherUser: dummyProfile),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
       }
     } else if (type == 'announcement') {
       // Navigate to Announcements Screen
