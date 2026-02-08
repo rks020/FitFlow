@@ -66,9 +66,16 @@ class NotificationService {
     debugPrint('🔔 Setting up notification interaction listeners...');
     
     // Listen for background taps (app in background)
+    // Listen for background taps (app in background)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('📩 Background notification tapped - STORED for later: ${message.data}');
-      pendingMessage = message;
+      debugPrint('📩 Background notification tapped: ${message.data}');
+      // If navigator is ready (app in background but warm), navigate immediately
+      if (navigatorKey.currentState != null) {
+         _handleMessageData(message.data);
+      } else {
+         // If navigator not ready (unlikely for onMessageOpenedApp but safe), store it
+         pendingMessage = message;
+      }
     });
     
     // Check for terminated-state launch (app was completely closed)

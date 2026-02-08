@@ -13,6 +13,9 @@ import '../../../data/repositories/message_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
 import 'package:fitflow/features/dashboard/widgets/stat_card.dart';
 import 'package:fitflow/features/dashboard/screens/announcements_screen.dart';
+import '../../../core/services/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../chat/screens/chat_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({super.key});
@@ -42,7 +45,13 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       const ProfileScreen(),                        // Tab 4: Profile
     ];
     _loadUnreadCount();
+    _loadUnreadCount();
     _setupRealtimeSubscription();
+    
+    // Handle pending notification
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handlePendingNotification();
+    });
   }
 
   @override
@@ -70,6 +79,55 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         callback: (payload) => _loadUnreadCount(),
       )
       .subscribe();
+  }
+
+  void _handlePendingNotification() {
+    final pendingMessage = NotificationService.getPendingMessage();
+    if (pendingMessage != null && mounted) {
+      debugPrint('🔔 MemberDashboardScreen: Processing pending notification');
+      final data = pendingMessage.data;
+      final type = data['type'];
+      
+      if (type == 'announcement') {
+        debugPrint('🔔 MemberDashboardScreen: Navigating to Announcements');
+        NotificationService.clearPendingMessage();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
+        ); // .then((_) => _loadUnreadAnnouncements()); // Moved to MemberHomeScreen
+      } else if (type == 'chat') {
+        NotificationService.clearPendingMessage();
+        final senderId = data['sender_id'];
+        final senderName = data['sender_name'] ?? 'Kullanıcı';
+        final senderAvatar = data['sender_avatar'];
+         
+        if (senderId != null) {
+          final dummyProfile = Profile(
+            id: senderId,
+            firstName: senderName.split(' ').first,
+            lastName: senderName.split(' ').length > 1 ? senderName.split(' ').last : '',
+            avatarUrl: senderAvatar,
+          );
+           
+          Navigator.of(context).push(
+             PageRouteBuilder(
+              pageBuilder: (_, __, ___) => InboxScreen(), // Or ChatScreen if direct
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+          // Actually, let's navigate to Inbox per user request if they want "messages" generally,
+          // OR to ChatScreen directly if we have sender.
+          // Trainer Dashboard goes to ChatScreen. Let's do same here.
+           Navigator.of(context).push(
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => ChatScreen(otherUser: dummyProfile),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _onTabTapped(int index) {
@@ -234,10 +292,14 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
   Profile? _profile;
   bool _isLoading = true;
 
+  int _unreadAnnouncementsCount = 0;
+
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadUnreadAnnouncements();
+    _setupRealtimeSubscription();
   }
 
   Future<void> _loadProfile() async {
@@ -252,6 +314,43 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadUnreadAnnouncements() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastViewStr = prefs.getString('last_announcements_view_time');
+      final supabase = Supabase.instance.client;
+      
+      int count = 0;
+      if (lastViewStr != null) {
+        final result = await supabase
+            .from('announcements')
+            .select()
+            .gt('created_at', lastViewStr);
+        count = result.length;
+      } else {
+        final result = await supabase
+            .from('announcements')
+            .select();
+        count = result.length;
+      }
+      
+      if (mounted) setState(() => _unreadAnnouncementsCount = count);
+    } catch (e) {
+      debugPrint('Error loading unread announcements: $e');
+    }
+  }
+
+  void _setupRealtimeSubscription() {
+    Supabase.instance.client.channel('member_home_announcements')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'announcements',
+        callback: (payload) => _loadUnreadAnnouncements(),
+      )
+      .subscribe();
   }
 
   @override
@@ -379,9 +478,10 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
-                    );
+                    ).then((_) => _loadUnreadAnnouncements());
                   },
                   backgroundImage: 'assets/images/pt_megaphone_announcement.png',
+                  badgeCount: _unreadAnnouncementsCount,
                 ),
               ],
             ),

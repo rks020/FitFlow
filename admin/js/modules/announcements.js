@@ -94,32 +94,47 @@ export async function loadAnnouncements() {
                 padding: 40px;
                 color: var(--text-secondary);
             }
+            .announcement-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .icon-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+                padding: 4px;
+                border-radius: 4px;
+                transition: background 0.2s;
+            }
+            .icon-btn:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            .delete-btn:hover {
+                background: rgba(255, 0, 0, 0.2);
+            }
         </style>
     `;
 
     // Initialize logic
+    window.editAnnouncement = editAnnouncement;
+    window.deleteAnnouncement = deleteAnnouncement;
+
     await fetchAnnouncements();
     setupModal();
 
     // Check if we should open the modal automatically
-    // Using window.currentQuery because app.js might reset the hash before we get here
     if (window.location.hash.includes('action=new') || (window.currentQuery && window.currentQuery.includes('action=new'))) {
-        const modal = document.getElementById('announcement-modal');
-        if (modal) {
-            modal.style.display = 'flex';
-            setTimeout(() => modal.classList.add('show'), 100);
-
-            // Clean URL to avoid reopening on refresh
-            // window.history.replaceState(null, null, '#announcements');
-        }
+        openModal();
     }
 }
+
+let currentAnnouncements = [];
 
 async function fetchAnnouncements() {
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
 
-        // Get org id
         const { data: profile } = await supabaseClient
             .from('profiles')
             .select('organization_id')
@@ -136,6 +151,7 @@ async function fetchAnnouncements() {
 
         if (error) throw error;
 
+        currentAnnouncements = announcements;
         renderAnnouncements(announcements);
 
     } catch (error) {
@@ -146,7 +162,7 @@ async function fetchAnnouncements() {
 
 function renderAnnouncements(announcements) {
     const listContainer = document.getElementById('announcements-list');
-    if (!listContainer) return; // Stop if user navigated away
+    if (!listContainer) return;
 
     if (!announcements || announcements.length === 0) {
         listContainer.innerHTML = `
@@ -161,12 +177,67 @@ function renderAnnouncements(announcements) {
     listContainer.innerHTML = announcements.map(announcement => `
         <div class="announcement-card">
             <div class="announcement-header">
-                <h3 class="announcement-title">${escapeHtml(announcement.title)}</h3>
-                <span class="announcement-date">${formatDate(announcement.created_at)}</span>
+                <div>
+                    <h3 class="announcement-title">${escapeHtml(announcement.title)}</h3>
+                    <span class="announcement-date">${formatDate(announcement.created_at)}</span>
+                </div>
+                <div class="announcement-actions">
+                    <button onclick="editAnnouncement('${announcement.id}')" class="icon-btn edit-btn" title="Düzenle">✏️</button>
+                    <button onclick="deleteAnnouncement('${announcement.id}')" class="icon-btn delete-btn" title="Sil">🗑️</button>
+                </div>
             </div>
             <div class="announcement-content">${escapeHtml(announcement.content)}</div>
         </div>
     `).join('');
+}
+
+function openModal(announcement = null) {
+    const modal = document.getElementById('announcement-modal');
+    const form = document.getElementById('announcement-form');
+    const modalTitle = modal.querySelector('.modal-header h3');
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    if (announcement) {
+        modalTitle.textContent = 'Duyuruyu Düzenle';
+        document.getElementById('announcement-id').value = announcement.id;
+        document.getElementById('announcement-title').value = announcement.title;
+        document.getElementById('announcement-content').value = announcement.content;
+        submitBtn.textContent = 'Güncelle';
+    } else {
+        modalTitle.textContent = 'Yeni Duyuru';
+        form.reset();
+        document.getElementById('announcement-id').value = '';
+        submitBtn.textContent = 'Gönder';
+    }
+
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function editAnnouncement(id) {
+    const announcement = currentAnnouncements.find(a => a.id === id);
+    if (announcement) {
+        openModal(announcement);
+    }
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showToast('Duyuru silindi', 'success');
+        fetchAnnouncements();
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
+        showToast('Silme işlemi başarısız', 'error');
+    }
 }
 
 function setupModal() {
@@ -175,10 +246,15 @@ function setupModal() {
     const closeSpans = document.querySelectorAll('.close-modal, .close-modal-btn');
     const form = document.getElementById('announcement-form');
 
-    btn.onclick = () => {
-        modal.style.display = 'flex';
-        setTimeout(() => modal.classList.add('show'), 10);
-    };
+    // Add hidden ID input if not exists
+    if (!document.getElementById('announcement-id')) {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'announcement-id';
+        form.prepend(hiddenInput);
+    }
+
+    btn.onclick = () => openModal();
 
     const closeModal = () => {
         modal.classList.remove('show');
@@ -197,65 +273,74 @@ function setupModal() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
+        const id = document.getElementById('announcement-id').value;
         const title = document.getElementById('announcement-title').value;
         const content = document.getElementById('announcement-content').value;
         const submitBtn = form.querySelector('button[type="submit"]');
 
         try {
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Gönderiliyor...';
+            submitBtn.textContent = id ? 'Güncelleniyor...' : 'Gönderiliyor...';
 
             const { data: { user } } = await supabaseClient.auth.getUser();
 
-            // Get org id
-            const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('organization_id')
-                .eq('id', user.id)
-                .single();
+            if (id) {
+                // UPDATE
+                const { error } = await supabaseClient
+                    .from('announcements')
+                    .update({ title, content })
+                    .eq('id', id);
 
-            const { error } = await supabaseClient
-                .from('announcements')
-                .insert({
-                    title,
-                    content,
-                    organization_id: profile.organization_id,
-                    created_by: user.id
-                });
+                if (error) throw error;
+                showToast('Duyuru güncellendi', 'success');
+            } else {
+                // CREATE
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('organization_id')
+                    .eq('id', user.id)
+                    .single();
 
-            if (error) throw error;
-
-            // Trigger Notification
-            try {
-                const { error: notifyError } = await supabaseClient.functions.invoke('broadcast-announcement', {
-                    body: {
-                        title: title,
-                        content: content,
+                const { error } = await supabaseClient
+                    .from('announcements')
+                    .insert({
+                        title,
+                        content,
                         organization_id: profile.organization_id,
-                        sender_id: user.id
-                    }
-                });
+                        created_by: user.id
+                    });
 
-                if (notifyError) {
-                    console.error('Notification error:', notifyError);
-                    showToast('Duyuru kaydedildi ancak bildirim gönderilemedi.', 'warning');
-                } else {
-                    showToast('Duyuru ve bildirim başarıyla gönderildi', 'success');
+                if (error) throw error;
+
+                // Only send notification on creation
+                // Trigger Notification
+                try {
+                    const { error: notifyError } = await supabaseClient.functions.invoke('broadcast-announcement', {
+                        body: {
+                            title: title,
+                            content: content,
+                            organization_id: profile.organization_id,
+                            sender_id: user.id
+                        }
+                    });
+
+                    if (!notifyError) {
+                        showToast('Duyuru ve bildirim gönderildi', 'success');
+                    }
+                } catch (e) {
+                    console.log('Notify error', e);
                 }
-            } catch (notifyEx) {
-                console.error('Notification exception:', notifyEx);
-                showToast('Duyuru kaydedildi ancak bildirim hatası: ' + notifyEx.message, 'warning');
             }
 
             closeModal();
             fetchAnnouncements();
 
         } catch (error) {
-            console.error('Error sending announcement:', error);
-            showToast('Duyuru gönderilemedi: ' + error.message, 'error');
+            console.error('Error saving announcement:', error);
+            showToast('İşlem başarısız: ' + error.message, 'error');
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Gönder';
+            submitBtn.textContent = id ? 'Güncelle' : 'Gönder';
         }
     };
 }
