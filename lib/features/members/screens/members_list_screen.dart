@@ -9,10 +9,10 @@ import 'add_edit_member_screen.dart';
 import 'member_detail_screen.dart';
 import '../../../data/models/profile.dart'; // Added
 import '../../../data/repositories/profile_repository.dart'; // Added
-import 'package:fitflow/shared/widgets/ambient_background.dart';
 
 class MembersListScreen extends StatefulWidget {
-  const MembersListScreen({super.key});
+  final Profile? trainer;
+  const MembersListScreen({super.key, this.trainer});
 
   @override
   State<MembersListScreen> createState() => _MembersListScreenState();
@@ -30,6 +30,10 @@ class _MembersListScreenState extends State<MembersListScreen> {
   @override
   void initState() {
     super.initState();
+    // If viewing a specific trainer's members, default filter to 'all'
+    if (widget.trainer != null) {
+      _filterType = 'all';
+    }
     _loadCurrentUserProfile(); // Added
     _loadMembers();
     _searchController.addListener(_filterMembers);
@@ -79,18 +83,30 @@ class _MembersListScreenState extends State<MembersListScreen> {
     
     setState(() {
       _filteredMembers = _members.where((member) {
-        // Apply Filters
-        if (_filterType == 'my_members') {
-           final userId = Supabase.instance.client.auth.currentUser?.id;
-           if (member.trainerId != userId) return false;
-        } else if (_filterType == 'multisport') {
-           if (!member.isMultisport) return false;
-           
-           // If trainer, only show own multisport members
-           if (_currentUserProfile?.role == 'trainer') {
+        // Apply Trainer Filter (if provided)
+        if (widget.trainer != null) {
+          if (member.trainerId != widget.trainer!.id) return false;
+        }
+
+        // Apply Local Filters (Only if NOT viewing a specific trainer)
+        if (widget.trainer == null) {
+          if (_filterType == 'my_members') {
              final userId = Supabase.instance.client.auth.currentUser?.id;
              if (member.trainerId != userId) return false;
-           }
+          } else if (_filterType == 'multisport') {
+             if (!member.isMultisport) return false;
+             
+             // If trainer, only show own multisport members
+             if (_currentUserProfile?.role == 'trainer') {
+               final userId = Supabase.instance.client.auth.currentUser?.id;
+               if (member.trainerId != userId) return false;
+             }
+          }
+        } else {
+          // If viewing specific trainer, we might still want to filter by multisport
+          if (_filterType == 'multisport') {
+            if (!member.isMultisport) return false;
+          }
         }
         
         // Apply search filter
@@ -153,9 +169,22 @@ class _MembersListScreenState extends State<MembersListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Üyeler',
-                    style: AppTextStyles.largeTitle,
+                  Row(
+                    children: [
+                      if (widget.trainer != null)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      Expanded(
+                        child: Text(
+                          widget.trainer != null 
+                              ? '${('${widget.trainer!.firstName ?? ''} ${widget.trainer!.lastName ?? ''}').trim()} Üyeleri'
+                              : 'Üyeler',
+                          style: AppTextStyles.largeTitle,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   // Search Bar
@@ -195,6 +224,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
                   // Filter Toggle
                   Row(
                     children: [
+                      if (widget.trainer == null)
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -224,7 +254,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      if (widget.trainer == null) const SizedBox(width: 8),
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -351,13 +381,13 @@ class _MembersListScreenState extends State<MembersListScreen> {
           ],
       ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: widget.trainer == null ? FloatingActionButton.extended(
         onPressed: _navigateToAddMember,
         backgroundColor: AppColors.primaryYellow,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_rounded),
         label: Text('Üye Ekle', style: AppTextStyles.headline.copyWith(color: Colors.black)),
-      ),
+      ) : null,
     );
   }
 

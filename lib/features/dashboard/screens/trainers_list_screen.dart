@@ -8,6 +8,7 @@ import '../../../data/repositories/profile_repository.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../chat/screens/chat_screen.dart';
+import '../../members/screens/members_list_screen.dart';
 import '../../../shared/widgets/ambient_background.dart';
 
 class TrainersListScreen extends StatefulWidget {
@@ -896,14 +897,13 @@ class _TrainersListScreenState extends State<TrainersListScreen> {
                }
              });
           } else {
-             // Navigate to Chat Screen
-             final currentUserId = _supabase.auth.currentUser?.id;
-             if (currentUserId != trainer.id) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ChatScreen(otherUser: trainer)),
-                );
-             }
+             // Navigate to Members List for this trainer
+             Navigator.push(
+               context,
+               MaterialPageRoute(
+                 builder: (context) => MembersListScreen(trainer: trainer),
+               ),
+             );
           }
         },
         onLongPress: _isAdmin ? () {

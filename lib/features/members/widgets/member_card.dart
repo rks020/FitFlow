@@ -22,8 +22,8 @@ class MemberCard extends StatelessWidget {
         children: [
           // Avatar
           Container(
-            width: 56,
-            height: 56,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -33,19 +33,19 @@ class MemberCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
               child: Text(
                 member.name.isNotEmpty ? member.name[0].toUpperCase() : 'U',
-                style: AppTextStyles.title2.copyWith(
+                style: AppTextStyles.title3.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           // Member Info
           Expanded(
             child: Column(
@@ -61,24 +61,6 @@ class MemberCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (member.isActive)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentGreen.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Aktif',
-                          style: AppTextStyles.caption1.copyWith(
-                            color: AppColors.accentGreen,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -121,6 +103,52 @@ class MemberCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 12),
+          // Badges stacked vertically
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (member.isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Aktif',
+                    style: AppTextStyles.caption1.copyWith(
+                      color: AppColors.accentGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              if (member.isMultisport) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryYellow.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Multisport',
+                    style: AppTextStyles.caption1.copyWith(
+                      color: AppColors.primaryYellow,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(width: 8),
           const Icon(

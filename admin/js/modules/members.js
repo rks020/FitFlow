@@ -134,7 +134,10 @@ async function loadMembersList(searchQuery = '') {
                         <p>${member.email || '-'}</p>
                         <p style="font-size: 11px; color: #888;">Paket: ${member.subscription_package || '-'}</p>
                         <p style="font-size: 11px; color: #888;">Kalan Ders: ${(member.session_count || 0) - (member.used_session_count || 0)}</p>
-                        ${member.is_multisport ? '<span style="font-size: 10px; color: #3b82f6; background: rgba(59,130,246,0.1); padding: 2px 4px; border-radius: 4px;">Multisport</span>' : ''}
+                        <div class="member-badges" style="display: flex; gap: 6px; margin-top: 8px;">
+                            ${member.is_active ? '<span style="font-size: 10px; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 6px; font-weight: 600;">Aktif</span>' : ''}
+                            ${member.is_multisport ? '<span style="font-size: 10px; color: #FFD700; background: rgba(255,215,0,0.1); padding: 4px 8px; border-radius: 6px; font-weight: 600;">Multisport</span>' : ''}
+                        </div>
                     </div>
                 </div>
 
