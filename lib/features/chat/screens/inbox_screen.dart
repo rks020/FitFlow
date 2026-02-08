@@ -66,7 +66,63 @@ class _InboxScreenState extends State<InboxScreen> {
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final item = _items[index];
-                    return _buildInboxItem(item);
+                    return Dismissible(
+                      key: Key(item.userId),
+                      direction: DismissDirection.endToStart,
+                      confirmDismiss: (direction) async {
+                        return await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: AppColors.surfaceDark,
+                            title: Text('Konuşmayı Sil', style: AppTextStyles.title3),
+                            content: Text(
+                              '${item.userName} ile olan tüm mesajlar silinecek. Bu işlem geri alınamaz.',
+                              style: AppTextStyles.body,
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Vazgeç', style: TextStyle(color: Colors.white)),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Sil', style: TextStyle(color: AppColors.accentRed)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      onDismissed: (direction) async {
+                        try {
+                          await _repository.deleteConversation(item.userId);
+                          setState(() {
+                            _items.removeAt(index);
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Konuşma silindi')),
+                            );
+                          }
+                        } catch (e) {
+                          _loadInbox(); // Refresh if failed
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Hata: $e')),
+                            );
+                          }
+                        }
+                      },
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentRed.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.delete_outline, color: Colors.white),
+                      ),
+                      child: _buildInboxItem(item),
+                    );
                   },
                 ),
       floatingActionButton: FloatingActionButton(

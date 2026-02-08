@@ -203,8 +203,16 @@ class MessageRepository {
         .count(CountOption.exact)
         .eq('receiver_id', myId)
         .eq('is_read', false);
-    
     return response;
+  }
+
+  // Delete conversation with another user
+  Future<void> deleteConversation(String otherUserId) async {
+    final myId = _client.auth.currentUser!.id;
+
+    await _client.from('messages').delete().or(
+      'and(sender_id.eq.$myId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$myId)'
+    );
   }
 }
 
