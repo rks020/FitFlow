@@ -96,11 +96,11 @@ class _MembersListScreenState extends State<MembersListScreen> {
           } else if (_filterType == 'multisport') {
              if (!member.isMultisport) return false;
              
-             // If trainer, only show own multisport members
-             if (_currentUserProfile?.role == 'trainer') {
-               final userId = Supabase.instance.client.auth.currentUser?.id;
-               if (member.trainerId != userId) return false;
-             }
+// If trainer, only show own multisport members - REMOVED to show all
+             // if (_currentUserProfile?.role == 'trainer') {
+             //   final userId = Supabase.instance.client.auth.currentUser?.id;
+             //   if (member.trainerId != userId) return false;
+             // }
           }
         } else {
           // If viewing specific trainer, we might still want to filter by multisport
@@ -134,7 +134,8 @@ class _MembersListScreenState extends State<MembersListScreen> {
   Future<void> _navigateToMemberDetail(Member member) async {
     // Permission Check
     if (_currentUserProfile != null && _currentUserProfile!.role == 'trainer') {
-       if (member.trainerId != _currentUserProfile!.id) {
+       // Allow if member is assigned to trainer OR is multisport
+       if (member.trainerId != _currentUserProfile!.id && !member.isMultisport) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Bu üyenin detaylarını görüntüleme yetkiniz yok.'),

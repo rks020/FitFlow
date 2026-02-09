@@ -70,9 +70,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     // Admin/Owner can edit anyone
     if (_currentUserProfile!.role == 'admin' || _currentUserProfile!.role == 'owner') return true;
     
-    // Trainers can only edit THEIR own members
+    // Trainers can only edit THEIR own members OR multisport members
     if (_currentUserProfile!.role == 'trainer') {
-      return _currentMember.trainerId == _currentUserProfile!.id;
+      return _currentMember.trainerId == _currentUserProfile!.id || _currentMember.isMultisport;
     }
     
     return false;
