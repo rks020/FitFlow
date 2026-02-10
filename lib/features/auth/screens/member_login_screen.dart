@@ -10,6 +10,8 @@ import 'package:fitflow/shared/widgets/ambient_background.dart';
 import 'package:fitflow/features/dashboard/screens/dashboard_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../profile/screens/change_password_screen.dart';
+import 'package:fitflow/core/constants/legal_constants.dart';
+import '../../profile/screens/change_password_screen.dart';
 import 'forgot_password_screen.dart';
 
 class MemberLoginScreen extends StatefulWidget {
@@ -29,6 +31,7 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  bool _isKvkkAccepted = false;
   final _supabase = Supabase.instance.client;
 
   @override
@@ -44,6 +47,11 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       CustomSnackBar.showError(context, 'E-posta ve şifre boş bırakılamaz');
+      return;
+    }
+
+    if (!_isKvkkAccepted) {
+      CustomSnackBar.showError(context, 'Lütfen KVKK Aydınlatma Metni\'ni okuyup onaylayınız.');
       return;
     }
 
@@ -167,6 +175,73 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
     );
   }
 
+  void _showKvkkDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.glassBorder)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'KVKK Aydınlatma Metni',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  LegalConstants.kvkkText,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    height: 1.5,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: CustomButton(
+                text: 'Okudum, Anladım',
+                onPressed: () {
+                   setState(() => _isKvkkAccepted = true);
+                   Navigator.pop(context);
+                },
+                backgroundColor: widget.isTrainer ? AppColors.accentOrange : AppColors.neonCyan,
+                foregroundColor: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -263,6 +338,48 @@ class _MemberLoginScreenState extends State<MemberLoginScreen> {
                               ),
                             ),
                           ),
+                        ),
+                        // KVKK Checkbox
+                        Row(
+                          children: [
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: Checkbox(
+                                value: _isKvkkAccepted,
+                                onChanged: (val) => setState(() => _isKvkkAccepted = val ?? false),
+                                activeColor: widget.isTrainer ? AppColors.accentOrange : AppColors.neonCyan,
+                                side: const BorderSide(color: Colors.white70),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _isKvkkAccepted = !_isKvkkAccepted),
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => _showKvkkDialog(context),
+                                      child: Text(
+                                        'KVKK Aydınlatma Metni',
+                                        style: AppTextStyles.caption1.copyWith(
+                                          color: widget.isTrainer ? AppColors.accentOrange : AppColors.neonCyan,
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      "'ni okudum ve kabul ediyorum.",
+                                      style: AppTextStyles.caption1.copyWith(color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 24),
                         CustomButton(
