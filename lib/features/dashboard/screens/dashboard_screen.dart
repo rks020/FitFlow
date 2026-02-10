@@ -25,6 +25,7 @@ import 'package:fitflow/features/profile/screens/change_password_screen.dart';
 import 'announcements_screen.dart';
 import '../../../core/services/presence_service.dart';
 import '../../../core/services/notification_service.dart';
+import 'package:fitflow/features/finance/screens/finance_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -219,7 +220,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     }
 
     final List<Widget> _screens = [
-      _DashboardHome(onNavigate: switchToTab),
+      _DashboardHome(
+        onNavigate: switchToTab,
+        userRole: _userRole,
+      ),
       const MembersListScreen(),
       WorkoutsHubScreen(
         onNavigateToProfile: () => switchToTab(3),
@@ -293,7 +297,12 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
 class _DashboardHome extends StatefulWidget {
   final Function(int) onNavigate;
-  const _DashboardHome({required this.onNavigate});
+  final String? userRole;
+  
+  const _DashboardHome({
+    required this.onNavigate,
+    this.userRole,
+  });
 
   @override
   State<_DashboardHome> createState() => _DashboardHomeState();
@@ -806,6 +815,25 @@ class _DashboardHomeState extends State<_DashboardHome> {
                           widget.onNavigate(2);
                         },
                       ),
+                      
+                      if (widget.userRole == 'owner') ...[
+                        const SizedBox(height: 12),
+                        _QuickActionButton(
+                          icon: Icons.payments_rounded,
+                          title: 'Finans & Ödemeler',
+                          subtitle: 'Gelir/Gider takibi ve raporlar',
+                          color: AppColors.primaryYellow,
+                          backgroundImage: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1470&auto=format&fit=crop',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const FinanceScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),

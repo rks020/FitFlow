@@ -15,6 +15,7 @@ class AppColors {
   static const Color surface = surfaceDark;
   static const Color surfaceLight = cardDark;
   static const Color secondaryBlue = neonCyan;
+  static const Color surfaceUser = Color(0xFF2C2C2E); // Matches cardDark for now
 
   // Accent Colors
   static const Color accentBlue = Color(0xFF007AFF);

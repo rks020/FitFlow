@@ -40,6 +40,8 @@ enum PaymentCategory {
 class Payment {
   final String id;
   final String memberId;
+  final String? memberName;
+  final String? memberPhotoUrl;
   final double amount;
   final DateTime date;
   final PaymentType type;
@@ -50,6 +52,8 @@ class Payment {
   Payment({
     required this.id,
     required this.memberId,
+    this.memberName,
+    this.memberPhotoUrl,
     required this.amount,
     required this.date,
     required this.type,
@@ -74,9 +78,21 @@ class Payment {
   }
 
   factory Payment.fromSupabaseMap(Map<String, dynamic> map) {
+    String? memberName;
+    String? memberPhotoUrl;
+    
+    if (map['members'] != null) {
+      if (map['members'] is Map) {
+         memberName = map['members']['name'];
+         memberPhotoUrl = map['members']['photo_url'];
+      }
+    }
+
     return Payment(
       id: map['id'] as String,
       memberId: map['member_id'] as String,
+      memberName: memberName,
+      memberPhotoUrl: memberPhotoUrl,
       amount: (map['amount'] as num).toDouble(),
       date: DateTime.parse(map['date'] as String),
       type: _parseType(map['type'] as String),
