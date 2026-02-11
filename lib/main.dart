@@ -5,15 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'dart:io';
+
 import 'dart:async';
 import 'core/theme/app_theme.dart';
 import 'core/constants/supabase_config.dart';
 import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 
-import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/profile/screens/change_password_screen.dart';
-import 'features/auth/screens/account_pending_screen.dart';
 import 'features/auth/screens/auth_check_screen.dart';
 
 // Helper function to check password_changed from database
@@ -40,42 +38,42 @@ Future<bool> _checkPasswordChanged(String userId) async {
 }
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: SupabaseConfig.supabaseUrl,
-    anonKey: SupabaseConfig.supabaseAnonKey,
-  );
-  
-  // Initialize Firebase (for Notifications)
-  try {
-    await Firebase.initializeApp();
-    debugPrint('✅ Firebase initialized');
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  } catch (e) {
-    debugPrint('Firebase init error: $e');
-  }
-
-  // Initialize Notification Service (handles platform internally)
-  try {
-    await NotificationService().initialize();
-  } catch (e) {
-    debugPrint('Notification service error: $e');
-  }
-
-  await initializeDateFormatting('tr_TR', null);
-  
-  // Set system UI overlay style
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ),
-  );
-  
   // Wrap in runZonedGuarded to catch async errors (like expired links)
-  runZonedGuarded(() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Initialize Supabase
+    await Supabase.initialize(
+      url: SupabaseConfig.supabaseUrl,
+      anonKey: SupabaseConfig.supabaseAnonKey,
+    );
+    
+    // Initialize Firebase (for Notifications)
+    try {
+      await Firebase.initializeApp();
+      debugPrint('✅ Firebase initialized');
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('Firebase init error: $e');
+    }
+
+    // Initialize Notification Service (handles platform internally)
+    try {
+      await NotificationService().initialize();
+    } catch (e) {
+      debugPrint('Notification service error: $e');
+    }
+
+    await initializeDateFormatting('tr_TR', null);
+    
+    // Set system UI overlay style
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
+    
     runApp(const PTBodyChangeApp());
   }, (error, stack) {
     debugPrint('Global error caught: $error');

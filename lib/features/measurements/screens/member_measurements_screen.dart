@@ -18,8 +18,9 @@ import 'add_measurement_screen.dart';
 
 class MemberMeasurementsScreen extends StatefulWidget {
   final String? memberId; // Optional: If provided, viewing that member. If null, view key user.
+  final Member? member;
 
-  const MemberMeasurementsScreen({super.key, this.memberId});
+  const MemberMeasurementsScreen({super.key, this.memberId, this.member});
 
   @override
   State<MemberMeasurementsScreen> createState() => _MemberMeasurementsScreenState();
@@ -39,8 +40,11 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.member != null) {
+      _member = widget.member;
+    }
     _loadMeasurements();
-    _loadMember();
+    if (_member == null) _loadMember();
     _subscribeToMeasurements();
   }
 
@@ -51,7 +55,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
   }
 
   Future<void> _subscribeToMeasurements() async {
-    final targetUserId = widget.memberId ?? _supabase.auth.currentUser?.id;
+    final targetUserId = widget.memberId ?? widget.member?.id ?? _supabase.auth.currentUser?.id;
     if (targetUserId == null) return;
 
     _measSubscription = _supabase
@@ -64,6 +68,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
   }
 
   Future<void> _loadMember() async {
+    if (widget.member != null) return; // Already loaded
     if (widget.memberId == null) return;
     
     try {
@@ -80,7 +85,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
 
   Future<void> _loadMeasurements() async {
     try {
-      final targetUserId = widget.memberId ?? _supabase.auth.currentUser?.id;
+      final targetUserId = widget.memberId ?? widget.member?.id ?? _supabase.auth.currentUser?.id;
       if (targetUserId == null) return;
 
       final response = await _supabase
@@ -104,7 +109,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
   Future<void> _openDetailedAnalysis() async {
     try {
       final user = _supabase.auth.currentUser;
-      final targetId = widget.memberId ?? user?.id;
+      final targetId = widget.memberId ?? widget.member?.id ?? user?.id;
       
       if (targetId == null) return;
 
@@ -187,13 +192,13 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
       appBar: AppBar(
         title: Text(title),
         backgroundColor: Colors.transparent,
-        leading: widget.memberId != null 
+        leading: (widget.memberId != null || widget.member != null)
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             )
           : null,
-        actions: widget.memberId == null
+        actions: (widget.memberId == null && widget.member == null)
           ? [
               TextButton.icon(
                 onPressed: _openDetailedAnalysis,

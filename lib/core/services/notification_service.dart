@@ -21,6 +21,7 @@ class NotificationService {
   final _supabase = Supabase.instance.client;
   // _fcm removed to prevent static access before init on iOS
   final _localNotifications = FlutterLocalNotificationsPlugin();
+  String? _lastSavedToken;
 
   // 🎯 PENDING MESSAGE STORAGE (Navigation happens later when Navigator is ready)
   static RemoteMessage? pendingMessage;
@@ -44,7 +45,7 @@ class NotificationService {
     debugPrint('NotificationService initialized with timezone: $timeZoneName');
 
     // 0.1 Initialize Local Notifications
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -141,14 +142,15 @@ class NotificationService {
       );
     }
         
-    // 2. Get Token (Initial check if already logged in)
+    // 2. Get Token (Initial check removed - handled by onAuthStateChange)
+    /* 
     final token = await fcm.getToken();
     if (token != null) {
-       // If user is already logged in at startup, save token
        if (_supabase.auth.currentUser != null) {
           await _saveToken(token);
        }
     }
+    */
 
     // 3. Listen for token refresh
     fcm.onTokenRefresh.listen((newToken) {
@@ -162,8 +164,8 @@ class NotificationService {
       debugPrint('Got a message whilst in the foreground!');
       debugPrint('Message data: ${message.data}');
 
-      // Skip showing chat/announcement notifications in foreground to prevent duplicates
-      // (User is already in the app and will see the message in chat/announcement screen)
+      // Skip showing chat/announcement notifications in foreground
+      // (User is already in the app)
       final messageType = message.data['type'];
       if (messageType == 'chat' || messageType == 'announcement') {
         debugPrint('🔔 Skipping foreground notification for $messageType message (prevents duplicates)');
@@ -171,9 +173,16 @@ class NotificationService {
       }
 
       if (message.notification != null) {
+        // iOS path: notification payload var, _showForegroundNotification sadece Android'da gösterir
         debugPrint('Message also contained a notification: ${message.notification}');
-        // Ensure we show it locally if app is in foreground
         _showForegroundNotification(message);
+      } else if (Platform.isAndroid) {
+        // Android path: data-only mesaj, manuel göster
+        final title = message.data['title'];
+        final body = message.data['body'];
+        if (title != null && body != null) {
+          _showDataOnlyNotification(message.data);
+        }
       }
     });
   }
@@ -338,35 +347,54 @@ class NotificationService {
     }
   }
 
-
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
-    final android = message.notification?.android;
     
-    if (notification != null && android != null) { // Ensure android specifics are checked if needed, or just notification
-      await _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'high_importance_channel',
-            'High Importance Notifications',
-            channelDescription: 'This channel is used for important notifications.',
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-          iOS: const DarwinNotificationDetails(
-             presentAlert: true,
-             presentBadge: true,
-             presentSound: true,
-          ),
+    if (notification == null) return;
+    
+    // iOS'ta foreground'da notification payload zaten sistem tarafından gösterilir.
+    // Sadece Android için manuel göster.
+    if (!Platform.isAndroid) return;
+    
+    await _localNotifications.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.max,
+          priority: Priority.high,
         ),
-        payload: jsonEncode(message.data), // Pass data as payload
-      );
-    }
+      ),
+      payload: jsonEncode(message.data),
+    );
   }
 
+  /// Android data-only mesajlar için foreground'da bildirim göster
+  Future<void> _showDataOnlyNotification(Map<String, dynamic> data) async {
+    final title = data['title'] as String?;
+    final body = data['body'] as String?;
+    if (title == null || body == null) return;
+
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+      payload: jsonEncode(data),
+    );
+  }
   Future<void> scheduleClassReminder(int id, String title, DateTime classTime) async {
     // 5 minutes before
     // 5 minutes before (Ensure classTime is treated as Local)
@@ -411,6 +439,9 @@ class NotificationService {
   Future<void> _saveToken(String token) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
+    
+    // Force update to ensure device_type is correct in DB
+    // if (_lastSavedToken == token) return; 
 
     try {
       // Use RPC to bypass RLS and force claim the token
@@ -418,7 +449,8 @@ class NotificationService {
         'p_token': token,
         'p_device_type': _getDeviceType(),
       });
-      debugPrint('FCM Token registered via RPC for user $userId');
+      debugPrint('FCM Token registered via RPC for user $userId with device_type: ${_getDeviceType()}');
+      _lastSavedToken = token; // Update local cache
     } catch (e) {
       debugPrint('RPC Error, falling back to basic upsert: $e');
       // Fallback if RPC doesn't exist yet (in case user didn't run SQL)
@@ -430,6 +462,7 @@ class NotificationService {
           'device_type': _getDeviceType(),
           'updated_at': DateTime.now().toIso8601String(),
         });
+        _lastSavedToken = token;
       } catch (e2) {
         debugPrint('Fallback token save failed: $e2');
       }
@@ -476,7 +509,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
      
      // Initialize minimal settings for Android
      const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
      
      // Note: In background, we don't need callbacks usually, just show
      await flutterLocalNotificationsPlugin.initialize(

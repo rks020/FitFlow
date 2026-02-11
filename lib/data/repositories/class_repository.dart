@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/class_session.dart';
 import '../models/class_enrollment.dart';
+import '../../core/services/push_notification_sender.dart';
 
 class ClassRepository {
   final SupabaseClient _client = Supabase.instance.client;
@@ -161,6 +162,7 @@ class ClassRepository {
   }
 
   // Create a new session
+  // Create a new session
   Future<ClassSession> createSession(ClassSession session) async {
     final response = await _client
         .from('class_sessions')
@@ -168,7 +170,49 @@ class ClassRepository {
         .select()
         .single();
     
-    return ClassSession.fromJson(response);
+    final createdSession = ClassSession.fromJson(response);
+
+    // Send notification if public
+    if (createdSession.isPublic) {
+      _sendClassOpenedNotification(createdSession);
+    }
+    
+    return createdSession;
+  }
+
+  Future<void> _sendClassOpenedNotification(ClassSession session) async {
+    try {
+      final myId = _client.auth.currentUser?.id;
+      
+      // Get all active members (users who are NOT the creator/trainer)
+      final response = await _client
+          .from('members')
+          .select('id')
+          .eq('is_active', true);
+      
+      final membersList = response as List;
+      final userIds = membersList
+          .map((e) => e['id'] as String)
+          .where((id) => id != myId)
+          .toList();
+      
+      if (userIds.isEmpty) return;
+      
+      final startTime = session.startTime.toLocal(); // Ensure local time
+      final timeStr = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+      
+      await PushNotificationSender().sendToMultipleUsers(
+        userIds: userIds,
+        title: 'Yeni Ders: ${session.title} 🏋️‍♂️',
+        body: 'Saat $timeStr için yeni ders açıldı. Hemen yerini ayırt!',
+        data: {
+          'type': 'class_opened',
+          'session_id': session.id,
+        },
+      );
+    } catch (e) {
+      print('Bildirim Hatası: $e');
+    }
   }
 
   // Update session

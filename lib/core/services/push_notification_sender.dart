@@ -60,17 +60,12 @@ class PushNotificationSender {
 
       debugPrint('PushNotificationSender: Sending to ${targets.length} unique devices...');
 
-      // Add title and body to data payload because Android will use data-only message
-      final enrichedData = Map<String, dynamic>.from(data ?? {});
-      enrichedData['title'] = title;
-      enrichedData['body'] = body;
-
       // 3. Send to each token using HTTP v1 API
       for (final target in targets) {
         final token = target['token'] as String;
         final deviceType = target['device_type'] as String?;
         
-        await _sendToTokenV1(client, projectId!, token, title, body, enrichedData, deviceType);
+        await _sendToTokenV1(client, projectId!, token, title, body, data, deviceType);
       }
 
       client.close();
@@ -91,39 +86,50 @@ class PushNotificationSender {
     try {
       final url = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
       
-      // Construct message
+      // Data payload - navigation bilgisi her zaman gerekli
+      final enrichedData = Map<String, dynamic>.from(data ?? {});
+      // Convert all values to String (FCM data payload requirement)
+      final stringData = enrichedData.map((k, v) => MapEntry(k, v.toString()));
+      
       final Map<String, dynamic> message = {
         'token': token,
-        'data': data,
       };
 
-      // For Android, we send DATA-ONLY message to prevent system from showing duplicate notification automatically.
-      // We will handle the display manually in onBackgroundMessage/onMessage.
-      // For iOS, we keep notification payload to ensure delivery even if app is terminated.
+      // ═══════════════════════════════════════════════════════════
+      // PLATFORM-AWARE PAYLOAD STRATEGY:
+      // iOS  → notification payload (sistem gösterir) + data (navigation için)
+      //         title/body data'ya EKLENMİYOR (çift bildirim önlenir)
+      // Android → data-only (title/body data içinde, uygulama gösterir)
+      // ═══════════════════════════════════════════════════════════
       
-      if (deviceType != 'android') {
+      if (deviceType == 'ios') {
+        // iOS: Sistem notification gösterir, data sadece navigation için
         message['notification'] = {
           'title': title,
           'body': body,
         };
-      } else {
-        debugPrint('🤖 Sending DATA-ONLY message to Android to prevent duplicates');
-      }
-
-      // Add Android specific config (high priority for data messages)
-      message['android'] = {
-        'priority': 'HIGH',
-      };
-
-      // Add APNs specific config
-      message['apns'] = {
-        'payload': {
-          'aps': {
-            'sound': 'default',
-            'content-available': 1, // Important for background updates
+        message['data'] = stringData; // title/body yok, sadece type/sender_id vb.
+        
+        message['apns'] = {
+          'payload': {
+            'aps': {
+              'sound': 'default',
+              'content-available': 1,
+            }
           }
-        }
-      };
+        };
+        debugPrint('🍎 Sending notification+data to iOS');
+      } else {
+        // Android: Data-only, title/body data içinde → uygulama gösterir
+        stringData['title'] = title;
+        stringData['body'] = body;
+        message['data'] = stringData;
+        
+        message['android'] = {
+          'priority': 'HIGH',
+        };
+        debugPrint('🤖 Sending DATA-ONLY to Android (prevents duplicates)');
+      }
 
       final response = await client.post(
         Uri.parse(url),
@@ -226,12 +232,7 @@ class PushNotificationSender {
 
       debugPrint('PushNotificationSender: Sending to ${targets.length} unique devices...');
 
-      // Add title and body to data payload
-      final enrichedData = Map<String, dynamic>.from(data ?? {});
-      enrichedData['title'] = title;
-      enrichedData['body'] = body;
-
-      // 3. Send to each token
+      // 3. Send to each token (platform-aware enrichment handled inside _sendToTokenV1)
       int successCount = 0;
       int failCount = 0;
 
@@ -240,7 +241,7 @@ class PushNotificationSender {
         final deviceType = target['device_type'] as String?;
         
         try {
-          await _sendToTokenV1(client, projectId!, token, title, body, enrichedData, deviceType);
+          await _sendToTokenV1(client, projectId!, token, title, body, data, deviceType);
           successCount++;
         } catch (e) {
           debugPrint('PushNotificationSender: Failed to send to token: $e');
