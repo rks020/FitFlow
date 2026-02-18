@@ -368,6 +368,37 @@
             </div>
         </div>
     </div>
+    <!-- Trainer Members Modal -->
+    <div id="trainer-members-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h2 id="trainer-members-title" style="color: #fff;">Antrenör Üyeleri</h2>
+                <span class="close-modal" id="close-trainer-members-modal">&times;</span>
+            </div>
+            <div class="modal-body" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+
+                <!-- Filter Tabs -->
+                <div class="filter-tabs"
+                    style="display: flex; gap: 10px; margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 4px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <button class="btn btn-filter active" id="filter-all"
+                        style="flex:1; padding: 10px; border-radius: 10px; border: none; background: #FFD700; color: #000; font-weight: 600; cursor: pointer; transition: all 0.2s;">Tümü</button>
+                    <button class="btn btn-filter" id="filter-multisport"
+                        style="flex:1; padding: 10px; border-radius: 10px; border: none; background: transparent; color: #888; font-weight: 600; cursor: pointer; transition: all 0.2s;">Multisport</button>
+                </div>
+
+                <!-- Search -->
+                <div class="search-bar" style="margin-bottom: 15px;">
+                    <input type="text" id="trainer-members-search" placeholder="Üye ara..."
+                        style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff;">
+                </div>
+
+                <!-- List -->
+                <div id="trainer-members-list" style="flex: 1; overflow-y: auto; padding-right: 5px;">
+                    <p style="text-align: center; color: #888;">Yükleniyor...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
