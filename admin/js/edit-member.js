@@ -224,7 +224,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (error) {
             console.error('Error updating member:', error);
-            showToast('Güncelleme hatası: ' + error.message, 'error');
+            if (error.message && (error.message.includes('unique constraint') || error.message.includes('duplicate key'))) {
+                showToast('Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor.', 'error');
+            } else {
+                showToast('Güncelleme hatası: ' + error.message, 'error');
+            }
         } finally {
             saveBtn.disabled = false;
             saveBtn.querySelector('.btn-text').style.display = 'inline';
