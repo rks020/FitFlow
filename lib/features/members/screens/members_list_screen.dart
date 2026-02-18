@@ -10,6 +10,8 @@ import 'member_detail_screen.dart';
 import '../../../data/models/profile.dart'; // Added
 import '../../../data/repositories/profile_repository.dart'; // Added
 
+import '../../../shared/widgets/ambient_background.dart';
+
 class MembersListScreen extends StatefulWidget {
   final Profile? trainer;
   const MembersListScreen({super.key, this.trainer});
@@ -161,7 +163,8 @@ class _MembersListScreenState extends State<MembersListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
+      body: AmbientBackground(
+        child: SafeArea(
           child: Column(
             children: [
             // Header
@@ -380,6 +383,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
                         ),
             ),
           ],
+      ),
       ),
       ),
       floatingActionButton: widget.trainer == null ? FloatingActionButton.extended(
