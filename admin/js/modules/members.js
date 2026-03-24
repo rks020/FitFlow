@@ -1,7 +1,7 @@
 import { supabaseClient } from '../supabase-config.js';
 import { showToast } from '../utils.js';
 
-let currentFilter = 'my_members'; // my_members, multisport, all
+let currentFilter = 'my_members'; // my_members, multisport, meditopia, all
 
 export async function loadMembers() {
     const contentArea = document.getElementById('content-area');
@@ -20,6 +20,7 @@ export async function loadMembers() {
         <div class="filter-tabs" style="display: flex; gap: 15px; margin-bottom: 30px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
             <button class="btn btn-filter active" data-filter="my_members" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Üyelerim</button>
             <button class="btn btn-filter" data-filter="multisport" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Multisport</button>
+            <button class="btn btn-filter" data-filter="meditopia" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Meditopia</button>
             <button class="btn btn-filter" data-filter="all" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Tümü</button>
         </div>
 
@@ -102,9 +103,10 @@ async function loadMembersList(searchQuery = '') {
             if (profile.role === 'trainer') {
                 query = query.eq('trainer_id', user.id);
             }
+        } else if (currentFilter === 'meditopia') {
+            query = query.eq('is_meditopia', true);
         } else if (currentFilter === 'all') {
-            // No extra filter, unless we want to enforce strict RLS (which Supabase does anyway)
-            // But logic-wise "All" shows everyone.
+            // No extra filter
         }
 
         if (searchQuery) {
@@ -138,6 +140,7 @@ async function loadMembersList(searchQuery = '') {
                     <div class="member-badges" style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                         ${member.is_active ? '<span style="font-size: 10px; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap;">Aktif</span>' : ''}
                         ${member.is_multisport ? '<span style="font-size: 10px; color: #FFD700; background: rgba(255,215,0,0.1); padding: 4px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap;">Multisport</span>' : ''}
+                        ${member.is_meditopia ? '<span style="font-size: 10px; color: #06B6D4; background: rgba(6,182,212,0.1); padding: 4px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap;">Meditopia</span>' : ''}
                     </div>
                 </div>
 

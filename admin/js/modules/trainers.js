@@ -142,7 +142,7 @@ window.deleteTrainer = async (id) => {
 
 /* Trainer Members Modal Logic */
 let currentTrainerMembers = [];
-let currentFilter = 'all'; // 'all' | 'multisport'
+let currentFilter = 'all'; // 'all' | 'multisport' | 'meditopia'
 
 window.openTrainerMembersModal = async (trainerId, trainerName) => {
     const modal = document.getElementById('trainer-members-modal');
@@ -163,6 +163,7 @@ window.openTrainerMembersModal = async (trainerId, trainerName) => {
     document.getElementById('close-trainer-members-modal').onclick = () => modal.classList.remove('active');
     document.getElementById('filter-all').onclick = () => setFilter('all');
     document.getElementById('filter-multisport').onclick = () => setFilter('multisport');
+    document.getElementById('filter-meditopia').onclick = () => setFilter('meditopia');
     document.getElementById('trainer-members-search').oninput = (e) => renderTrainerMembers(e.target.value);
 
     // Close on outside click
@@ -202,17 +203,18 @@ function setFilter(type) {
 function updateFilterUI() {
     const allBtn = document.getElementById('filter-all');
     const multiBtn = document.getElementById('filter-multisport');
+    const mediBtn = document.getElementById('filter-meditopia');
+
+    [allBtn, multiBtn, mediBtn].forEach(btn => {
+        if (btn) { btn.style.background = 'transparent'; btn.style.color = '#888'; }
+    });
 
     if (currentFilter === 'all') {
-        allBtn.style.background = '#FFD700';
-        allBtn.style.color = '#000';
-        multiBtn.style.background = 'transparent';
-        multiBtn.style.color = '#888';
-    } else {
-        allBtn.style.background = 'transparent';
-        allBtn.style.color = '#888';
-        multiBtn.style.background = '#FFD700';
-        multiBtn.style.color = '#000';
+        allBtn.style.background = '#FFD700'; allBtn.style.color = '#000';
+    } else if (currentFilter === 'multisport') {
+        multiBtn.style.background = '#FFD700'; multiBtn.style.color = '#000';
+    } else if (currentFilter === 'meditopia') {
+        mediBtn.style.background = '#FFD700'; mediBtn.style.color = '#000';
     }
 }
 
@@ -220,9 +222,8 @@ function renderTrainerMembers(searchQuery = '') {
     const listContainer = document.getElementById('trainer-members-list');
 
     let filtered = currentTrainerMembers.filter(m => {
-        if (currentFilter === 'multisport') {
-            return m.is_multisport;
-        }
+        if (currentFilter === 'multisport') return m.is_multisport;
+        if (currentFilter === 'meditopia') return m.is_meditopia;
         return true;
     });
 
@@ -256,6 +257,9 @@ function renderTrainerMembers(searchQuery = '') {
             : '<span style="font-size: 11px; color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 10px; border-radius: 6px; font-weight: 600;">Pasif</span>'}
                  ${member.is_multisport
             ? '<span style="font-size: 11px; color: #FFD700; background: rgba(255,215,0,0.1); padding: 4px 10px; border-radius: 6px; font-weight: 600;">Multisport</span>'
+            : ''}
+                 ${member.is_meditopia
+            ? '<span style="font-size: 11px; color: #06B6D4; background: rgba(6,182,212,0.1); padding: 4px 10px; border-radius: 6px; font-weight: 600;">Meditopia</span>'
             : ''}
             </div>
         </div>
