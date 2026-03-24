@@ -45,20 +45,17 @@ Future<void> main() async {
       anonKey: SupabaseConfig.supabaseAnonKey,
     );
     
-    // Initialize Firebase (for Notifications)
-    try {
-      await Firebase.initializeApp();
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    } catch (e) {
-      // Firebase init error
-    }
-
-    // Initialize Notification Service (handles platform internally)
-    try {
-      await NotificationService().initialize();
-    } catch (e) {
-      // Notification service error
-    }
+    // Initialize Firebase & Notifications asynchronously to avoid blocking runApp
+    // on iOS release builds where APNS token fetching can time out.
+    Future.microtask(() async {
+      try {
+        await Firebase.initializeApp();
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+        await NotificationService().initialize();
+      } catch (e) {
+        // Firebase/Notification init error
+      }
+    });
 
     await initializeDateFormatting('tr_TR', null);
     

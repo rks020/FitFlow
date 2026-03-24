@@ -39,6 +39,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
 
   bool _isActive = true;
   bool _isMultisport = false;
+  bool _isMeditopia = false;
   bool _isLoading = false;
 
   // Trainer Selection
@@ -84,6 +85,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
 
       _isActive = widget.member!.isActive;
       _isMultisport = widget.member!.isMultisport;
+      _isMeditopia = widget.member!.isMeditopia;
     }
   }
 
@@ -244,6 +246,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
           sessionCount: int.tryParse(_sessionCountController.text.trim()),
           trainerId: _selectedTrainerId, 
           isMultisport: _isMultisport,
+          isMeditopia: _isMeditopia,
         );
 
         try {
@@ -291,6 +294,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
           sessionCount: int.tryParse(_sessionCountController.text.trim()),
           trainerId: _selectedTrainerId,
           isMultisport: _isMultisport,
+          isMeditopia: _isMeditopia,
         );
 
         await repository.update(updatedMember);
@@ -558,6 +562,30 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                       onChanged: (value) {
                         setState(() {
                           _isMultisport = value;
+                        });
+                      },
+                      activeColor: AppColors.primaryYellow,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceDark,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.glassBorder),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Meditopia Üyesi', style: AppTextStyles.headline),
+                    Switch(
+                      value: _isMeditopia,
+                      onChanged: (value) {
+                        setState(() {
+                          _isMeditopia = value;
                         });
                       },
                       activeColor: AppColors.primaryYellow,

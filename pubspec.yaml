@@ -74,6 +74,6 @@ flutter:
   # Assets
   assets:
     - assets/images/
-    - assets/icons/
+    # - assets/icons/   # directory does not exist
     - assets/icon/
-    - assets/service_account.json
+    # - assets/service_account.json   # file does not exist

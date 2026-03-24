@@ -35,6 +35,7 @@ class MemberRepository {
       'subscription_package': member.subscriptionPackage,
       'session_count': member.sessionCount,
       'is_multisport': member.isMultisport,
+      'is_meditopia': member.isMeditopia,
     });
   }
 
@@ -168,6 +169,7 @@ class MemberRepository {
       'session_count': member.sessionCount,
       'trainer_id': member.trainerId, // Always include trainer_id (null or value)
       'is_multisport': member.isMultisport,
+      'is_meditopia': member.isMeditopia,
     };
     
     await _client.from('members').update(updateData).eq('id', member.id);

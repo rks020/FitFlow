@@ -26,7 +26,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
   
   List<Member> _members = [];
   List<Member> _filteredMembers = [];
-  String _filterType = 'my_members'; // 'my_members', 'multisport', 'all'
+  String _filterType = 'my_members'; // 'my_members', 'multisport', 'meditopia', 'all'
   bool _isLoading = true;
 
   @override
@@ -97,17 +97,15 @@ class _MembersListScreenState extends State<MembersListScreen> {
              if (member.trainerId != userId) return false;
           } else if (_filterType == 'multisport') {
              if (!member.isMultisport) return false;
-             
-// If trainer, only show own multisport members - REMOVED to show all
-             // if (_currentUserProfile?.role == 'trainer') {
-             //   final userId = Supabase.instance.client.auth.currentUser?.id;
-             //   if (member.trainerId != userId) return false;
-             // }
+          } else if (_filterType == 'meditopia') {
+             if (!member.isMeditopia) return false;
           }
         } else {
           // If viewing specific trainer, we might still want to filter by multisport
           if (_filterType == 'multisport') {
             if (!member.isMultisport) return false;
+          } else if (_filterType == 'meditopia') {
+            if (!member.isMeditopia) return false;
           }
         }
         
@@ -280,6 +278,36 @@ class _MembersListScreenState extends State<MembersListScreen> {
                               textAlign: TextAlign.center,
                               style: AppTextStyles.callout.copyWith(
                                 color: _filterType == 'multisport'
+                                    ? Colors.black
+                                    : AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _filterType = 'meditopia';
+                              _filterMembers();
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _filterType == 'meditopia'
+                                  ? AppColors.primaryYellow
+                                  : AppColors.surfaceDark,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Meditopia',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.callout.copyWith(
+                                color: _filterType == 'meditopia'
                                     ? Colors.black
                                     : AppColors.textSecondary,
                                 fontWeight: FontWeight.w600,

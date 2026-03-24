@@ -148,6 +148,26 @@ class MemberCard extends StatelessWidget {
                   ),
                 ),
               ],
+              if (member.isMeditopia) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonCyan.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Meditopia',
+                    style: AppTextStyles.caption1.copyWith(
+                      color: AppColors.neonCyan,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(width: 8),
