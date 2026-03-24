@@ -77,6 +77,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const password = document.getElementById('member-password').value.trim();
         const selectedPackage = document.getElementById('member-package').value.trim();
         const trainerId = document.getElementById('member-trainer').value.trim();
+        const isMultisport = document.getElementById('member-multisport').checked;
+        const isMeditopia = document.getElementById('member-meditopia').checked;
 
         let sessionCount = null;
         if (selectedPackage === 'Manuel') {
@@ -156,12 +158,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
 
-            // Explicitly update session count just in case Edge Function doesn't handle it yet
-            if (data?.user?.id && sessionCount !== null) {
-                await supabaseClient
-                    .from('members')
-                    .update({ session_count: sessionCount })
-                    .eq('id', data.user.id);
+            // Explicitly update session count + multisport + meditopia just in case Edge Function doesn't handle it
+            if (data?.user?.id) {
+                const updatePayload = {};
+                if (sessionCount !== null) updatePayload.session_count = sessionCount;
+                if (isMultisport) updatePayload.is_multisport = true;
+                if (isMeditopia) updatePayload.is_meditopia = true;
+
+                if (Object.keys(updatePayload).length > 0) {
+                    await supabaseClient
+                        .from('members')
+                        .update(updatePayload)
+                        .eq('id', data.user.id);
+                }
             }
 
             showToast('Üye başarıyla oluşturuldu!', 'success');
