@@ -527,7 +527,17 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                               ),
                               trailing: GestureDetector(
                                 onTap: () async {
-                                  final t = await showTimePicker(context: context, initialTime: time);
+                                  final t = await showTimePicker(
+                                    context: context, 
+                                    initialTime: time,
+                                    initialEntryMode: TimePickerEntryMode.input,
+                                    confirmText: 'TAMAM',
+                                    cancelText: 'İPTAL',
+                                    helpText: 'SAAT GİRİN',
+                                    hourLabelText: 'Saat',
+                                    minuteLabelText: 'Dakika',
+                                  );
+
                                   if (t != null) {
                                     setState(() {
                                       _dayTimes[dayIndex] = t;

@@ -348,6 +348,26 @@ class _DashboardHome extends StatefulWidget {
   State<_DashboardHome> createState() => _DashboardHomeState();
 }
 
+class _QuickActionData {
+  final String id;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final String? backgroundImage;
+  final VoidCallback onTap;
+
+  _QuickActionData({
+    required this.id,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+    this.backgroundImage,
+  });
+}
+
 class _DashboardHomeState extends State<_DashboardHome> {
   int _totalMembers = 0;
   int _activeMembers = 0;
@@ -361,16 +381,44 @@ class _DashboardHomeState extends State<_DashboardHome> {
   String _userInitials = 'PT';
   RealtimeChannel? _monitorChannel;
   final _presenceService = PresenceService();
+  List<String> _actionOrder = ['add_member', 'measurement', 'create_class', 'finance'];
 
   @override
   void initState() {
     super.initState();
+    _loadActionOrder();
     _loadStats();
     _loadUnreadCount(); 
     _loadUnreadAnnouncements();
     _setupRealtimeSubscription();
     _setupPresence();
     _loadProfile();
+  }
+
+  Future<void> _loadActionOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedOrder = prefs.getStringList('dashboard_action_order');
+    if (savedOrder != null) {
+      setState(() {
+        _actionOrder = savedOrder;
+      });
+    }
+  }
+
+  Future<void> _saveActionOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('dashboard_action_order', _actionOrder);
+  }
+
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final String item = _actionOrder.removeAt(oldIndex);
+      _actionOrder.insert(newIndex, item);
+    });
+    _saveActionOrder();
   }
 
   Future<void> _loadUnreadAnnouncements() async {
@@ -806,74 +854,107 @@ class _DashboardHomeState extends State<_DashboardHome> {
                         style: AppTextStyles.title3.copyWith(color: Colors.white),
                       ),
                       const SizedBox(height: 16),
-                      _QuickActionButton(
-                        icon: Icons.person_add_rounded,
-                        title: 'Yeni Üye Ekle',
-                        subtitle: 'Sisteme yeni sporcu kaydet',
-                        color: AppColors.accentBlue,
-                        backgroundImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1470&auto=format&fit=crop',
-                        onTap: () async {
-                          final result = await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AddEditMemberScreen(),
-                            ),
-                          );
-                          if (result == true) {
-                            if (context.mounted) {
-                              CustomSnackBar.showSuccess(
-                                context, 
-                                'Üye başarıyla eklendi',
+                      
+                      // Action Definitions
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          canvasColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                        ),
+                        child: ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          onReorder: _onReorder,
+                          children: _actionOrder
+                              .where((id) => id != 'finance' || widget.userRole == 'owner')
+                              .map((id) {
+                            if (id == 'add_member') {
+                              return Padding(
+                                key: const ValueKey('add_member'),
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _QuickActionButton(
+                                  icon: Icons.person_add_rounded,
+                                  title: 'Yeni Üye Ekle',
+                                  subtitle: 'Sisteme yeni sporcu kaydet',
+                                  color: AppColors.accentBlue,
+                                  backgroundImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1470&auto=format&fit=crop',
+                                  onTap: () async {
+                                    final result = await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => const AddEditMemberScreen(),
+                                      ),
+                                    );
+                                    if (result == true) {
+                                      if (context.mounted) {
+                                        CustomSnackBar.showSuccess(
+                                          context, 
+                                          'Üye başarıyla eklendi',
+                                        );
+                                      }
+                                      _loadStats();
+                                    }
+                                  },
+                                ),
+                              );
+                            } else if (id == 'measurement') {
+                              return Padding(
+                                key: const ValueKey('measurement'),
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _QuickActionButton(
+                                  icon: Icons.straighten_rounded,
+                                  title: 'Ölçüm Yap',
+                                  subtitle: 'Sporcunun ölçümlerini kaydet',
+                                  color: AppColors.accentOrange,
+                                  backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
+                                  onTap: () {
+                                    widget.onNavigate(1);
+                                    CustomSnackBar.showError(
+                                      context,
+                                      'Lütfen ölçüm eklemek istediğiniz üyeyi seçin.',
+                                    );
+                                  },
+                                ),
+                              );
+                            } else if (id == 'create_class') {
+                              return Padding(
+                                key: const ValueKey('create_class'),
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _QuickActionButton(
+                                  icon: Icons.add_circle_rounded,
+                                  title: 'Ders Oluştur',
+                                  subtitle: 'Yeni ders programı ekle',
+                                  color: AppColors.primaryYellow,
+                                  backgroundImage: 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?q=80&w=1450&auto=format&fit=crop',
+                                  onTap: () {
+                                    widget.onNavigate(2);
+                                  },
+                                ),
+                              );
+                            } else if (id == 'finance') {
+                              return Padding(
+                                key: const ValueKey('finance'),
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _QuickActionButton(
+                                  icon: Icons.payments_rounded,
+                                  title: 'Finans & Ödemeler',
+                                  subtitle: 'Gelir/Gider takibi ve raporlar',
+                                  color: AppColors.primaryYellow,
+                                  backgroundImage: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1470&auto=format&fit=crop',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const FinanceScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               );
                             }
-                            _loadStats();
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _QuickActionButton(
-                        icon: Icons.straighten_rounded,
-                        title: 'Ölçüm Yap',
-                        subtitle: 'Sporcunun ölçümlerini kaydet',
-                        color: AppColors.accentOrange,
-                        backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
-                        onTap: () {
-                          widget.onNavigate(1);
-                          CustomSnackBar.showError(
-                            context,
-                            'Lütfen ölçüm eklemek istediğiniz üyeyi seçin.',
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _QuickActionButton(
-                        icon: Icons.add_circle_rounded,
-                        title: 'Ders Oluştur',
-                        subtitle: 'Yeni ders programı ekle',
-                        color: AppColors.primaryYellow,
-                        backgroundImage: 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?q=80&w=1450&auto=format&fit=crop',
-                        onTap: () {
-                          widget.onNavigate(2);
-                        },
-                      ),
-                      
-                      if (widget.userRole == 'owner') ...[
-                        const SizedBox(height: 12),
-                        _QuickActionButton(
-                          icon: Icons.payments_rounded,
-                          title: 'Finans & Ödemeler',
-                          subtitle: 'Gelir/Gider takibi ve raporlar',
-                          color: AppColors.primaryYellow,
-                          backgroundImage: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1470&auto=format&fit=crop',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const FinanceScreen(),
-                              ),
-                            );
-                          },
+                            return const SizedBox.shrink(key: ValueKey('invalid'));
+                          }).toList(),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),

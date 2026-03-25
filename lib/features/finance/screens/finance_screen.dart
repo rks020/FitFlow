@@ -11,6 +11,7 @@ import '../../../shared/widgets/custom_snackbar.dart';
 import '../../../data/repositories/member_repository.dart';
 import '../../members/widgets/add_payment_modal.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import '../../members/screens/member_payments_screen.dart';
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
@@ -250,9 +251,21 @@ class _FinanceScreenState extends State<FinanceScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Slidable(
-          key: ValueKey(payment.id),
-          endActionPane: ActionPane(
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MemberPaymentsScreen(
+                  memberId: payment.memberId,
+                  memberName: payment.memberName ?? 'Üye',
+                ),
+              ),
+            );
+          },
+          child: Slidable(
+            key: ValueKey(payment.id),
+            endActionPane: ActionPane(
             motion: const ScrollMotion(),
             extentRatio: 0.5,
             children: [
@@ -364,8 +377,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   IconData _getPaymentIcon(PaymentType type) {
     switch (type) {

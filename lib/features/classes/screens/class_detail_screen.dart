@@ -584,6 +584,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(widget.session.startTime),
+      initialEntryMode: TimePickerEntryMode.input,
+      confirmText: 'TAMAM',
+      cancelText: 'İPTAL',
+      helpText: 'SAAT GİRİN',
+      hourLabelText: 'Saat',
+      minuteLabelText: 'Dakika',
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
