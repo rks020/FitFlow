@@ -440,18 +440,23 @@ class ClassRepository {
   }
 
   // Check for conflicting sessions
-  Future<List<Map<String, dynamic>>> findConflictingSessions(DateTime start, DateTime end) async {
+  Future<List<Map<String, dynamic>>> findConflictingSessions(DateTime start, DateTime end, {String? excludeSessionId}) async {
     final startStr = start.toUtc().toIso8601String();
     final endStr = end.toUtc().toIso8601String();
 
     // Overlap formula: (StartA < EndB) and (EndA > StartB)
-    final response = await _client
+    var query = _client
         .from('class_sessions')
         .select()
         .neq('status', 'cancelled') // Ignore cancelled
         .lt('start_time', endStr)
         .gt('end_time', startStr);
+
+    if (excludeSessionId != null) {
+      query = query.neq('id', excludeSessionId);
+    }
     
+    final response = await query;
     return List<Map<String, dynamic>>.from(response);
   }
 
@@ -459,7 +464,7 @@ class ClassRepository {
   Future<List<Map<String, dynamic>>> findConflictsWithDetails(
     DateTime start, 
     DateTime end,
-    {String? excludeTrainerId}
+    {String? excludeTrainerId, String? excludeSessionId}
   ) async {
     final startStr = start.toUtc().toIso8601String();
     final endStr = end.toUtc().toIso8601String();
@@ -483,6 +488,10 @@ class ClassRepository {
     // Exclude current trainer's sessions if provided
     if (excludeTrainerId != null) {
       query = query.neq('trainer_id', excludeTrainerId);
+    }
+
+    if (excludeSessionId != null) {
+      query = query.neq('id', excludeSessionId);
     }
 
     final response = await query;

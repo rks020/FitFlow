@@ -254,7 +254,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
             IconButton(
               icon: const Icon(Icons.access_time_filled_rounded, color: AppColors.primaryYellow),
               tooltip: 'Rötar',
-              onPressed: _showDelayDialog,
+              onPressed: _showEditScheduleOptions,
             ),
           ],
         ],
@@ -575,29 +575,55 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       ),
     );
   }
-  Future<void> _showDelayDialog() async {
+  Future<void> _showEditScheduleOptions() async {
     if (widget.session.status == 'completed') {
       CustomSnackBar.showError(context, 'Tamamlanmış derste değişiklik yapamazsınız');
       return;
     }
 
-    final TimeOfDay? picked = await showTimePicker(
+    showModalBottomSheet(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(widget.session.startTime),
-      initialEntryMode: TimePickerEntryMode.input,
-      confirmText: 'TAMAM',
-      cancelText: 'İPTAL',
-      helpText: 'SAAT GİRİN',
-      hourLabelText: 'Saat',
-      minuteLabelText: 'Dakika',
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ders Saatini/Tarihini Düzenle', style: AppTextStyles.title2),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primaryYellow),
+              title: const Text('Tarih ve Saat Değiştir', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showDateTimePicker();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDateTimePicker() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: widget.session.startTime,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: ThemeData.dark().copyWith(
+          data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
               primary: AppColors.primaryYellow,
               onPrimary: Colors.black,
               surface: AppColors.surfaceDark,
-              onSurface: AppColors.textPrimary,
+              onSurface: Colors.white,
             ),
           ),
           child: child!,
@@ -605,26 +631,91 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       },
     );
 
-    if (picked != null && mounted) {
-      final newStart = DateTime(
-        widget.session.startTime.year,
-        widget.session.startTime.month,
-        widget.session.startTime.day,
-        picked.hour,
-        picked.minute,
-      );
-      
-      // Calculate original duration to preserve it
-      final duration = widget.session.durationMinutes;
-      final newEnd = newStart.add(Duration(minutes: duration));
+    if (pickedDate == null) return;
 
-      try {
-        await _classRepository.updateSessionTime(widget.session.id!, newStart, newEnd);
-        CustomSnackBar.showSuccess(context, 'Ders saati güncellendi');
-        if (mounted) Navigator.pop(context, true); // Close and refresh
-      } catch (e) {
-        CustomSnackBar.showError(context, 'Güncelleme hatası: $e');
+    if (!mounted) return;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(widget.session.startTime),
+      initialEntryMode: TimePickerEntryMode.input,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.primaryYellow,
+              onPrimary: Colors.black,
+              surface: AppColors.surfaceDark,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime == null) return;
+
+    final newStart = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    _updateSessionSchedule(newStart);
+  }
+
+  Future<void> _updateSessionSchedule(DateTime newStart) async {
+    // Calculate original duration to preserve it
+    final duration = widget.session.durationMinutes;
+    final newEnd = newStart.add(Duration(minutes: duration));
+
+    try {
+      // Check for conflicts (excluding current session)
+      final conflicts = await _classRepository.findConflictingSessions(newStart, newEnd, excludeSessionId: widget.session.id);
+      
+      if (conflicts.isNotEmpty && mounted) {
+        final conflictMessages = conflicts.map((c) {
+          final title = c['title'] ?? 'Ders';
+          final time = DateTime.parse(c['start_time']).toLocal();
+          final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+          return '• $timeStr - $title';
+        }).join('\n');
+
+        final bool? confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.surfaceDark,
+            title: Text('Çakışan Ders Uyarısı', style: AppTextStyles.title3.copyWith(color: AppColors.accentRed)),
+            content: SingleChildScrollView(
+              child: Text(
+                'Bu saatte aşağıdaki dersler mevcut:\n\n$conflictMessages\n\nYine de güncellemek ister misiniz?',
+                style: AppTextStyles.body,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('İptal', style: AppTextStyles.callout),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('Evet, Güncelle', style: AppTextStyles.callout.copyWith(color: AppColors.primaryYellow)),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm != true) return;
       }
+
+      await _classRepository.updateSessionTime(widget.session.id!, newStart, newEnd);
+      CustomSnackBar.showSuccess(context, 'Ders zamanı güncellendi');
+      if (mounted) Navigator.pop(context, true); // Close and refresh
+    } catch (e) {
+      CustomSnackBar.showError(context, 'Güncelleme hatası: $e');
     }
   }
 

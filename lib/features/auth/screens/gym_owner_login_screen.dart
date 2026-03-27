@@ -14,6 +14,9 @@ import '../../../core/utils/error_translator.dart';
 import '../../../core/constants/turkey_cities.dart';
 import 'package:fitflow/core/constants/legal_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import 'account_pending_screen.dart';
 import '../../profile/screens/change_password_screen.dart';
 
@@ -413,6 +416,86 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
      }
   }
 
+  Future<void> _handleAppleSignIn() async {
+     setState(() => _isLoading = true);
+     try {
+       final rawNonce = _supabase.auth.generateRawNonce();
+       final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+       final credential = await SignInWithApple.getAppleIDCredential(
+         scopes: [
+           AppleIDAuthorizationScopes.email,
+           AppleIDAuthorizationScopes.fullName,
+         ],
+         nonce: hashedNonce,
+       );
+
+       final idToken = credential.identityToken;
+       if (idToken == null) {
+         throw 'Apple giriş bilgisi alınamadı.';
+       }
+
+       final response = await _supabase.auth.signInWithIdToken(
+         provider: OAuthProvider.apple,
+         idToken: idToken,
+         nonce: rawNonce,
+       );
+
+       if (response.session != null) {
+         // Check if user is authorized (has a profile and organization)
+         final userId = response.user!.id;
+         final profileData = await _supabase
+             .from('profiles')
+             .select()
+             .eq('id', userId)
+             .maybeSingle();
+
+          final role = profileData?['role'];
+          
+          if (role == 'member' || role == 'trainer') {
+             await _supabase.auth.signOut();
+             if (mounted) {
+               CustomSnackBar.showError(context, 'Bu hesap bir üye veya antrenör hesabıdır. Lütfen ilgili uygulamayı kullanın.');
+             }
+             return;
+          }
+
+          if (profileData == null || profileData['organization_id'] == null) {
+              if (mounted) {
+                 await _showRegistrationConfirmDialog(response.user);
+              }
+              setState(() => _isLoading = false);
+              return; 
+          }
+
+          final passwordChanged = profileData['password_changed'];
+          
+          if (passwordChanged == false) {
+             await _supabase.auth.signOut();
+             if (mounted) {
+               CustomSnackBar.showError(
+                 context, 
+                 'Lütfen önce salon sahibinden aldığınız geçici şifre ile normal giriş yaparak şifrenizi belirleyin. Daha sonra Apple ile giriş yapabilirsiniz.'
+               );
+             }
+             return;
+          }
+
+         if (mounted) {
+           Navigator.of(context).pushAndRemoveUntil(
+             MaterialPageRoute(builder: (context) => const DashboardScreen()),
+             (route) => false,
+           );
+         }
+       }
+
+     } catch (e) {
+        if (mounted) CustomSnackBar.showError(context, 'Apple Giriş Hatası: $e');
+     } finally {
+        if (mounted) setState(() => _isLoading = false);
+     }
+  }
+
   // Confirm Dialog for Google Users to register new Gym
   Future<void> _showRegistrationConfirmDialog(User? user) async {
      return showDialog(
@@ -652,6 +735,18 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
                 onPressed: _isLoading ? null : _handleGoogleSignIn,
                 icon: const Icon(Icons.g_mobiledata, size: 28),
                 label: const Text('Google ile Devam Et'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.grey[700]!),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _isLoading ? null : _handleAppleSignIn,
+                icon: const Icon(Icons.apple, size: 28),
+                label: const Text('Apple ile Devam Et'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   foregroundColor: Colors.white,

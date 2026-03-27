@@ -296,6 +296,15 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primaryYellow),
+              title: const Text('Tarih ve Saat Değiştir', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showDateTimePicker(session);
+              },
+            ),
+            const Divider(color: Colors.white10),
+            ListTile(
               leading: const Icon(Icons.delete_outline, color: AppColors.accentRed),
               title: const Text('Dersi İptal Et', style: TextStyle(color: AppColors.accentRed)),
               onTap: () => Navigator.pop(context, 'delete'),
@@ -307,6 +316,122 @@ class _TrainerScheduleScreenState extends State<TrainerScheduleScreen> {
 
     if (action == 'delete') {
       _deleteSession(session);
+    }
+  }
+
+  Future<void> _showDateTimePicker(ClassSession session) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: session.startTime,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.primaryYellow,
+              onPrimary: Colors.black,
+              surface: AppColors.surfaceDark,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate == null) return;
+
+    if (!mounted) return;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(session.startTime),
+      initialEntryMode: TimePickerEntryMode.input,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.primaryYellow,
+              onPrimary: Colors.black,
+              surface: AppColors.surfaceDark,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime == null) return;
+
+    final newStart = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    _updateSessionSchedule(session, newStart);
+  }
+
+  Future<void> _updateSessionSchedule(ClassSession session, DateTime newStart) async {
+    setState(() => _isLoading = true);
+    
+    // Calculate new end time based on original duration
+    final duration = session.endTime.difference(session.startTime);
+    final newEnd = newStart.add(duration);
+
+    try {
+      // Check for conflicts (excluding current session)
+      final conflicts = await _repository.findConflictingSessions(newStart, newEnd, excludeSessionId: session.id);
+      
+      if (conflicts.isNotEmpty && mounted) {
+        final conflictMessages = conflicts.map((c) {
+          final title = c['title'] ?? 'Ders';
+          final time = DateTime.parse(c['start_time']).toLocal();
+          final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+          return '• $timeStr - $title';
+        }).join('\n');
+
+        final bool? confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.surfaceDark,
+            title: Text('Çakışan Ders Uyarısı', style: AppTextStyles.title3.copyWith(color: AppColors.accentRed)),
+            content: SingleChildScrollView(
+              child: Text(
+                'Bu saatte aşağıdaki dersler mevcut:\n\n$conflictMessages\n\nYine de güncellemek ister misiniz?',
+                style: AppTextStyles.body,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('İptal', style: AppTextStyles.callout),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('Evet, Güncelle', style: AppTextStyles.callout.copyWith(color: AppColors.primaryYellow)),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm != true) {
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      await _repository.updateSessionTime(session.id!, newStart, newEnd);
+      
+      await _loadMonthSessions(_focusedDay); // Reload to refresh UI
+      if (mounted) CustomSnackBar.showSuccess(context, 'Ders zamanı güncellendi.');
+    } catch (e) {
+      if (mounted) CustomSnackBar.showError(context, 'Hata: $e');
+      setState(() => _isLoading = false);
     }
   }
 
