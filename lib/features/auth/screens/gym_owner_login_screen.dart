@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:fitflow/core/theme/colors.dart';
@@ -11,13 +10,10 @@ import 'package:fitflow/shared/widgets/ambient_background.dart';
 import 'package:fitflow/features/dashboard/screens/dashboard_screen.dart';
 import 'package:fitflow/features/auth/screens/forgot_password_screen.dart';
 import '../../../core/utils/error_translator.dart';
-import '../../../core/constants/turkey_cities.dart';
-import 'package:fitflow/core/constants/legal_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
-import 'account_pending_screen.dart';
 import '../../profile/screens/change_password_screen.dart';
 
 class GymOwnerLoginScreen extends StatefulWidget {
@@ -31,20 +27,8 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   
-  // Registration extras
-  final _gymNameController = TextEditingController();
-  String? _selectedCity;
-  String? _selectedDistrict;
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-
   bool _isLoading = false;
   bool _isLoginPasswordVisible = false;
-  bool _isRegisterPasswordVisible = false;
-  bool _isKvkkAccepted = false;
-  
-  // New State for View Switching
-  bool _isLoginView = true;
   
   final _supabase = Supabase.instance.client;
 
@@ -52,49 +36,12 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _gymNameController.dispose();
-    _firstNameController.dispose();
-    _lastNameController.dispose();
     super.dispose();
   }
 
-  bool _validatePassword(String password) {
-    if (password.length < 6) {
-      CustomSnackBar.showError(context, 'Şifre en az 6 karakter olmalıdır');
-      return false;
-    }
-    // Check for special character
-    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-      CustomSnackBar.showError(context, 'Şifre en az bir özel karakter içermelidir (!@#\$%^&*...)');
-      return false;
-    }
-    return true;
-  }
 
-  Future<void> _completeOwnerRegistration() async {
-    try {
-      await _supabase.rpc('complete_owner_registration', params: {
-          'gym_name': _gymNameController.text.trim(),
-          'city': _selectedCity ?? '',
-          'district': _selectedDistrict ?? '',
-          'first_name': _firstNameController.text.trim(),
-          'last_name': _lastNameController.text.trim(),
-      });
-      
-      if (mounted) {
-        CustomSnackBar.showSuccess(context, 'Kayıt başarıyla tamamlandı!');
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-          (route) => false,
-        );
-      }
-    } catch (rpcError) {
-        debugPrint('Owner registration completion failed: $rpcError');
-        if (mounted) CustomSnackBar.showError(context, 'Kayıt tamamlanırken bir hata oluştu: $rpcError');
-    }
-  }
 
-  Future<void> _handleAuth({bool isRegister = false}) async {
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -103,220 +50,58 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
       return;
     }
 
-    if (isRegister) {
-      if (!_isKvkkAccepted) {
-        CustomSnackBar.showError(context, 'Lütfen KVKK Aydınlatma Metnini onaylayın.');
-        return;
-      }
-      if (!_validatePassword(password)) return;    
-
-      if (_gymNameController.text.isEmpty || _selectedCity == null || _selectedDistrict == null) {
-         CustomSnackBar.showError(context, 'Lütfen salon bilgilerini eksiksiz girin');
-         return;
-      }
-
-      // Check Organization Name Uniqueness
-      try {
-        final isAvailable = await _supabase.rpc('check_organization_name_availability', params: {
-          'org_name': _gymNameController.text.trim(),
-        });
-        
-        if (isAvailable == false) {
-           CustomSnackBar.showError(context, 'Bu salon adı zaten kullanımda. Lütfen başka bir ad seçin.');
-           setState(() => _isLoading = false);
-           return;
-        }
-      } catch (e) {
-        // Fallback or ignore if RPC doesn't exist yet (dev mode), but ideally we block.
-        debugPrint('Uniqueness check failed: $e');
-      }
-    }
-
     setState(() => _isLoading = true);
 
-    // Check if we are already authenticated (e.g. via Google but incomplete)
-    final currentUser = _supabase.auth.currentUser;
-    // Check if email matches current user (to ensure we are completing the CORRECT user)
-    // If currentUser is anonymous or different email, ignore.
-    if (currentUser != null && currentUser.email != null && currentUser.email == email) {
-       // We are ALREADY logged in (Google User completing registration)
-       if (isRegister) {
-          await _completeOwnerRegistration();
-          setState(() => _isLoading = false);
-          return;
-       }
-    }
-
-    debugPrint('Attempting Register with Email: "$email" (Length: ${email.length})');
-    email.runes.forEach((int rune) {
-       var character = String.fromCharCode(rune);
-       debugPrint('Char: $character Code: $rune');
-    });
-
     try {
-      AuthResponse response;
+      final response = await _supabase.auth.signInWithPassword(email: email, password: password);
       
-      // Check if we already have a user (e.g. from Google Sign In) who is completing registration
-      final currentUser = _supabase.auth.currentUser;
-      
-      if (isRegister && currentUser != null) {
-         // Verify Email match (security check)
-         if (currentUser.email != email) {
-            throw 'Giriş yapılan hesap ile formdaki email uyuşmuyor.';
-         }
-         
-         // Update Metadata
-         await _supabase.auth.updateUser(
-           UserAttributes(
-             data: {
-               'first_name': _firstNameController.text.trim(),
-               'last_name': _lastNameController.text.trim(),
-               'role': 'owner',
-               'gym_name': _gymNameController.text.trim(),
-               'city': _selectedCity ?? '',
-               'district': _selectedDistrict ?? '',
-               'password_changed': true,
-             }
-           )
-         );
-         
-         // Complete Registration (Create Org)
-         // This assumes the user is already signed in, so we just need to run the RPC
-         await _completeOwnerRegistration();
-         
-         if (mounted) {
+      if (mounted && response.session != null) {
+        // Check Role
+        final userId = response.session!.user.id;
+        final profileData = await _supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle();
+            
+        if (profileData == null || profileData['role'] != 'owner') {
+           await _supabase.auth.signOut();
+           if (mounted) {
+             CustomSnackBar.showError(context, 'Antrenörler antrenör girişinden girmelidir.');
+           }
+           return;
+        }
+
+        // Check password changed status for invited users
+        final userMetadata = response.session!.user.userMetadata;
+        final passwordChanged = userMetadata?['password_changed'];
+        
+        if (passwordChanged == false) {
            Navigator.of(context).pushAndRemoveUntil(
-             MaterialPageRoute(builder: (context) => const DashboardScreen()),
+             MaterialPageRoute(builder: (context) => const ChangePasswordScreen(isFirstLogin: true)),
              (route) => false,
            );
-         }
-         return;
-      }
+           return;
+        }
 
-      if (isRegister) {
-        response = await _supabase.auth.signUp(
-          email: email,
-          password: password,
-          emailRedirectTo: 'io.supabase.fitflow://login-callback',
-          data: {
-             'first_name': _firstNameController.text.trim(),
-             'last_name': _lastNameController.text.trim(),
-             'role': 'owner',
-             'gym_name': _gymNameController.text.trim(),
-             'city': _selectedCity ?? '',
-             'district': _selectedDistrict ?? '',
-             'password_changed': true, // Owners set their own password, no need to change
-          }
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          (route) => false,
         );
-
-        if (response.session != null) {
-           await _completeOwnerRegistration();
-
-          // Check if user is already verified (e.g. Google User)
-          // If so, skip the dialog and go straight to dashboard
-          final user = response.user;
-          if (user != null && user.emailConfirmedAt != null) {
-             if (mounted) {
-               Navigator.of(context).pushAndRemoveUntil(
-                 MaterialPageRoute(builder: (context) => const DashboardScreen()),
-                 (route) => false,
-               );
-             }
-             return;
-          }
-        }
-
-        // For email verification flow (Unverified users):
-        if (mounted) {
-           // Show verification dialog
-           showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Kayıt Başarılı', style: TextStyle(color: Colors.white)),
-              content: const Text(
-                'Lütfen hesabınızı aktif hale getirmek için email adresinize gönderilen onay linkine tıklayın.',
-                style: TextStyle(color: Colors.grey),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    setState(() => _isLoginView = true); // Switch to Login view
-                  },
-                  child: const Text('Tamam', style: TextStyle(color: AppColors.primaryYellow)),
-                ),
-              ],
-            ),
-           );
-           return; // Stop here, don't navigate to dashboard
-        }
-
-      } else {
-        response = await _supabase.auth.signInWithPassword(email: email, password: password);
-      
-        if (mounted && response.session != null) {
-          // Check Role
-          final userId = response.session!.user.id;
-          final profileData = await _supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', userId)
-              .maybeSingle();
-              
-          if (profileData == null || profileData['role'] != 'owner') {
-             await _supabase.auth.signOut();
-             if (mounted) {
-               CustomSnackBar.showError(context, 'Antrenörler antrenör girişinden girmelidir.');
-             }
-             return;
-          }
-          // Check if user has completed invitation (changed password)
-          // If password_changed is null, assume true (legacy user or standard signup)
-          // Block only if explicitly set to false (invited user who hasn't accepted yet)
-          final userMetadata = response.session!.user.userMetadata;
-          final passwordChanged = userMetadata?['password_changed'];
-          
-          if (passwordChanged == false) {
-             // User needs to change temporary password
-             Navigator.of(context).pushAndRemoveUntil(
-               MaterialPageRoute(builder: (context) => const ChangePasswordScreen(isFirstLogin: true)),
-               (route) => false,
-             );
-             return;
-          }
-
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            (route) => false,
-          );
-        }
       }
 
     } on AuthException catch (e) {
       if (mounted) {
-        if (isRegister) {
-           // Registration specific errors
-           if (e.message.contains('User already registered') || e.code == 'user_already_exists') {
-             CustomSnackBar.showError(context, 'Bu e-posta adresi zaten kayıtlı.');
-           } else {
-             CustomSnackBar.showError(context, ErrorMessageTranslator.translateAuthError(e));
-           }
-        } else {
-           // Login specific errors
-           if (e.message.contains('Email not confirmed')) {
-             CustomSnackBar.showError(context, 'Lütfen mailinizden hesabınızı onaylayın');
-           } else if (e.message.contains('Invalid login credentials') || e.statusCode == '400') {
-             CustomSnackBar.showError(
-               context, 
-               'Giriş bilgileri hatalı. Geçici şifre ile giriyorsanız salon sahibinden aldığınız şifreyi kontrol edin.'
-             );
-           } else {
-             CustomSnackBar.showError(context, ErrorMessageTranslator.translateAuthError(e));
-           }
-        }
+         if (e.message.contains('Email not confirmed')) {
+           CustomSnackBar.showError(context, 'Lütfen mailinizden hesabınızı onaylayın');
+         } else if (e.message.contains('Invalid login credentials') || e.statusCode == '400') {
+           CustomSnackBar.showError(
+             context, 
+             'Giriş bilgileri hatalı. Geçici şifre ile giriyorsanız salon sahibinden aldığınız şifreyi kontrol edin.'
+           );
+         } else {
+           CustomSnackBar.showError(context, ErrorMessageTranslator.translateAuthError(e));
+         }
       }
     } catch (e) {
       if (mounted) CustomSnackBar.showError(context, 'Beklenmeyen bir hata oluştu: $e');
@@ -388,18 +173,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
 
           // Check if user has completed invitation (changed password)
           // We use profileData because session metadata might be unreliable during OAuth/Google Sign-In
-          final passwordChanged = profileData['password_changed'];
-          
-          if (passwordChanged == false) {
-             await _supabase.auth.signOut();
-             if (mounted) {
-               CustomSnackBar.showError(
-                 context, 
-                 'Lütfen önce salon sahibinden aldığınız geçici şifre ile normal giriş yaparak şifrenizi belirleyin. Daha sonra Google ile giriş yapabilirsiniz.'
-               );
-             }
-             return;
-          }
+          // Remove the password_changed check for OAuth users - Consistency with SIWA fix
 
          if (mounted) {
            Navigator.of(context).pushAndRemoveUntil(
@@ -468,18 +242,8 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
               return; 
           }
 
-          final passwordChanged = profileData['password_changed'];
-          
-          if (passwordChanged == false) {
-             await _supabase.auth.signOut();
-             if (mounted) {
-               CustomSnackBar.showError(
-                 context, 
-                 'Lütfen önce salon sahibinden aldığınız geçici şifre ile normal giriş yaparak şifrenizi belirleyin. Daha sonra Apple ile giriş yapabilirsiniz.'
-               );
-             }
-             return;
-          }
+          // Remove the password_changed check for OAuth users - Apple Guideline 4
+          // OAuth handling itself is sufficient authentication.
 
          if (mounted) {
            Navigator.of(context).pushAndRemoveUntil(
@@ -496,7 +260,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
      }
   }
 
-  // Confirm Dialog for Google Users to register new Gym
+  // Inform OAuth Users to register via Website - Apple Guideline 3.1.1
   Future<void> _showRegistrationConfirmDialog(User? user) async {
      return showDialog(
        context: context,
@@ -505,52 +269,28 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
          return AlertDialog(
            backgroundColor: AppColors.surface,
            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-           title: const Text('Yeni Salon Kaydı', style: TextStyle(color: Colors.white)),
+           title: const Text('Hesap Bulunamadı', style: TextStyle(color: Colors.white)),
            content: Column(
              mainAxisSize: MainAxisSize.min,
              children: [
                const Text(
-                 'Bu Google hesabı ile FitFlow\'a kayıtlı bir salon bulunamadı.',
+                 'Bu hesap ile FitFlow\'a kayıtlı bir salon bulunamadı.',
                  style: TextStyle(color: Colors.grey),
                ),
                const SizedBox(height: 12),
                const Text(
-                 'Yeni bir salon kaydı oluşturmak istiyor musunuz?',
+                 'Yeni bir salon kaydı oluşturmak için lütfen web sitemizi ziyaret edin: fitflow.com.tr',
                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                 textAlign: TextAlign.center,
                ),
              ],
            ),
            actions: [
              TextButton(
-               child: const Text('İptal', style: TextStyle(color: Colors.red)),
+               child: const Text('Kapat', style: TextStyle(color: AppColors.primaryYellow)),
                onPressed: () async {
                  await _supabase.auth.signOut();
                  Navigator.of(context).pop();
-               },
-             ),
-             TextButton(
-               child: const Text('Devam Et', style: TextStyle(color: AppColors.primaryYellow)),
-               onPressed: () {
-                 Navigator.of(context).pop();
-                 setState(() {
-                    _isLoginView = false; // Switch to Register View
-                 });
-                 // Pre-fill fields if available
-                 if (user?.email != null) {
-                    _emailController.text = user!.email!;
-                    // Extract name parts if available (basic logic)
-                    if (user.userMetadata != null && user.userMetadata?['full_name'] != null) {
-                       String fullName = user.userMetadata!['full_name'];
-                       List<String> parts = fullName.split(' ');
-                       if (parts.isNotEmpty) {
-                          _firstNameController.text = parts.first;
-                          if (parts.length > 1) {
-                             _lastNameController.text = parts.sublist(1).join(' ');
-                          }
-                       }
-                    }
-                 }
-                 CustomSnackBar.showInfo(context, 'Lütfen salon bilgilerinizi tamamlayın.');
                },
              ),
            ],
@@ -559,72 +299,6 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
      );
   }
 
-  void _showKvkkDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.glassBorder)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'KVKK Aydınlatma Metni',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  LegalConstants.kvkkText,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    height: 1.5,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CustomButton(
-                text: 'Okudum, Anladım',
-                onPressed: () {
-                   setState(() => _isKvkkAccepted = true);
-                   Navigator.pop(context);
-                },
-                backgroundColor: AppColors.primaryYellow,
-                foregroundColor: Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -646,7 +320,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
-              child: _isLoginView ? _buildLoginForm() : _buildRegisterForm(),
+              child: _buildLoginForm(),
             ),
           ),
         ),
@@ -716,7 +390,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
               const SizedBox(height: 24),
               CustomButton(
                 text: 'Giriş Yap',
-                onPressed: () => _handleAuth(isRegister: false),
+                onPressed: _handleLogin,
                 isLoading: _isLoading,
                 backgroundColor: AppColors.primaryYellow,
                 foregroundColor: Colors.black,
@@ -758,237 +432,16 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        TextButton(
-          onPressed: () => setState(() => _isLoginView = false),
-          child: RichText(
-            text: TextSpan(
-              text: 'Hesabınız yok mu? ',
-              style: TextStyle(color: Colors.grey[400]),
-              children: [
-                TextSpan(
-                  text: 'Kayıt Ol',
-                  style: TextStyle(
-                    color: AppColors.primaryYellow,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+        // Registration removed to comply with Apple Guideline 3.1.1
+        Center(
+          child: Text(
+            'Yeni salon kaydı için fitflow.com.tr adresini ziyaret edin.',
+            style: TextStyle(color: Colors.grey[500], fontSize: 12),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildRegisterForm() {
-    return Column(
-      children: [
-        GlassCard(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Salon Kayıt',
-                style: AppTextStyles.title2.copyWith(color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              CustomTextField(
-                controller: _firstNameController, 
-                label: 'Adı',
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _lastNameController, 
-                label: 'Soyadı',
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _gymNameController, 
-                label: 'Salon Adı', 
-                prefixIcon: const Icon(Icons.fitness_center, color: AppColors.primaryYellow)
-              ),
-              const SizedBox(height: 16),
-              // City Dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedCity,
-                decoration: InputDecoration(
-                  labelText: 'İl',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  prefixIcon: const Icon(Icons.location_city, color: AppColors.primaryYellow),
-                  filled: true,
-                  fillColor: AppColors.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.glassBorder),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.glassBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryYellow),
-                  ),
-                ),
-                dropdownColor: AppColors.surfaceDark,
-                style: AppTextStyles.body,
-                menuMaxHeight: 300,
-                // FIX: Use cityNames static getter
-                items: TurkeyCities.cityNames.map((city) {
-                  return DropdownMenuItem(value: city, child: Text(city));
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCity = value;
-                    _selectedDistrict = null; // Reset district
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              // District Dropdown
-               DropdownButtonFormField<String>(
-                value: _selectedDistrict,
-                decoration: InputDecoration(
-                  labelText: 'İlçe',
-                   labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  prefixIcon: const Icon(Icons.map, color: AppColors.primaryYellow),
-                  filled: true,
-                   fillColor: AppColors.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.glassBorder),
-                  ),
-                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.glassBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryYellow),
-                  ),
-                ),
-                 dropdownColor: AppColors.surfaceDark,
-                 style: AppTextStyles.body,
-                 menuMaxHeight: 300,
-                // FIX: Use getDistricts method
-                items: _selectedCity == null
-                    ? []
-                    : TurkeyCities.getDistricts(_selectedCity!).map((district) {
-                        return DropdownMenuItem(value: district, child: Text(district));
-                      }).toList(),
-                onChanged: _selectedCity == null ? null : (value) => setState(() => _selectedDistrict = value),
-              ),
-               
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _emailController, 
-                label: 'Email',
-                hint: 'ornek@gmail.com',
-                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primaryYellow)
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _passwordController, 
-                label: 'Şifre',
-                hint: '******',
-                obscureText: !_isRegisterPasswordVisible,
-                 prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryYellow),
-                suffixIcon: IconButton(
-                  icon: Icon(_isRegisterPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                  onPressed: () => setState(() => _isRegisterPasswordVisible = !_isRegisterPasswordVisible),
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // KVKK Checkbox
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                   Checkbox(
-                    value: _isKvkkAccepted, 
-                    activeColor: AppColors.primaryYellow,
-                    checkColor: Colors.black,
-                    side: const BorderSide(color: Colors.grey),
-                    onChanged: (val) => setState(() => _isKvkkAccepted = val ?? false),
-                   ),
-                   Expanded(
-                     child: GestureDetector(
-                       onTap: _showKvkkDialog,
-                       child: RichText(
-                         text: TextSpan(
-                           style: const TextStyle(color: Colors.grey, fontSize: 13),
-                           children: [
-                             TextSpan(
-                               text: 'KVKK Aydınlatma Metni',
-                               style: TextStyle(
-                                 color: AppColors.primaryYellow,
-                                 decoration: TextDecoration.underline,
-                               ),
-                             ),
-                             const TextSpan(text: '\'ni okudum ve kabul ediyorum.'),
-                           ],
-                         ),
-                       ),
-                     ),
-                   ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              CustomButton(
-                text: 'Kayıt Ol',
-                onPressed: () => _handleAuth(isRegister: true),
-                isLoading: _isLoading,
-                backgroundColor: AppColors.primaryYellow,
-                foregroundColor: Colors.black,
-              ),
-              
-               const SizedBox(height: 24),
-               Row(children: [
-                const Expanded(child: Divider(color: Colors.grey)), 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16), 
-                  child: Text('veya', style: TextStyle(color: Colors.grey[400]))
-                ), 
-                const Expanded(child: Divider(color: Colors.grey))
-              ]),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: _isLoading ? null : _handleGoogleSignIn,
-                icon: const Icon(Icons.g_mobiledata, size: 28),
-                label: const Text('Google ile Devam Et'), // Google Sign In stays for Owner
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.grey[700]!),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        TextButton(
-          onPressed: () => setState(() => _isLoginView = true),
-          child: RichText(
-            text: TextSpan(
-              text: 'Zaten hesabınız var mı? ',
-              style: TextStyle(color: Colors.grey[400]),
-              children: [
-                TextSpan(
-                  text: 'Giriş Yap',
-                  style: TextStyle(
-                    color: AppColors.primaryYellow,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // Note: _buildRegisterForm was removed to comply with Apple Guideline 3.1.1
 }
