@@ -1,5 +1,5 @@
 import { supabaseClient } from '../supabase-config.js';
-import { showToast } from '../utils.js';
+import { showToast, turkishToLower } from '../utils.js';
 
 let currentFilter = 'my_members'; // my_members, multisport, meditopia, all
 
@@ -109,13 +109,25 @@ async function loadMembersList(searchQuery = '') {
             // No extra filter
         }
 
-        if (searchQuery) {
-            query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
-        }
+        // SEARCH REPLACED: Moved to client-side for Turkish case-sensitivity
+        // if (searchQuery) {
+        //     query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+        // }
 
-        const { data: members, error } = await query;
+        const { data: allMembers, error } = await query;
 
         if (error) throw error;
+
+        let members = allMembers || [];
+
+        // Apply Client-Side Search (Handles Turkish İ/i, I/ı)
+        if (searchQuery) {
+            const lowerSearch = turkishToLower(searchQuery);
+            members = members.filter(member => 
+                turkishToLower(member.name || '').includes(lowerSearch) ||
+                turkishToLower(member.email || '').includes(lowerSearch)
+            );
+        }
 
         const listContainer = document.getElementById('members-list');
         if (!listContainer) return; // Stop if user navigated away

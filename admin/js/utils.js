@@ -61,3 +61,16 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+/**
+ * Converts string to lowercase with Turkish character awareness (İ -> i, I -> ı).
+ */
+export function turkishToLower(str) {
+    if (!str) return '';
+    return str
+        .toString()
+        .replace(/İ/g, 'i')
+        .replace(/I/g, 'ı')
+        .toLowerCase();
+}
+

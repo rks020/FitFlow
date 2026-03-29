@@ -5,6 +5,7 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/custom_snackbar.dart';
 import '../models/exercise_model.dart';
 import '../repositories/exercise_repository.dart';
+import '../../../core/utils/string_utils.dart';
 
 class ExerciseLibraryScreen extends StatefulWidget {
   const ExerciseLibraryScreen({super.key});
@@ -53,11 +54,11 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   }
 
   void _filterExercises() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.turkishToLower();
     setState(() {
       _filteredExercises = _exercises.where((e) {
-        final matchName = e.name.toLowerCase().contains(query);
-        final matchMuscle = e.targetMuscle?.toLowerCase().contains(query) ?? false;
+        final matchName = e.name.turkishToLower().contains(query);
+        final matchMuscle = e.targetMuscle?.turkishToLower().contains(query) ?? false;
         return matchName || matchMuscle;
       }).toList();
     });
@@ -89,9 +90,9 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
 
   Future<void> _showAddDefaultsDialog() async {
     // 1. Filter out existing ones
-    final existingNames = _exercises.map((e) => e.name.toLowerCase()).toSet();
+    final existingNames = _exercises.map((e) => e.name.turkishToLower()).toSet();
     final availableDefaults = _defaultExercises.where((d) {
-      return !existingNames.contains(d['name']!.toLowerCase());
+      return !existingNames.contains(d['name']!.turkishToLower());
     }).toList();
 
     if (availableDefaults.isEmpty) {

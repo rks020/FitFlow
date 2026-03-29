@@ -6,6 +6,7 @@ import '../../../shared/widgets/custom_snackbar.dart';
 import '../models/exercise_model.dart';
 import '../repositories/exercise_repository.dart';
 import '../repositories/workout_repository.dart';
+import '../../../core/utils/string_utils.dart';
 
 class CreateWorkoutScreen extends StatefulWidget {
   const CreateWorkoutScreen({super.key});
@@ -317,10 +318,10 @@ class _ExercisePickerDialogState extends State<_ExercisePickerDialog> {
     super.initState();
     filtered = widget.exercises;
     searchController.addListener(() {
-      final query = searchController.text.toLowerCase();
+      final query = searchController.text.turkishToLower();
       setState(() {
         filtered = widget.exercises.where((e) {
-          return e.name.toLowerCase().contains(query) || (e.targetMuscle?.toLowerCase().contains(query) ?? false);
+          return e.name.turkishToLower().contains(query) || (e.targetMuscle?.turkishToLower().contains(query) ?? false);
         }).toList();
       });
     });

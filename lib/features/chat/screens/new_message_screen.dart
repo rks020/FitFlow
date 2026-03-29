@@ -4,6 +4,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/profile.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../core/utils/string_utils.dart';
 import 'chat_screen.dart';
 
 class NewMessageScreen extends StatefulWidget {
@@ -74,13 +75,15 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
   }
 
   void _filterUsers() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.turkishToLower();
+
     setState(() {
       if (query.isEmpty) {
         _filteredUsers = _allUsers;
       } else {
         _filteredUsers = _allUsers.where((user) {
-          final fullName = '${user.firstName} ${user.lastName}'.toLowerCase();
+          final fullName = '${user.firstName} ${user.lastName}'.turkishToLower();
+
           return fullName.contains(query);
         }).toList();
       }

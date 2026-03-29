@@ -11,6 +11,7 @@ import '../../../data/models/profile.dart'; // Added
 import '../../../data/repositories/profile_repository.dart'; // Added
 
 import '../../../shared/widgets/ambient_background.dart';
+import '../../../core/utils/string_utils.dart';
 
 class MembersListScreen extends StatefulWidget {
   final Profile? trainer;
@@ -81,7 +82,8 @@ class _MembersListScreenState extends State<MembersListScreen> {
   }
 
   void _filterMembers() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.turkishToLower();
+
     
     setState(() {
       _filteredMembers = _members.where((member) {
@@ -112,8 +114,9 @@ class _MembersListScreenState extends State<MembersListScreen> {
         // Apply search filter
         if (query.isEmpty) return true;
         
-        return member.name.toLowerCase().contains(query) ||
-            member.email.toLowerCase().contains(query) ||
+        return member.name.turkishToLower().contains(query) ||
+            member.email.turkishToLower().contains(query) ||
+
             member.phone.contains(query);
       }).toList();
     });

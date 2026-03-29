@@ -1,5 +1,5 @@
 import { supabaseClient } from '../supabase-config.js';
-import { showToast } from '../utils.js';
+import { showToast, turkishToLower } from '../utils.js';
 
 export async function loadTrainers() {
     const contentArea = document.getElementById('content-area');
@@ -228,10 +228,10 @@ function renderTrainerMembers(searchQuery = '') {
     });
 
     if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+        const q = turkishToLower(searchQuery);
         filtered = filtered.filter(m =>
-            m.name.toLowerCase().includes(q) ||
-            (m.email && m.email.toLowerCase().includes(q))
+            turkishToLower(m.name || '').includes(q) ||
+            (m.email && turkishToLower(m.email).includes(q))
         );
     }
 

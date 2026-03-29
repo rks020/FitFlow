@@ -1,5 +1,5 @@
 import { supabaseClient } from '../supabase-config.js';
-import { showToast, formatDate } from '../utils.js';
+import { showToast, formatDate, turkishToLower } from '../utils.js';
 import { CustomTimePicker } from '../components/time-picker.js';
 // Import shared modal
 import { setupClassDetailModal, openClassDetailModal, setUpdateCallback } from './class-details.js';
@@ -416,11 +416,11 @@ function setupCreateClassModal() {
 
     if (memberSearch) {
         memberSearch.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
+            const searchTerm = turkishToLower(e.target.value);
             const options = memberSelect.options;
 
             for (let i = 1; i < options.length; i++) {
-                const optionText = options[i].text.toLowerCase();
+                const optionText = turkishToLower(options[i].text);
                 if (optionText.includes(searchTerm)) {
                     options[i].style.display = '';
                 } else {
@@ -561,8 +561,8 @@ async function loadMembersForDropdown() {
             const searchInput = document.getElementById('member-search');
             if (searchInput) {
                 searchInput.addEventListener('input', (e) => {
-                    const term = e.target.value.toLowerCase();
-                    const filtered = allMembers.filter(m => m.name.toLowerCase().includes(term));
+                    const term = turkishToLower(e.target.value);
+                    const filtered = allMembers.filter(m => turkishToLower(m.name || '').includes(term));
                     renderMemberOptions(filtered);
                 });
                 memberSearchInitialized = true;
