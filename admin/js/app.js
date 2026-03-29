@@ -6,6 +6,7 @@ import { loadClasses } from './modules/classes.js';
 import { loadAnnouncements } from './modules/announcements.js';
 import { loadProfile } from './modules/profile.js';
 import { loadFinance } from './modules/finance.js';
+import { loadWorkouts } from './modules/workouts.js';
 
 // Page Mappings
 const pageLoaders = {
@@ -15,6 +16,7 @@ const pageLoaders = {
     'classes': loadClasses,
     'announcements': loadAnnouncements,
     'finance': loadFinance,
+    'workouts': loadWorkouts,
     'profile': loadProfile
 };
 
@@ -79,6 +81,7 @@ function navigateTo(page) {
         'classes': 'Ders Programı',
         'announcements': 'Duyurular',
         'finance': 'Finans & Ödemeler',
+        'workouts': 'Antrenman Yönetimi',
         'profile': 'Profil'
     };
     document.getElementById('page-title').textContent = titles[page] || 'Dashboard';
