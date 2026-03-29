@@ -64,13 +64,20 @@ document.head.appendChild(style);
 
 /**
  * Converts string to lowercase with Turkish character awareness (İ -> i, I -> ı).
+ * Normalizes to NFC to handle different Unicode representations of accented characters.
  */
 export function turkishToLower(str) {
     if (!str) return '';
-    return str
-        .toString()
-        .replace(/İ/g, 'i')
-        .replace(/I/g, 'ı')
-        .toLowerCase();
+    const normalized = str.toString().normalize('NFC');
+    try {
+        // Use Turkish locale for better character mapping (İ -> i, I -> ı)
+        return normalized.toLocaleLowerCase('tr-TR');
+    } catch (e) {
+        // Fallback for environments where tr-TR locale data is missing
+        return normalized
+            .replace(/İ/g, 'i')
+            .replace(/I/g, 'ı')
+            .toLowerCase();
+    }
 }
 
