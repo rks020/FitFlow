@@ -450,7 +450,7 @@
     <div id="create-workout-modal" class="modal">
         <div class="modal-content" style="max-width: 700px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
             <div class="modal-header" style="padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <h2 style="color: #fff; margin:0; text-align: left;">Yeni Program Oluştur</h2>
+                <h2 id="workout-modal-title" style="color: #fff; margin:0; text-align: left;">Yeni Program Oluştur</h2>
                 <span class="close-modal" id="close-create-workout-modal">&times;</span>
             </div>
             <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;">
@@ -479,7 +479,7 @@
                     </div>
 
                     <div class="form-actions" style="position: sticky; bottom: 0; background: #1C1C24; padding-top: 10px;">
-                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--gradient-gold); color: #000; font-weight: 700; height: 54px;">PROGRAMI KAYDET</button>
+                        <button type="submit" id="save-workout-btn" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--gradient-gold); color: #000; font-weight: 700; height: 54px;">PROGRAMI KAYDET</button>
                     </div>
                 </form>
             </div>

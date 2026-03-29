@@ -5,6 +5,7 @@ let currentTab = 'programs'; // programs or exercises
 let exercises = [];
 let workoutPrograms = [];
 let selectedExercisesForWorkout = [];
+let editingWorkoutId = null;
 
 export async function loadWorkouts() {
     const contentArea = document.getElementById('content-area');
@@ -208,7 +209,13 @@ async function loadProgramsList() {
     try {
         const { data, error } = await supabaseClient
             .from('workouts')
-            .select('*, workout_exercises(id)')
+            .select(`
+                *,
+                workout_exercises (
+                    id, order_index, sets, reps, rest_seconds,
+                    exercises (id, name, target_muscle)
+                )
+            `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -229,23 +236,44 @@ function renderPrograms(data) {
 
     container.innerHTML = `
         <div class="workout-grid">
-            ${data.map(w => `
-                <div class="workout-card">
+            ${data.map(w => {
+                // Get exercise names as a summary string
+                const sortedExercises = [...(w.workout_exercises || [])].sort((a, b) => a.order_index - b.order_index);
+                const exerciseSummary = sortedExercises.map(ex => ex.exercises?.name).filter(Boolean).join(', ') || 'Hareket eklenmemiş';
+
+                return `
+                <div class="workout-card clickable-card" data-id="${w.id}">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
                         <h4 style="font-size: 18px; margin: 0;">${w.name}</h4>
                         <span class="exercise-count-tag">${w.workout_exercises?.length || 0} Hareket</span>
                     </div>
-                    <p style="font-size: 14px; color: #ccc; margin-bottom: 20px;">${w.description || 'Açıklama yok'}</p>
+                    <p style="font-size: 14px; color: #ccc; margin-bottom: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        ${exerciseSummary}
+                    </p>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-small btn-danger delete-workout" data-id="${w.id}">Sil</button>
                     </div>
                 </div>
-            `).join('')}
+                `;
+            }).join('')}
         </div>
     `;
 
+    // Listen for entire card click for edit
+    document.querySelectorAll('.workout-card').forEach(card => {
+        card.onclick = (e) => {
+            // If delete button was clicked, don't trigger edit
+            if (e.target.classList.contains('delete-workout')) return;
+            
+            const id = card.getAttribute('data-id');
+            const workout = workoutPrograms.find(p => p.id === id);
+            openEditWorkoutModal(workout);
+        };
+    });
+
     document.querySelectorAll('.delete-workout').forEach(btn => {
         btn.onclick = (e) => {
+            e.stopPropagation(); // Precaution
             const id = e.target.getAttribute('data-id');
             const name = data.find(x => x.id === id).name;
             confirmDeleteWorkout(id, name);
@@ -254,8 +282,37 @@ function renderPrograms(data) {
 }
 
 function openCreateWorkoutModal() {
+    editingWorkoutId = null;
     selectedExercisesForWorkout = [];
+    
+    document.getElementById('workout-modal-title').innerText = 'Yeni Program Oluştur';
+    document.getElementById('save-workout-btn').innerText = 'PROGRAMI KAYDET';
+    
     document.getElementById('create-workout-form').reset();
+    renderWorkoutBuilderList();
+    document.getElementById('create-workout-modal').classList.add('active');
+}
+
+function openEditWorkoutModal(workout) {
+    editingWorkoutId = workout.id;
+    
+    document.getElementById('workout-modal-title').innerText = 'Programı Düzenle';
+    document.getElementById('save-workout-btn').innerText = 'GÜNCELLEMEYİ KAYDET';
+    
+    document.getElementById('workout-name').value = workout.name;
+    document.getElementById('workout-description').value = workout.description || '';
+    
+    // Convert DB exercises to our selection state
+    const sorted = [...(workout.workout_exercises || [])].sort((a, b) => a.order_index - b.order_index);
+    selectedExercisesForWorkout = sorted.map(we => ({
+        id: we.exercises.id,
+        name: we.exercises.name,
+        target_muscle: we.exercises.target_muscle,
+        sets: we.sets,
+        reps: we.reps,
+        rest: we.rest_seconds
+    }));
+    
     renderWorkoutBuilderList();
     document.getElementById('create-workout-modal').classList.add('active');
 }
@@ -296,7 +353,9 @@ function addExerciseToWorkout(id) {
     if (!ex) return;
 
     selectedExercisesForWorkout.push({
-        ...ex,
+        id: ex.id,
+        name: ex.name,
+        target_muscle: ex.target_muscle,
         sets: 3,
         reps: '12',
         rest: 60
@@ -315,7 +374,7 @@ function renderWorkoutBuilderList() {
         <div class="builder-item">
             <div class="builder-item-header">
                 <span style="font-weight: 600;">${index + 1}. ${ex.name}</span>
-                <button type="button" class="remove-exercise-btn" data-index="${index}">&times;</button>
+                <button type="button" class="remove-exercise-btn" data-index="${index}" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; width: 24px; height: 24px; border-radius: 6px; cursor: pointer;">&times;</button>
             </div>
             <div class="builder-item-inputs">
                 <div class="builder-input-group">
@@ -366,25 +425,48 @@ async function handleSaveWorkout(e) {
 
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        const { data: profile } = await supabaseClient.from('profiles').select('organization_id').eq('id', user.id).single();
+        
+        let workoutId;
+        
+        if (editingWorkoutId) {
+            // UPDATE mode
+            const { error } = await supabaseClient
+                .from('workouts')
+                .update({ name, description })
+                .eq('id', editingWorkoutId);
+            
+            if (error) throw error;
+            workoutId = editingWorkoutId;
+            
+            // Sync exercises: delete all and re-insert
+            const { error: delError } = await supabaseClient
+                .from('workout_exercises')
+                .delete()
+                .eq('workout_id', workoutId);
+            
+            if (delError) throw delError;
+        } else {
+            // INSERT mode
+            const { data: profile } = await supabaseClient.from('profiles').select('organization_id').eq('id', user.id).single();
 
-        // 1. Insert Workout Header
-        const { data: workout, error: wError } = await supabaseClient
-            .from('workouts')
-            .insert({
-                name,
-                description,
-                organization_id: profile.organization_id,
-                created_by: user.id
-            })
-            .select()
-            .single();
+            const { data: workout, error: wError } = await supabaseClient
+                .from('workouts')
+                .insert({
+                    name,
+                    description,
+                    organization_id: profile.organization_id,
+                    created_by: user.id
+                })
+                .select()
+                .single();
 
-        if (wError) throw wError;
+            if (wError) throw wError;
+            workoutId = workout.id;
+        }
 
-        // 2. Insert Exercises
+        // 2. Insert Exercises (for both modes post-delete or post-insert)
         const workoutExercises = selectedExercisesForWorkout.map((ex, index) => ({
-            workout_id: workout.id,
+            workout_id: workoutId,
             exercise_id: ex.id,
             order_index: index,
             sets: parseInt(ex.sets),
@@ -398,12 +480,13 @@ async function handleSaveWorkout(e) {
 
         if (exError) throw exError;
 
-        showToast('Program başarıyla kaydedildi.', 'success');
+        showToast(editingWorkoutId ? 'Program güncellendi.' : 'Program kaydedildi.', 'success');
         document.getElementById('create-workout-modal').classList.remove('active');
         loadProgramsList();
+        editingWorkoutId = null;
     } catch (err) {
         console.error('Error saving workout:', err);
-        showToast('Kaydetme hatası: ' + err.message, 'error');
+        showToast('Hata: ' + err.message, 'error');
     }
 }
 
@@ -417,8 +500,6 @@ function confirmDeleteWorkout(id, name) {
     document.getElementById('confirm-cancel').onclick = () => modal.classList.remove('active');
     document.getElementById('confirm-yes').onclick = async () => {
         try {
-            // workout_exercises will be cascade deleted if DB is set up correctly, 
-            // but let's be safe or just delete workouts (assuming cascade).
             const { error } = await supabaseClient.from('workouts').delete().eq('id', id);
             if (error) throw error;
             showToast('Program silindi.', 'success');
