@@ -235,7 +235,6 @@ function renderPrograms(data) {
                         <h4 style="font-size: 18px; margin: 0;">${w.name}</h4>
                         <span class="exercise-count-tag">${w.workout_exercises?.length || 0} Hareket</span>
                     </div>
-                    <p style="font-size: 13px; color: #888; margin-bottom: 12px;">Zorluk: ${w.difficulty || 'Belirtilmemiş'}</p>
                     <p style="font-size: 14px; color: #ccc; margin-bottom: 20px;">${w.description || 'Açıklama yok'}</p>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-small btn-danger delete-workout" data-id="${w.id}">Sil</button>
@@ -363,7 +362,6 @@ async function handleSaveWorkout(e) {
     }
 
     const name = document.getElementById('workout-name').value.trim();
-    const difficulty = document.getElementById('workout-difficulty').value;
     const description = document.getElementById('workout-description').value.trim();
 
     try {
@@ -375,7 +373,6 @@ async function handleSaveWorkout(e) {
             .from('workouts')
             .insert({
                 name,
-                difficulty,
                 description,
                 organization_id: profile.organization_id,
                 created_by: user.id
