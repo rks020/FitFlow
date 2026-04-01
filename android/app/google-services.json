@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "431063576237-if01lhgs9ukvjvdmih7pb4pi0bpeab6g.apps.googleusercontent.com",
+          "client_id": "431063576237-ncep67577mruf2j4k0ksq7ibm5krrdb2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.fitflowtr.app",
-            "certificate_hash": "caeaa8bcfc5bb1e37b038c061332e8f059cd5978"
+            "certificate_hash": "2ca1836af278420a4422f3b0657bc43270d3f95c"
           }
         },
         {

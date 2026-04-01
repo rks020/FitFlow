@@ -46,3 +46,6 @@ app.*.map.json
 assets/service_account.json
 android/app/*-firebase-adminsdk-*.json
 android/app/google-services.json
+*.jks
+*.p8
+*.keystore

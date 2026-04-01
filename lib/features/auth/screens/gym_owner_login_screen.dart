@@ -14,6 +14,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import '../../profile/screens/change_password_screen.dart';
 
 class GymOwnerLoginScreen extends StatefulWidget {
@@ -121,6 +122,7 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
          serverClientId: webClientId,
        );
 
+       await googleSignIn.signOut();
        final googleUser = await googleSignIn.signIn();
        final googleAuth = await googleUser?.authentication;
 
@@ -417,17 +419,18 @@ class _GymOwnerLoginScreenState extends State<GymOwnerLoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _isLoading ? null : _handleAppleSignIn,
-                icon: const Icon(Icons.apple, size: 28),
-                label: const Text('Apple ile Devam Et'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.grey[700]!),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (Platform.isIOS)
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleAppleSignIn,
+                  icon: const Icon(Icons.apple, size: 28),
+                  label: const Text('Apple ile Devam Et'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.grey[700]!),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
