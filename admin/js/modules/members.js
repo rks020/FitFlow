@@ -300,15 +300,16 @@ async function handleCreatePayment(e) {
                 const currentSessions = member.session_count || 0;
                 const newTotalCount = currentSessions + sessionsToAdd;
 
-                await supabaseClient.from('members')
+                const { error: updateError } = await supabaseClient.from('members')
                     .update({ 
                         subscription_package: packageName,
                         session_count: newTotalCount 
                     })
                     .eq('id', memberId);
+
+                if (updateError) throw updateError;
             }
         } else if (category === 'single_session') {
-            // Tek ders eklendiyse kalan hakkı 1 artırıyoruz (isterseniz paket adını da güncelleyebilirsiniz ama mantıken sadece ders sayısı artar)
             const { data: member } = await supabaseClient
                 .from('members')
                 .select('session_count')
@@ -316,17 +317,23 @@ async function handleCreatePayment(e) {
                 .single();
             
             if (member) {
-                await supabaseClient.from('members')
+                const { error: updateError } = await supabaseClient.from('members')
                     .update({ 
                         session_count: (member.session_count || 0) + 1 
                     })
                     .eq('id', memberId);
+
+                if (updateError) throw updateError;
             }
         }
 
-        showToast('Ödeme başarıyla alındı', 'success');
+        showToast('Ödeme başarıyla alındı ve paket güncellendi', 'success');
         modal.classList.remove('active');
         form.reset();
+
+        // UI'yı yenile
+        const searchInput = document.getElementById('member-search');
+        await loadMembersList(searchInput ? searchInput.value : '');
 
     } catch (error) {
         showToast('Ödeme kaydedilemedi: ' + error.message, 'error');
