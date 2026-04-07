@@ -9,23 +9,29 @@ export async function loadFinance() {
             <h2>Finans & Ödemeler</h2>
         </div>
         <div class="filters-row" style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center;">
-            <select id="finance-year" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
-                <option value="all">Tüm Zamanlar</option>
-            </select>
-            <select id="finance-month" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
-                <option value="0">Ocak</option>
-                <option value="1">Şubat</option>
-                <option value="2">Mart</option>
-                <option value="3">Nisan</option>
-                <option value="4">Mayıs</option>
-                <option value="5">Haziran</option>
-                <option value="6">Temmuz</option>
-                <option value="7">Ağustos</option>
-                <option value="8">Eylül</option>
-                <option value="9">Ekim</option>
-                <option value="10">Kasım</option>
-                <option value="11">Aralık</option>
-            </select>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #888; font-size: 14px;">Yıl Seç:</span>
+                <select id="finance-year" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
+                    <option value="all">Tüm Zamanlar</option>
+                </select>
+            </div>
+            <div id="month-filter-group" style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #888; font-size: 14px;">Ay Seç:</span>
+                <select id="finance-month" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
+                    <option value="0">Ocak</option>
+                    <option value="1">Şubat</option>
+                    <option value="2">Mart</option>
+                    <option value="3">Nisan</option>
+                    <option value="4">Mayıs</option>
+                    <option value="5">Haziran</option>
+                    <option value="6">Temmuz</option>
+                    <option value="7">Ağustos</option>
+                    <option value="8">Eylül</option>
+                    <option value="9">Ekim</option>
+                    <option value="10">Kasım</option>
+                    <option value="11">Aralık</option>
+                </select>
+            </div>
         </div>
 
         <div class="stats-row" style="display: flex; gap: 20px; margin-bottom: 20px;">
@@ -89,10 +95,11 @@ export async function loadFinance() {
 
     // Filtre işleyiciler (listeners)
     yearSelect.addEventListener('change', () => {
+        const monthGroup = document.getElementById('month-filter-group');
         if (yearSelect.value === 'all') {
-            monthSelect.style.display = 'none';
+            if(monthGroup) monthGroup.style.display = 'none';
         } else {
-            monthSelect.style.display = 'block';
+            if(monthGroup) monthGroup.style.display = 'flex';
         }
         loadPaymentsList();
     });
@@ -155,14 +162,29 @@ async function loadPaymentsList() {
         const filteredPayments = payments.filter(p => p.members && p.members.organization_id === profile.organization_id);
 
         if (filteredPayments.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center;">Henüz ödeme yok.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center;">Bu ayda bir ödeme mevcut değil.</td></tr>';
             
             // Clear summary table if no data
             const summaryBody = document.getElementById('finance-summary-body');
             if (summaryBody) {
-                summaryBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #888;">Bu ay / aralık için işlem bulunamadı.</td></tr>';
+                summaryBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #888;">Bu ayda bir ödeme mevcut değil.</td></tr>';
             }
             
+            const summaryTitle = document.getElementById('finance-summary-title');
+            if (summaryTitle) {
+                if (yearSelect && yearSelect.value === 'all') {
+                    summaryTitle.textContent = 'Tüm Zamanlar Ödeme Dağılımı';
+                } else if (yearSelect) {
+                    const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                    const mName = monthNames[parseInt(monthSelect.value)];
+                    summaryTitle.textContent = `${mName} ${yearSelect.value} Ödeme Dağılımı`;
+                }
+            }
+
+            // Ayrıca "Son İşlem" kısmını da temizle
+            const lastPayment = document.getElementById('last-payment');
+            if (lastPayment) lastPayment.textContent = '-';
+
             return;
         }
 
