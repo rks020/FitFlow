@@ -69,7 +69,7 @@ async function loadMemberDetails() {
 
         // Debug / Info
         // console.log('Member loaded:', member);
-        // showToast(`Limit Test: Toplam ${member.session_count}, Kullanılan ${member.used_session_count}`, 'info');
+        // showToast(`Limit Test: Toplam ${member.session_count}`, 'info');
 
     } catch (error) {
         console.error('Error loading member:', error);
@@ -344,7 +344,7 @@ function setupScheduleModal() {
             }
 
             const memberData = currentMember;
-            const remainingSessions = (memberData?.session_count || 0) - (memberData?.used_session_count || 0);
+            const remainingSessions = memberData?.session_count || 0;
 
             let limitReached = false;
 
