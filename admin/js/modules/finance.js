@@ -8,16 +8,16 @@ export async function loadFinance() {
         <div class="module-header">
             <h2>Finans & Ödemeler</h2>
         </div>
-        <div class="filters-row" style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #888; font-size: 14px;">Yıl Seç:</span>
-                <select id="finance-year" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
+        <div class="filters-row" style="display: flex; gap: 20px; margin-bottom: 20px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <label style="color: #FFD700; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">Yıl Seçimi</label>
+                <select id="finance-year" style="padding: 12px; border-radius: 8px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer; width: 100%; font-size: 15px;">
                     <option value="all">Tüm Zamanlar</option>
                 </select>
             </div>
-            <div id="month-filter-group" style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #888; font-size: 14px;">Ay Seç:</span>
-                <select id="finance-month" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
+            <div id="month-filter-group" style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <label style="color: #FFD700; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">Ay Seçimi</label>
+                <select id="finance-month" style="padding: 12px; border-radius: 8px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer; width: 100%; font-size: 15px;">
                     <option value="0">Ocak</option>
                     <option value="1">Şubat</option>
                     <option value="2">Mart</option>
