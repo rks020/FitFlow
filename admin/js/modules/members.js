@@ -274,9 +274,9 @@ async function handleCreatePayment(e) {
 
         if (error) throw error;
 
-        // 2. Üye Paketini Güncelle (Eğer 'Paket Yenileme' veya 'Tek Ders' ise)
+        // 2. Üye Paketini Güncelle
         if (category === 'package_renewal') {
-            const packageType = document.getElementById('payment-package').value;
+            const packageType = document.getElementById('payment-package').value.trim();
             const manualSessions = document.getElementById('payment-manual-sessions').value;
             
             let sessionsToAdd = 0;
@@ -286,35 +286,42 @@ async function handleCreatePayment(e) {
             else if (packageType === '12 Ders Paketi') sessionsToAdd = 12;
             else if (packageType === 'Manuel') {
                  sessionsToAdd = parseInt(manualSessions) || 0;
-                 packageName = sessionsToAdd > 0 ? sessionsToAdd + ' Ders Paketi' : 'Paket Eklendi';
+                 packageName = sessionsToAdd + ' Ders Paketi';
             }
 
-            // Mevcut üyeyi çek
-            const { data: member } = await supabaseClient
-                .from('members')
-                .select('session_count, used_session_count')
-                .eq('id', memberId)
-                .single();
-            
-            if (member) {
-                const currentSessions = member.session_count || 0;
-                const newTotalCount = currentSessions + sessionsToAdd;
+            if (sessionsToAdd > 0) {
+                // Mevcut üyeyi çek (güncel ders sayısını almak için)
+                const { data: member, error: fetchError } = await supabaseClient
+                    .from('members')
+                    .select('session_count, used_session_count')
+                    .eq('id', memberId)
+                    .maybeSingle();
+                
+                if (fetchError) throw new Error('Üye bilgisi alınamadı: ' + fetchError.message);
+                
+                if (member) {
+                    const currentSessions = member.session_count || 0;
+                    const newTotalCount = currentSessions + sessionsToAdd;
 
-                const { error: updateError } = await supabaseClient.from('members')
-                    .update({ 
-                        subscription_package: packageName,
-                        session_count: newTotalCount 
-                    })
-                    .eq('id', memberId);
+                    const { error: updateError } = await supabaseClient.from('members')
+                        .update({ 
+                            subscription_package: packageName,
+                            session_count: newTotalCount,
+                            is_active: true // Paket yenilendiği için aktif yapıyoruz
+                        })
+                        .eq('id', memberId);
 
-                if (updateError) throw updateError;
+                    if (updateError) throw updateError;
+                } else {
+                    throw new Error('Üye bulunamadı (ID: ' + memberId + ')');
+                }
             }
         } else if (category === 'single_session') {
-            const { data: member } = await supabaseClient
+            const { data: member, error: fetchError } = await supabaseClient
                 .from('members')
                 .select('session_count')
                 .eq('id', memberId)
-                .single();
+                .maybeSingle();
             
             if (member) {
                 const { error: updateError } = await supabaseClient.from('members')
@@ -327,13 +334,15 @@ async function handleCreatePayment(e) {
             }
         }
 
-        showToast('Ödeme başarıyla alındı ve paket güncellendi', 'success');
         modal.classList.remove('active');
         form.reset();
+        showToast('Ödeme alındı ve paket başarıyla güncellendi', 'success');
 
-        // UI'yı yenile
-        const searchInput = document.getElementById('member-search');
-        await loadMembersList(searchInput ? searchInput.value : '');
+        // UI'yı yenile (Kısa bir gecikme ekleyerek DB'nin oturmasını sağlıyoruz)
+        setTimeout(async () => {
+             const searchInput = document.getElementById('member-search');
+             await loadMembersList(searchInput ? searchInput.value : '');
+        }, 500);
 
     } catch (error) {
         showToast('Ödeme kaydedilemedi: ' + error.message, 'error');
