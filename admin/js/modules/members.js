@@ -200,6 +200,36 @@ function setupPaymentModal() {
         }
     };
 
+    // Form logic toggle
+    const catSelect = document.getElementById('payment-category');
+    const packSelect = document.getElementById('payment-package');
+    const packGroup = document.getElementById('payment-package-group');
+    const manualGroup = document.getElementById('payment-manual-sessions-group');
+
+    if (catSelect) {
+        catSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Paket Yenileme') {
+                packGroup.style.display = 'block';
+                if (packSelect.value === 'Manuel') {
+                    manualGroup.style.display = 'block';
+                }
+            } else {
+                packGroup.style.display = 'none';
+                manualGroup.style.display = 'none';
+            }
+        });
+    }
+
+    if (packSelect) {
+        packSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Manuel') {
+                manualGroup.style.display = 'block';
+            } else {
+                manualGroup.style.display = 'none';
+            }
+        });
+    }
+
     // form.onsubmit handled in showPaymentModal now to allow switching modes
 }
 
@@ -230,6 +260,7 @@ async function handleCreatePayment(e) {
 
         const { data: { user } } = await supabaseClient.auth.getUser();
 
+        // 1. Ödemeyi Kaydet
         const { error } = await supabaseClient
             .from('payments')
             .insert({
@@ -242,6 +273,56 @@ async function handleCreatePayment(e) {
             });
 
         if (error) throw error;
+
+        // 2. Üye Paketini Güncelle (Eğer 'Paket Yenileme' veya 'Tek Ders' ise)
+        if (category === 'package_renewal') {
+            const packageType = document.getElementById('payment-package').value;
+            const manualSessions = document.getElementById('payment-manual-sessions').value;
+            
+            let sessionsToAdd = 0;
+            let packageName = packageType;
+
+            if (packageType === '8 Ders Paketi') sessionsToAdd = 8;
+            else if (packageType === '12 Ders Paketi') sessionsToAdd = 12;
+            else if (packageType === 'Manuel') {
+                 sessionsToAdd = parseInt(manualSessions) || 0;
+                 packageName = sessionsToAdd > 0 ? sessionsToAdd + ' Ders Paketi' : 'Paket Eklendi';
+            }
+
+            // Mevcut üyeyi çek
+            const { data: member } = await supabaseClient
+                .from('members')
+                .select('session_count, used_session_count')
+                .eq('id', memberId)
+                .single();
+            
+            if (member) {
+                const currentSessions = member.session_count || 0;
+                const newTotalCount = currentSessions + sessionsToAdd;
+
+                await supabaseClient.from('members')
+                    .update({ 
+                        subscription_package: packageName,
+                        session_count: newTotalCount 
+                    })
+                    .eq('id', memberId);
+            }
+        } else if (category === 'single_session') {
+            // Tek ders eklendiyse kalan hakkı 1 artırıyoruz (isterseniz paket adını da güncelleyebilirsiniz ama mantıken sadece ders sayısı artar)
+            const { data: member } = await supabaseClient
+                .from('members')
+                .select('session_count')
+                .eq('id', memberId)
+                .single();
+            
+            if (member) {
+                await supabaseClient.from('members')
+                    .update({ 
+                        session_count: (member.session_count || 0) + 1 
+                    })
+                    .eq('id', memberId);
+            }
+        }
 
         showToast('Ödeme başarıyla alındı', 'success');
         modal.classList.remove('active');
@@ -271,6 +352,12 @@ window.showPaymentModal = (id, name) => {
     // Reset Form for clean state
     document.getElementById('payment-form').reset();
     document.querySelector('#payment-modal h2').textContent = 'Ödeme Al';
+
+    // UI resets for new dynamically added fields
+    const catSelect = document.getElementById('payment-category');
+    if (catSelect) catSelect.value = 'Paket Yenileme';
+    document.getElementById('payment-package-group').style.display = 'block';
+    document.getElementById('payment-manual-sessions-group').style.display = 'none';
 
     // Bind specific handler for creation
     document.getElementById('payment-form').onsubmit = handleCreatePayment;

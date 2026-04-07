@@ -140,6 +140,20 @@
                         </select>
                     </div>
 
+                    <div class="form-group" id="payment-package-group" style="display: block;">
+                        <label>Yenilenecek Paket</label>
+                        <select id="payment-package">
+                            <option value="8 Ders Paketi">8 Ders Paketi</option>
+                            <option value="12 Ders Paketi">12 Ders Paketi</option>
+                            <option value="Manuel">Manuel (Ders Sayısı Girin)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="payment-manual-sessions-group" style="display: none;">
+                        <label>Ders Sayısı</label>
+                        <input type="number" id="payment-manual-sessions" min="1" placeholder="Örn: 5">
+                    </div>
+
                     <div class="form-group">
                         <label>Açıklama (Opsiyonel)</label>
                         <textarea id="payment-description" rows="3" placeholder="Notlar..."></textarea>
