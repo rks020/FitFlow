@@ -8,7 +8,26 @@ export async function loadFinance() {
         <div class="module-header">
             <h2>Finans & Ödemeler</h2>
         </div>
-        
+        <div class="filters-row" style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center;">
+            <select id="finance-year" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
+                <option value="all">Tüm Zamanlar</option>
+            </select>
+            <select id="finance-month" style="padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; outline: none; cursor: pointer;">
+                <option value="0">Ocak</option>
+                <option value="1">Şubat</option>
+                <option value="2">Mart</option>
+                <option value="3">Nisan</option>
+                <option value="4">Mayıs</option>
+                <option value="5">Haziran</option>
+                <option value="6">Temmuz</option>
+                <option value="7">Ağustos</option>
+                <option value="8">Eylül</option>
+                <option value="9">Ekim</option>
+                <option value="10">Kasım</option>
+                <option value="11">Aralık</option>
+            </select>
+        </div>
+
         <div class="stats-row" style="display: flex; gap: 20px; margin-bottom: 20px;">
              <div class="stat-card" style="background: #333; padding: 20px; border-radius: 10px; flex: 1;">
                 <h3 style="margin: 0; color: #888; font-size: 14px;">Son İşlem</h3>
@@ -37,7 +56,7 @@ export async function loadFinance() {
 
         <!-- Breakdown Summary Table -->
         <div class="summary-container" style="margin-top: 30px; background: #222; border-radius: 10px; padding: 20px;">
-            <h3 style="margin-bottom: 20px; color: #FFD700; font-size: 18px;">Bu Ay Ödeme Dağılımı</h3>
+            <h3 id="finance-summary-title" style="margin-bottom: 20px; color: #FFD700; font-size: 18px;">Ödeme Dağılımı</h3>
             <table style="width: 100%; border-collapse: collapse; color: #eee;">
                 <thead>
                     <tr style="border-bottom: 1px solid #444; text-align: left;">
@@ -51,6 +70,34 @@ export async function loadFinance() {
             </table>
         </div>
     `;
+
+    const yearSelect = document.getElementById('finance-year');
+    const monthSelect = document.getElementById('finance-month');
+    
+    // Yılları doldur
+    const currentYear = new Date().getFullYear();
+    for (let i = 0; i < 5; i++) {
+        const option = document.createElement('option');
+        option.value = currentYear - i;
+        option.textContent = currentYear - i;
+        yearSelect.appendChild(option);
+    }
+    
+    // Başlangıç defaultları seç (ay/yıl)
+    yearSelect.value = currentYear.toString();
+    monthSelect.value = new Date().getMonth().toString();
+
+    // Filtre işleyiciler (listeners)
+    yearSelect.addEventListener('change', () => {
+        if (yearSelect.value === 'all') {
+            monthSelect.style.display = 'none';
+        } else {
+            monthSelect.style.display = 'block';
+        }
+        loadPaymentsList();
+    });
+    
+    monthSelect.addEventListener('change', loadPaymentsList);
 
     await loadPaymentsList();
 }
@@ -73,11 +120,28 @@ async function loadPaymentsList() {
         // Or RLS handles it? Assuming RLS handles it.
         // Also need member name.
 
-        const { data: payments, error } = await supabaseClient
+        const yearSelect = document.getElementById('finance-year');
+        const monthSelect = document.getElementById('finance-month');
+        
+        let query = supabaseClient
             .from('payments')
             .select('*, members(name, organization_id)')
-            .order('date', { ascending: false })
-            .limit(50);
+            .order('date', { ascending: false });
+
+        if (yearSelect && yearSelect.value !== 'all') {
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+            // UTC vs Local time fix: ensuring we wrap the entire local month
+            const startDate = new Date(year, month, 1, 0, 0, 0).toISOString();
+            const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
+            
+            query = query.gte('date', startDate).lte('date', endDate);
+        } else {
+            // Tüm zamanlar seçeneğinde performansı korumak için max 500 ödeme getiriyoruz
+            query = query.limit(500); 
+        }
+
+        const { data: payments, error } = await query;
 
         if (error) throw error;
 
@@ -131,11 +195,20 @@ async function loadPaymentsList() {
             </tr>
         `).join('');
 
-        // --- Calculate Payment Method Counts for "This Month" ---
-        const monthlyPayments = filteredPayments.filter(p => {
-            const d = new Date(p.date);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        });
+        const summaryTitle = document.getElementById('finance-summary-title');
+        if (summaryTitle) {
+            if (yearSelect && yearSelect.value === 'all') {
+                summaryTitle.textContent = 'Tüm Zamanlar Ödeme Dağılımı';
+            } else if (yearSelect) {
+                const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                const mName = monthNames[parseInt(monthSelect.value)];
+                summaryTitle.textContent = `${mName} ${yearSelect.value} Ödeme Dağılımı`;
+            }
+        }
+
+        // --- Calculate Payment Method Counts ---
+        // Artık filtreleme Supabase tarafında yapıldığı için gelen sonuçları doğrudan kullanıyoruz.
+        const monthlyPayments = filteredPayments;
 
         const methodCounts = {
             'cash': { count: 0, label: 'Nakit' },
