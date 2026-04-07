@@ -19,7 +19,10 @@ export async function loadClasses() {
 
     contentArea.innerHTML = `
         <div class="module-header">
-            <h2>Eğitmen Programı</h2>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0;">Eğitmen Programı</h2>
+                <div id="selected-day-header" style="color: #FFD700; font-size: 16px; font-weight: 500; min-height: 20px;">Yükleniyor...</div>
+            </div>
             <div class="calendar-nav">
                 <button id="prev-month" class="nav-btn">❮</button>
                 <h3 id="current-month-year">Ocak 2026</h3>
@@ -40,9 +43,8 @@ export async function loadClasses() {
 
             <!-- Selected Day Sessions -->
             <div class="day-sessions-container">
-                <div class="day-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span id="selected-day-header">Bugünkü Program</span>
-                    <button id="add-class-btn" class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;">+ Ders Ekle</button>
+                <div class="day-header" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 16px;">
+                    <button id="add-class-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 14px; background: #FFD700; color: #000; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;">+ Ders Ekle</button>
                 </div>
                 <div id="day-sessions-list" class="sessions-list">
                     <div class="text-center text-secondary">Yükleniyor...</div>
