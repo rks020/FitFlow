@@ -156,12 +156,13 @@ async function loadPaymentsList() {
 
         if (filteredPayments.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center;">Henüz ödeme yok.</td></tr>';
-            document.getElementById('total-revenue').textContent = '0.00 TL';
+            
             // Clear summary table if no data
-            document.getElementById('finance-summary-body').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #888;">Bu ay işlem bulunamadı.</td></tr>';
-            document.getElementById('sum-grand-total').textContent = '0.00 TL';
-            document.getElementById('sum-grand-vat').textContent = '0.00 TL';
-            document.getElementById('sum-grand-net').textContent = '0.00 TL';
+            const summaryBody = document.getElementById('finance-summary-body');
+            if (summaryBody) {
+                summaryBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #888;">Bu ay / aralık için işlem bulunamadı.</td></tr>';
+            }
+            
             return;
         }
 
