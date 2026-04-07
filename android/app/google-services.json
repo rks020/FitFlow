@@ -7,17 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:431063576237:android:08c27c16aca5561dd32024",
+        "mobilesdk_app_id": "1:431063576237:android:ee3d698eb39b0251d32024",
         "android_client_info": {
-          "package_name": "com.fitflowtr.app"
+          "package_name": "com.fitflowtr.mobile"
         }
       },
       "oauth_client": [
         {
-          "client_id": "431063576237-ncep67577mruf2j4k0ksq7ibm5krrdb2.apps.googleusercontent.com",
+          "client_id": "431063576237-elode4it35ikhbhjhk6tcmdj7obd0o4f.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.fitflowtr.app",
+            "package_name": "com.fitflowtr.mobile",
             "certificate_hash": "2ca1836af278420a4422f3b0657bc43270d3f95c"
           }
         },
