@@ -600,7 +600,7 @@ function renderGrid() {
     }
 
     // 2. Hour Rows (07:00 - 22:00)
-    for (let hour = 7; hour <= 22; hour++) {
+    for (let hour = 7; hour <= 23; hour++) {
         // Time Axis
         const timeCell = document.createElement('div');
         timeCell.className = 'time-axis-cell';

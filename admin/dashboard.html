@@ -354,7 +354,7 @@
             <!-- Header -->
             <div
                 style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <h3 style="color: #FFD700; margin: 0; font-size: 20px;">Ders Detayı</h3>
+                <h3 id="detail-modal-heading" style="color: #FFD700; margin: 0; font-size: 20px;">Ders Detayı</h3>
                 <div style="display: flex; gap: 16px; align-items: center;">
                     <div id="delete-class-trigger" title="Sil"
                         style="background: none; border: none; color: #666; font-size: 18px; cursor: pointer; transition: color 0.2s;">
@@ -371,7 +371,7 @@
                 <div
                     style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
                     <div style="margin-bottom: 16px;">
-                        <label style="display: block; color: #888; font-size: 12px; margin-bottom: 6px;">Ders Adı</label>
+                        <label id="detail-title-label" style="display: block; color: #888; font-size: 12px; margin-bottom: 6px;">Ders Adı</label>
                         <input type="text" id="detail-title-input" 
                             style="width: 100%; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: #FFD700; padding: 10px; border-radius: 10px; font-size: 18px; font-weight: 700;">
                     </div>
@@ -425,7 +425,7 @@
                 <!-- Complete Button -->
                 <button id="complete-class-btn" class="btn"
                     style="width: 100%; height: 50px; background: #FFD700; color: #000; font-weight: 600; font-size: 16px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    ✅ <span style="position: relative; top: 1px;">Dersi Tamamla</span>
+                    ✅ <span id="complete-btn-text" style="position: relative; top: 1px;">Dersi Tamamla</span>
                 </button>
             </div>
         </div>
@@ -438,7 +438,7 @@
 
             <div style="margin-bottom: 24px;">
                 <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
-                <h3 style="color: #fff; margin-bottom: 8px;">Dersi Sil</h3>
+                <h3 id="delete-modal-heading" style="color: #fff; margin-bottom: 8px;">Dersi Sil</h3>
                 <p style="color: #888; font-size: 14px; line-height: 1.5;">Bu işlemi nasıl uygulamak istersiniz?</p>
             </div>
 
@@ -449,7 +449,7 @@
                 </button>
                 <button id="delete-single-btn" class="btn"
                     style="background: rgba(239, 68, 68, 0.05); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 10px;">
-                    Sadece Bu Dersi Sil
+                    <span id="delete-single-text">Sadece Bu Dersi Sil</span>
                 </button>
                 <button id="cancel-delete-btn" class="btn"
                     style="background: transparent; color: #666; padding: 12px; border-radius: 10px; margin-top: 4px;">

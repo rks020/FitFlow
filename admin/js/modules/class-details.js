@@ -51,6 +51,22 @@ export async function openClassDetailModal(sessionId) {
         const startDate = new Date(session.start_time);
         const endDate = new Date(session.end_time);
 
+        // Detect type: 'ders' if has enrollment, 'etkinlik' if free event
+        const enrollment = session.enrollments ? session.enrollments[0] : null;
+        const isClass = !!(enrollment && enrollment.member);
+        const typeLabel = isClass ? 'Ders' : 'Etkinlik';
+
+        // Update modal labels
+        const heading = document.getElementById('detail-modal-heading');
+        const titleLabel = document.getElementById('detail-title-label');
+        const completeBtnText = document.getElementById('complete-btn-text');
+        if (heading) heading.textContent = `${typeLabel} Detayı`;
+        if (titleLabel) titleLabel.textContent = `${typeLabel} Adı`;
+        if (completeBtnText) completeBtnText.textContent = `${typeLabel}i Tamamla`;
+
+        // Store type for delete dialog
+        modal.dataset.sessionType = typeLabel;
+
         // Date & Time Inputs
         const dateStr = startDate.toISOString().split('T')[0];
         const timeStartStr = startDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -73,22 +89,24 @@ export async function openClassDetailModal(sessionId) {
         document.getElementById('detail-title-input').value = originalData.title;
         updateColorSelection(originalData.color);
 
-        // Member Info
-        const enrollment = session.enrollments[0];
-        if (enrollment && enrollment.member) {
+        // Member Info (Ders only)
+        if (isClass) {
             document.getElementById('detail-member-name').textContent = enrollment.member.name;
             document.getElementById('detail-avatar').textContent = enrollment.member.name.charAt(0).toUpperCase();
+        } else {
+            document.getElementById('detail-member-name').textContent = '—';
+            document.getElementById('detail-avatar').textContent = '🎉';
         }
 
         // Action Buttons Visibility
         if (session.status === 'scheduled') {
-            document.getElementById('complete-class-btn').style.display = 'block';
+            document.getElementById('complete-class-btn').style.display = isClass ? 'flex' : 'none';
         }
 
         modal.classList.add('active');
 
     } catch (err) {
-        showToast('Ders detayları yüklenemedi', 'error');
+        showToast('Detaylar yüklenemedi', 'error');
     }
 }
 
@@ -141,8 +159,13 @@ export function setupClassDetailModal() {
     // Update Action
     document.getElementById('update-class-btn').onclick = saveChanges;
 
-    // Delete Modal Trigger
+    // Delete Modal Trigger - update texts based on session type
     document.getElementById('delete-class-trigger').onclick = () => {
+        const typeLabel = modal.dataset.sessionType || 'Ders';
+        const delHeading = document.getElementById('delete-modal-heading');
+        const delSingleText = document.getElementById('delete-single-text');
+        if (delHeading) delHeading.textContent = `${typeLabel}i Sil`;
+        if (delSingleText) delSingleText.textContent = `Sadece Bu ${typeLabel}i Sil`;
         modal.classList.remove('active');
         document.getElementById('delete-confirm-modal').classList.add('active');
     };
