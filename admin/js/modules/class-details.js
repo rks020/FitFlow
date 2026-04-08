@@ -21,6 +21,10 @@ export async function openClassDetailModal(sessionId) {
     document.getElementById('detail-date-input').value = '';
     document.getElementById('detail-time-start').value = '';
     document.getElementById('detail-time-end').value = '';
+    document.getElementById('detail-title-input').value = '';
+    
+    // Reset colors
+    document.querySelectorAll('.color-opt').forEach(opt => opt.style.borderColor = 'transparent');
 
     updateBtn.style.display = 'none';
     document.getElementById('complete-class-btn').style.display = 'none';
@@ -61,8 +65,14 @@ export async function openClassDetailModal(sessionId) {
         originalData = {
             date: dateStr,
             start: timeStartStr,
-            end: timeEndStr
+            end: timeEndStr,
+            title: session.title || '',
+            color: session.color || '#06B6D4'
         };
+
+        // UI Updates for Title & Color
+        document.getElementById('detail-title-input').value = originalData.title;
+        updateColorSelection(originalData.color);
 
         // Member Info
         const enrollment = session.enrollments[0];
@@ -89,10 +99,15 @@ function checkChanges() {
     const newStart = document.getElementById('detail-time-start').value;
     const newEnd = document.getElementById('detail-time-end').value;
 
+    const newTitle = document.getElementById('detail-title-input').value;
+    const activeColor = document.querySelector('.color-opt.active')?.dataset.color || originalData.color;
+
     const hasChanged =
         newDate !== originalData.date ||
         newStart !== originalData.start ||
-        newEnd !== originalData.end;
+        newEnd !== originalData.end ||
+        newTitle !== originalData.title ||
+        activeColor !== originalData.color;
 
     document.getElementById('update-class-btn').style.display = hasChanged ? 'block' : 'none';
 }
@@ -103,8 +118,20 @@ export function setupClassDetailModal() {
     if (!modal) return;
 
     // Changes Listener
-    ['detail-date-input', 'detail-time-start', 'detail-time-end'].forEach(id => {
-        document.getElementById(id).addEventListener('input', checkChanges);
+    ['detail-date-input', 'detail-time-start', 'detail-time-end', 'detail-title-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', checkChanges);
+    });
+
+    // Color options
+    document.querySelectorAll('.color-opt').forEach(opt => {
+        opt.onclick = () => {
+            document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('active', 'selected'));
+            document.querySelectorAll('.color-opt').forEach(o => o.style.borderColor = 'transparent');
+            opt.classList.add('active');
+            opt.style.borderColor = '#fff';
+            checkChanges();
+        };
     });
 
     // Close
@@ -143,6 +170,8 @@ async function saveChanges() {
     const newDate = document.getElementById('detail-date-input').value;
     const newStart = document.getElementById('detail-time-start').value;
     const newEnd = document.getElementById('detail-time-end').value;
+    const newTitle = document.getElementById('detail-title-input').value;
+    const activeColor = document.querySelector('.color-opt.active')?.dataset.color || originalData.color;
 
     const btn = document.getElementById('update-class-btn');
     btn.textContent = 'Kaydediliyor...';
@@ -160,7 +189,9 @@ async function saveChanges() {
             .from('class_sessions')
             .update({
                 start_time: startDateTime.toISOString(),
-                end_time: endDateTime.toISOString()
+                end_time: endDateTime.toISOString(),
+                title: newTitle,
+                color: activeColor
             })
             .eq('id', currentSessionId);
 
@@ -272,3 +303,18 @@ async function completeClass() {
         showToast('Tamamlama başarısız', 'error');
     }
 }
+
+function updateColorSelection(color) {
+    document.querySelectorAll('.color-opt').forEach(opt => {
+        opt.classList.remove('active');
+        opt.style.borderColor = 'transparent';
+        if (opt.dataset.color.toUpperCase() === color.toUpperCase()) {
+            opt.classList.add('active');
+            opt.style.borderColor = '#fff';
+        }
+    });
+}
+
+// Global exposure for non-module access
+window.openClassDetailModal = openClassDetailModal;
+window.setupClassDetailModal = setupClassDetailModal;

@@ -84,7 +84,7 @@ function navigateTo(page) {
         'announcements': 'Duyurular',
         'finance': 'Finans & Ödemeler',
         'workouts': 'Antrenman Yönetimi',
-        'weekly-schedule': 'Haftalık Program',
+        'weekly-schedule': 'Randevu Listesi',
         'profile': 'Profil'
     };
     document.getElementById('page-title').textContent = titles[page] || 'Dashboard';

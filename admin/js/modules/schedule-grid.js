@@ -16,6 +16,7 @@ export async function loadWeeklySchedule() {
     contentArea.innerHTML = `
         <div class="weekly-schedule-container">
             <div class="schedule-controls">
+                <h2 style="margin: 0; color: #fff; font-size: 24px; font-weight: 800;">Randevu Listesi</h2>
                 <div class="trainer-tabs" id="trainer-tabs">
                     <div class="tab loading">Hocalar yükleniyor...</div>
                 </div>
@@ -292,12 +293,16 @@ async function initializeTrainers() {
             .from('profiles')
             .select('*')
             .eq('organization_id', profile.organization_id)
-            .in('role', ['trainer', 'owner'])
-            .order('first_name');
+            .in('role', ['trainer', 'owner']);
 
         if (error) throw error;
 
-        trainersCache = trainers || [];
+        // Custom sort: Owners first, then by name
+        trainersCache = (trainers || []).sort((a, b) => {
+            if (a.role === 'owner' && b.role !== 'owner') return -1;
+            if (a.role !== 'owner' && b.role === 'owner') return 1;
+            return a.first_name.localeCompare(b.first_name);
+        });
         
         if (trainersCache.length > 0) {
             selectedTrainerId = trainersCache[0].id;
@@ -334,6 +339,11 @@ async function updateView() {
     updateWeekLabel();
     await fetchSessions();
     renderGrid();
+    
+    // Ensure detail modal listeners are set up
+    if (window.setupClassDetailModal) {
+        window.setupClassDetailModal();
+    }
 }
 
 function updateWeekLabel() {
@@ -376,6 +386,7 @@ async function fetchSessions() {
 
 function renderGrid() {
     const grid = document.getElementById('schedule-grid');
+    if (!grid) return;
     grid.innerHTML = '';
 
     // 1. Header Row
@@ -471,23 +482,21 @@ function createSessionElement(session) {
     div.className = 'session-item';
     div.draggable = true;
     
-    // Determine Color Category
     const enrollments = session.class_enrollments || [];
-    if (session.title?.toLowerCase().includes('maç') || session.title?.toLowerCase().includes('kapalı')) {
-        div.classList.add('special');
-    } else if (enrollments.length > 1) {
-        div.classList.add('multiple');
-    } else if (session.is_public) {
-        div.classList.add('manual');
-    }
-
     const memberNames = enrollments.length > 0 
         ? enrollments.map(e => e.member?.name || 'Üye').join(' - ')
         : (session.title || 'Ders');
 
+    // Use custom color from DB or default
+    const bgColor = session.color || '#06B6D4';
+    div.style.background = bgColor;
+    
+    // Contrast check for text color (simple)
+    const isLight = ['#FFD700', 'yellow', '#10B981'].includes(bgColor.toUpperCase()) || bgColor === '#FFD700';
+    div.style.color = isLight ? '#000' : '#fff';
+
     div.innerHTML = `
-        <div class="member-name" title="${memberNames}">${memberNames}</div>
-        <div class="session-time-float">${formatTime(session.start_time)}</div>
+        <div class="member-name" style="font-size: 11px; line-height: 1.1; max-height: 100%; overflow: hidden;" title="${memberNames}">${memberNames}</div>
     `;
 
     div.addEventListener('dragstart', (e) => {
