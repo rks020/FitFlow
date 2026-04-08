@@ -282,19 +282,25 @@ function setupEventListeners() {
     });
 }
 
+let createEventType = 'ders'; // 'ders' | 'etkinlik'
+
+function localDateStr(date) {
+    // Returns YYYY-MM-DD in LOCAL timezone (avoids UTC offset bug)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function openCreateEventModal(dayIndex, hour) {
-    // Calculate the actual date
     const targetDate = new Date(currentWeekStart);
     targetDate.setDate(currentWeekStart.getDate() + dayIndex);
-    const dateStr = targetDate.toISOString().split('T')[0];
+    const dateStr = localDateStr(targetDate); // ✅ local timezone fix
 
     // Pre-fill fields
     document.getElementById('create-event-date').value = dateStr;
     document.getElementById('create-event-start').value = `${String(hour).padStart(2, '0')}:00`;
-    document.getElementById('create-event-end').value = `${String(hour + 1).padStart(2, '0')}:00`;
+    document.getElementById('create-event-end').value = `${String(Math.min(hour + 1, 23)).padStart(2, '0')}:00`;
     document.getElementById('create-event-title').value = '';
 
-    // Reset color selection
+    // Reset color
     document.querySelectorAll('.create-color-opt').forEach(opt => {
         opt.style.borderColor = 'transparent';
         opt.classList.remove('active');
@@ -302,17 +308,52 @@ function openCreateEventModal(dayIndex, hour) {
     const firstOpt = document.querySelector('.create-color-opt');
     if (firstOpt) { firstOpt.style.borderColor = '#fff'; firstOpt.classList.add('active'); }
 
+    // Default to Ders mode
+    setCreateType('ders');
+
     document.getElementById('create-event-modal').classList.add('active');
-    setTimeout(() => document.getElementById('create-event-title').focus(), 100);
+}
+
+window.setCreateType = function(type) {
+    createEventType = type;
+    const dersBtnStyle = type === 'ders' ? 'background:#FFD700;color:#000;' : 'background:transparent;color:#888;';
+    const etkinlikBtnStyle = type === 'etkinlik' ? 'background:#FFD700;color:#000;' : 'background:transparent;color:#888;';
+    document.getElementById('type-btn-ders').style.cssText += dersBtnStyle;
+    document.getElementById('type-btn-etkinlik').style.cssText += etkinlikBtnStyle;
+    document.getElementById('create-member-section').style.display = type === 'ders' ? 'block' : 'none';
+    document.getElementById('create-title-section').style.display = type === 'etkinlik' ? 'block' : 'none';
+    if (type === 'etkinlik') {
+        setTimeout(() => document.getElementById('create-event-title').focus(), 50);
+    }
+};
+
+async function loadMembersIntoSelect() {
+    const select = document.getElementById('create-member-select');
+    if (!select) return;
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: profile } = await supabaseClient.from('profiles').select('organization_id').eq('id', user.id).single();
+        if (!profile?.organization_id) return;
+
+        const { data: members } = await supabaseClient
+            .from('members')
+            .select('id, name')
+            .eq('organization_id', profile.organization_id)
+            .eq('is_active', true)
+            .order('name');
+
+        select.innerHTML = '<option value="">-- Üye Seçin --</option>' +
+            (members || []).map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+    } catch (e) {
+        select.innerHTML = '<option value="">Üyeler yüklenemedi</option>';
+    }
 }
 
 function setupCreateEventModal() {
-    // Close
     document.getElementById('close-create-event-modal').onclick = () => {
         document.getElementById('create-event-modal').classList.remove('active');
     };
 
-    // Color selection
     document.querySelectorAll('.create-color-opt').forEach(opt => {
         opt.onclick = () => {
             document.querySelectorAll('.create-color-opt').forEach(o => {
@@ -324,30 +365,43 @@ function setupCreateEventModal() {
         };
     });
 
-    // Save
     document.getElementById('save-create-event-btn').onclick = saveNewEvent;
+
+    // Load members once
+    loadMembersIntoSelect();
 }
 
 async function saveNewEvent() {
-    const title = document.getElementById('create-event-title').value.trim();
     const dateStr = document.getElementById('create-event-date').value;
     const startStr = document.getElementById('create-event-start').value;
     const endStr = document.getElementById('create-event-end').value;
     const color = document.querySelector('.create-color-opt.active')?.dataset.color || '#06B6D4';
 
-    if (!title) { showToast('Lütfen bir etkinlik adı girin', 'error'); return; }
     if (!dateStr || !startStr || !endStr) { showToast('Tarih ve saat zorunlu', 'error'); return; }
 
     const startDateTime = new Date(`${dateStr}T${startStr}`);
     const endDateTime = new Date(`${dateStr}T${endStr}`);
     if (endDateTime <= startDateTime) { showToast('Bitiş saati başlangıçtan sonra olmalı', 'error'); return; }
 
+    let title, memberId;
+
+    if (createEventType === 'ders') {
+        const select = document.getElementById('create-member-select');
+        memberId = select.value;
+        if (!memberId) { showToast('Lütfen bir üye seçin', 'error'); return; }
+        title = select.options[select.selectedIndex].text; // member name as title
+    } else {
+        title = document.getElementById('create-event-title').value.trim();
+        if (!title) { showToast('Lütfen bir etkinlik adı girin', 'error'); return; }
+    }
+
     const btn = document.getElementById('save-create-event-btn');
     btn.textContent = 'Kaydediliyor...';
     btn.disabled = true;
 
     try {
-        const { error } = await supabaseClient
+        // 1. Create class_session
+        const { data: newSession, error: sessionError } = await supabaseClient
             .from('class_sessions')
             .insert({
                 title,
@@ -356,11 +410,21 @@ async function saveNewEvent() {
                 trainer_id: selectedTrainerId,
                 color,
                 status: 'scheduled'
-            });
+            })
+            .select()
+            .single();
 
-        if (error) throw error;
+        if (sessionError) throw sessionError;
 
-        showToast('Etkinlik eklendi ✅', 'success');
+        // 2. If Ders: also create enrollment
+        if (createEventType === 'ders' && memberId) {
+            const { error: enrollError } = await supabaseClient
+                .from('class_enrollments')
+                .insert({ class_id: newSession.id, member_id: memberId, status: 'booked' });
+            if (enrollError) throw enrollError;
+        }
+
+        showToast(createEventType === 'ders' ? 'Ders eklendi ✅' : 'Etkinlik eklendi ✅', 'success');
         document.getElementById('create-event-modal').classList.remove('active');
         await updateView();
     } catch (err) {
