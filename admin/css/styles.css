@@ -159,7 +159,7 @@ body {
 
 .content-area {
     flex: 1;
-    padding: 40px;
+    padding: 20px 40px;
     overflow-y: auto;
 }
 
@@ -168,7 +168,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 32px;
+    margin-bottom: 20px;
 }
 
 .module-header h2 {

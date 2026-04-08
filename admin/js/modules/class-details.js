@@ -202,10 +202,14 @@ async function saveChanges() {
     try {
         // Construct ISO strings
         const startDateTime = new Date(`${newDate}T${newStart}`);
-        const endDateTime = new Date(`${newDate}T${newEnd}`);
+        let endDateTime = new Date(`${newDate}T${newEnd}`);
 
         if (isNaN(startDateTime) || isNaN(endDateTime)) throw new Error('Geçersiz tarih/saat');
-        if (endDateTime <= startDateTime) throw new Error('Bitiş saati başlangıçtan sonra olmalı');
+
+        // Midnight wrap: if end <= start, it means next day (e.g. 23:00 → 00:00)
+        if (endDateTime <= startDateTime) {
+            endDateTime.setDate(endDateTime.getDate() + 1);
+        }
 
         const { error } = await supabaseClient
             .from('class_sessions')
