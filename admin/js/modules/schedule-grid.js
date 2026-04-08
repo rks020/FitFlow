@@ -6,6 +6,7 @@ let currentWeekStart = getMonday(new Date());
 let selectedTrainerId = null;
 let trainersCache = [];
 let sessionsCache = [];
+let closedDaysCache = []; // stores date strings 'YYYY-MM-DD' for the selected trainer
 
 export async function loadWeeklySchedule() {
     const contentArea = document.getElementById('content-area');
@@ -450,27 +451,61 @@ async function fetchSessions() {
     end.setDate(currentWeekStart.getDate() + 7);
     const endStr = end.toISOString();
 
-    try {
-        const { data, error } = await supabaseClient
-            .from('class_sessions')
-            .select(`
-                *,
-                class_enrollments(
-                    id,
-                    member:member_id(id, name)
-                )
-            `)
-            .eq('trainer_id', selectedTrainerId)
-            .gte('start_time', start)
-            .lt('start_time', endStr)
-            .neq('status', 'cancelled');
+    // Build date strings for the week  (YYYY-MM-DD)
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(currentWeekStart.getDate() + i);
+        weekDates.push(d.toISOString().split('T')[0]);
+    }
 
-        if (error) throw error;
-        sessionsCache = data || [];
+    try {
+        const [sessionsResult, closedResult] = await Promise.all([
+            supabaseClient
+                .from('class_sessions')
+                .select(`*, class_enrollments(id, member:member_id(id, name))`)
+                .eq('trainer_id', selectedTrainerId)
+                .gte('start_time', start)
+                .lt('start_time', endStr)
+                .neq('status', 'cancelled'),
+            supabaseClient
+                .from('closed_days')
+                .select('date')
+                .eq('trainer_id', selectedTrainerId)
+                .in('date', weekDates)
+        ]);
+
+        if (sessionsResult.error) throw sessionsResult.error;
+        sessionsCache = sessionsResult.data || [];
+        closedDaysCache = (closedResult.data || []).map(r => r.date);
     } catch (err) {
         console.error('Fetch sessions error:', err);
         showToast('Veriler yüklenemedi', 'error');
     }
+}
+
+async function toggleClosedDay(dateStr, isCurrentlyClosed) {
+    if (!selectedTrainerId) return;
+
+    if (isCurrentlyClosed) {
+        // Re-open: delete from closed_days
+        const { error } = await supabaseClient
+            .from('closed_days')
+            .delete()
+            .eq('trainer_id', selectedTrainerId)
+            .eq('date', dateStr);
+        if (error) { showToast('İşlem başarısız', 'error'); return; }
+        showToast('Gün açıldı ✅', 'success');
+    } else {
+        // Close: insert into closed_days
+        const { error } = await supabaseClient
+            .from('closed_days')
+            .insert({ trainer_id: selectedTrainerId, date: dateStr });
+        if (error) { showToast('İşlem başarısız', 'error'); return; }
+        showToast('Gün kapalı olarak işaretlendi 🔒', 'success');
+    }
+
+    await updateView();
 }
 
 function renderGrid() {
@@ -485,13 +520,18 @@ function renderGrid() {
     for (let i = 0; i < 7; i++) {
         const dayDate = new Date(currentWeekStart);
         dayDate.setDate(currentWeekStart.getDate() + i);
+        const dateStr = dayDate.toISOString().split('T')[0];
+        const isClosed = closedDaysCache.includes(dateStr);
         
         const headerCell = document.createElement('div');
         headerCell.className = 'grid-header-cell';
+        headerCell.style.cursor = 'pointer';
+        headerCell.title = isClosed ? 'Günü Aç' : 'Kapalı gün ata';
         headerCell.innerHTML = `
-            <div class="day-name">${days[i]}</div>
+            <div class="day-name" style="color: ${isClosed ? '#EF4444' : ''};">${days[i]}${isClosed ? ' 🔒' : ''}</div>
             <div class="day-date">${dayDate.getDate()} ${dayDate.toLocaleDateString('tr-TR', { month: 'short' })}</div>
         `;
+        headerCell.addEventListener('click', () => toggleClosedDay(dateStr, isClosed));
         grid.appendChild(headerCell);
     }
 
@@ -505,27 +545,39 @@ function renderGrid() {
 
         // Day Columns for this hour
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+            const dayDate = new Date(currentWeekStart);
+            dayDate.setDate(currentWeekStart.getDate() + dayIndex);
+            const dateStr = dayDate.toISOString().split('T')[0];
+            const isClosed = closedDaysCache.includes(dateStr);
+
             const cell = document.createElement('div');
             cell.className = 'grid-cell';
             cell.dataset.day = dayIndex;
             cell.dataset.hour = hour;
 
-            // Find session in this slot
-            const session = sessionsCache.find(s => {
-                const sDate = new Date(s.start_time);
-                return sDate.getHours() === hour && 
-                       isSameDay(sDate, dayIndex);
-            });
-
-            if (session) {
-                cell.appendChild(createSessionElement(session));
+            if (isClosed) {
+                // Closed day: show KAPALI
+                cell.style.background = 'rgba(239,68,68,0.12)';
+                cell.style.borderLeft = '2px solid rgba(239,68,68,0.3)';
+                cell.innerHTML = `<div style="color: #EF4444; font-size: 10px; font-weight: 700; text-align: center; opacity: 0.8;">KAPALI</div>`;
+                cell.style.cursor = 'default';
             } else {
-                // Empty cell: click to create new event
-                cell.addEventListener('click', () => {
-                    openCreateEventModal(dayIndex, hour);
+                // Find session in this slot
+                const session = sessionsCache.find(s => {
+                    const sDate = new Date(s.start_time);
+                    return sDate.getHours() === hour && isSameDay(sDate, dayIndex);
                 });
-                cell.style.cursor = 'pointer';
-                cell.title = 'Tıkla: Etkinlik ekle';
+
+                if (session) {
+                    cell.appendChild(createSessionElement(session));
+                } else {
+                    // Empty cell: click to create new event
+                    cell.addEventListener('click', () => {
+                        openCreateEventModal(dayIndex, hour);
+                    });
+                    cell.style.cursor = 'pointer';
+                    cell.title = 'Tıkla: Etkinlik ekle';
+                }
             }
 
             // Drag events
