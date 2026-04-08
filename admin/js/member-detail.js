@@ -7,6 +7,7 @@ let memberId = null;
 let currentMember = null;
 let profile = null;
 let charts = {}; // Store Chart instances
+let availableWorkouts = []; // Stores fetched workouts for the modal
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Get Member ID from URL
@@ -189,6 +190,25 @@ function setupScheduleModal() {
 
     if (!timesContainer || dayCheckboxes.length === 0) return;
 
+    // Fetch Workouts specifically for the dropdowns
+    const fetchWorkoutsForModal = async () => {
+        try {
+            const { data, error } = await supabaseClient
+                .from('workouts')
+                .select('id, name')
+                .eq('organization_id', profile?.organization_id)
+                .order('name');
+            
+            if (error) throw error;
+            availableWorkouts = data || [];
+        } catch (err) {
+            console.error('Error fetching workouts for modal:', err);
+        }
+    };
+
+    // Call fetch once
+    fetchWorkoutsForModal();
+
     // Listen for day changes
     dayCheckboxes.forEach(cb => {
         cb.addEventListener('change', updateTimeInputs);
@@ -214,8 +234,13 @@ function setupScheduleModal() {
         // Save existing values to prevent data loss when checking new days
         const existingValues = {};
         const inputs = timesContainer.querySelectorAll('.day-time-input');
+        const workoutSelects = timesContainer.querySelectorAll('.day-workout-select');
+        
         inputs.forEach(input => {
-            existingValues[input.dataset.day] = input.value;
+            existingValues[input.dataset.day] = {
+                time: input.value,
+                workout: workoutSelects[Array.from(inputs).indexOf(input)]?.value || ''
+            };
         });
 
         timesContainer.innerHTML = '';
@@ -226,16 +251,30 @@ function setupScheduleModal() {
             const span = cb.nextElementSibling;
             const dayName = span ? span.textContent.trim() : 'Gün ' + dayVal;
 
-            const savedTime = existingValues[dayVal] || '10:00';
+            const saved = existingValues[dayVal] || { time: '10:00', workout: '' };
 
             const row = document.createElement('div');
-            // Inline styles for reliability
-            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px;';
+            // Column layout for day + time + workout
+            row.style.cssText = 'display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);';
+
+            const workoutOptions = availableWorkouts.map(w => 
+                `<option value="${w.id}" ${saved.workout === w.id ? 'selected' : ''}>${w.name}</option>`
+            ).join('');
 
             row.innerHTML = `
-                <span style="color: #fff; font-weight: 500;">${dayName}</span>
-                <input type="time" class="day-time-input" data-day="${dayVal}" value="${savedTime}" required 
-                    style="background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 6px; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #fff; font-weight: 600; font-size: 14px;">${dayName}</span>
+                    <input type="time" class="day-time-input" data-day="${dayVal}" value="${saved.time}" required 
+                        style="background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 6px 10px; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                    <span style="font-size: 12px; color: #888; white-space: nowrap;">🏋️ Program:</span>
+                    <select class="day-workout-select" data-day="${dayVal}" 
+                        style="flex: 1; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 6px 10px; border-radius: 8px; font-size: 13px;">
+                        <option value="">Program Seçilmedi</option>
+                        ${workoutOptions}
+                    </select>
+                </div>
             `;
             timesContainer.appendChild(row);
         });
@@ -255,10 +294,11 @@ function setupScheduleModal() {
                         .from('class_sessions')
                         .insert({
                             trainer_id: cand.trainerId || (profile ? profile.id : (await supabaseClient.auth.getUser()).data.user.id),
-                            title: 'Bireysel Ders',
+                            title: cand.workoutName ? `Ders: ${cand.workoutName}` : 'Bireysel Ders',
                             start_time: cand.start.toISOString(),
                             end_time: cand.end.toISOString(),
                             description: document.getElementById('schedule-notes').value,
+                            workout_id: cand.workoutId || null,
                             status: 'scheduled'
                         })
                         .select()
@@ -318,8 +358,15 @@ function setupScheduleModal() {
             if (endDt < startDt) throw new Error('Bitiş tarihi başlangıç tarihinden önce olamaz');
 
             const dayTimes = {};
+            const dayWorkouts = {};
+
             dayTimeInputs.forEach(input => {
-                dayTimes[parseInt(input.dataset.day)] = input.value;
+                const day = parseInt(input.dataset.day);
+                dayTimes[day] = input.value;
+                
+                // Find corresponding workout select
+                const select = Array.from(document.querySelectorAll('.day-workout-select')).find(s => parseInt(s.dataset.day) === day);
+                dayWorkouts[day] = select ? select.value : '';
             });
 
             // 1. Generate Candidates with Package Limit
@@ -364,7 +411,15 @@ function setupScheduleModal() {
                     sessionStart.setHours(parseInt(hours), parseInt(mins), 0, 0);
                     const sessionEnd = new Date(sessionStart.getTime() + duration * 60000);
 
-                    candidates.push({ start: sessionStart, end: sessionEnd });
+                    const workoutId = dayWorkouts[currentDay];
+                    const workout = availableWorkouts.find(w => w.id === workoutId);
+
+                    candidates.push({ 
+                        start: sessionStart, 
+                        end: sessionEnd,
+                        workoutId: workoutId || null,
+                        workoutName: workout ? workout.name : null
+                    });
                 }
             }
 
