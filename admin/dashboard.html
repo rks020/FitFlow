@@ -264,6 +264,66 @@
         </div>
     </div>
 
+    <!-- Create Event Modal (for clicking empty cells) -->
+    <div id="create-event-modal" class="modal">
+        <div class="modal-content"
+            style="max-width: 420px; border-radius: 20px; overflow: hidden; padding: 0; background: #1C1C1E; border: 1px solid rgba(255,255,255,0.08);">
+
+            <!-- Header -->
+            <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <h3 style="color: #FFD700; margin: 0; font-size: 20px;">➕ Etkinlik Ekle</h3>
+                <span id="close-create-event-modal"
+                    style="color: #666; font-size: 24px; cursor: pointer; line-height: 1; padding: 5px;">&times;</span>
+            </div>
+
+            <div style="padding: 24px;">
+                <!-- Title -->
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #888; font-size: 12px; margin-bottom: 6px;">Etkinlik / Ders Adı</label>
+                    <input type="text" id="create-event-title" placeholder="Örn: Halı Saha, Masa Tenisi, Yoga..."
+                        style="width: 100%; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 12px; border-radius: 10px; font-size: 16px; box-sizing: border-box;">
+                </div>
+
+                <!-- Color -->
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #888; font-size: 12px; margin-bottom: 8px;">Renk</label>
+                    <div id="create-color-options" style="display: flex; gap: 12px;">
+                        <div class="create-color-opt active" data-color="#06B6D4" style="width: 28px; height: 28px; border-radius: 50%; background: #06B6D4; cursor: pointer; border: 2px solid #fff;"></div>
+                        <div class="create-color-opt" data-color="#FFD700" style="width: 28px; height: 28px; border-radius: 50%; background: #FFD700; cursor: pointer; border: 2px solid transparent;"></div>
+                        <div class="create-color-opt" data-color="#10B981" style="width: 28px; height: 28px; border-radius: 50%; background: #10B981; cursor: pointer; border: 2px solid transparent;"></div>
+                        <div class="create-color-opt" data-color="#EF4444" style="width: 28px; height: 28px; border-radius: 50%; background: #EF4444; cursor: pointer; border: 2px solid transparent;"></div>
+                        <div class="create-color-opt" data-color="#8B5CF6" style="width: 28px; height: 28px; border-radius: 50%; background: #8B5CF6; cursor: pointer; border: 2px solid transparent;"></div>
+                    </div>
+                </div>
+
+                <!-- Date -->
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 20px;">📅</span>
+                    <input type="date" id="create-event-date"
+                        style="flex: 1; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 12px; border-radius: 8px; font-size: 15px;">
+                </div>
+
+                <!-- Time -->
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px;">
+                    <span style="font-size: 20px;">🕒</span>
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                        <input type="time" id="create-event-start"
+                            style="background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px; border-radius: 8px; font-size: 15px; width: 100%;">
+                        <span style="color: #666;">-</span>
+                        <input type="time" id="create-event-end"
+                            style="background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px; border-radius: 8px; font-size: 15px; width: 100%;">
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <button id="save-create-event-btn"
+                    style="width: 100%; background: #FFD700; color: #000; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity 0.2s;">
+                    Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Improved Class Detail Modal -->
     <div id="class-detail-modal" class="modal">
         <div class="modal-content"

@@ -251,6 +251,7 @@ export async function loadWeeklySchedule() {
     setupEventListeners();
     setupClassDetailModal();
     setUpdateCallback(updateView);
+    setupCreateEventModal();
     await initializeTrainers();
 }
 
@@ -278,6 +279,95 @@ function setupEventListeners() {
         currentWeekStart = getMonday(new Date());
         updateView();
     });
+}
+
+function openCreateEventModal(dayIndex, hour) {
+    // Calculate the actual date
+    const targetDate = new Date(currentWeekStart);
+    targetDate.setDate(currentWeekStart.getDate() + dayIndex);
+    const dateStr = targetDate.toISOString().split('T')[0];
+
+    // Pre-fill fields
+    document.getElementById('create-event-date').value = dateStr;
+    document.getElementById('create-event-start').value = `${String(hour).padStart(2, '0')}:00`;
+    document.getElementById('create-event-end').value = `${String(hour + 1).padStart(2, '0')}:00`;
+    document.getElementById('create-event-title').value = '';
+
+    // Reset color selection
+    document.querySelectorAll('.create-color-opt').forEach(opt => {
+        opt.style.borderColor = 'transparent';
+        opt.classList.remove('active');
+    });
+    const firstOpt = document.querySelector('.create-color-opt');
+    if (firstOpt) { firstOpt.style.borderColor = '#fff'; firstOpt.classList.add('active'); }
+
+    document.getElementById('create-event-modal').classList.add('active');
+    setTimeout(() => document.getElementById('create-event-title').focus(), 100);
+}
+
+function setupCreateEventModal() {
+    // Close
+    document.getElementById('close-create-event-modal').onclick = () => {
+        document.getElementById('create-event-modal').classList.remove('active');
+    };
+
+    // Color selection
+    document.querySelectorAll('.create-color-opt').forEach(opt => {
+        opt.onclick = () => {
+            document.querySelectorAll('.create-color-opt').forEach(o => {
+                o.classList.remove('active');
+                o.style.borderColor = 'transparent';
+            });
+            opt.classList.add('active');
+            opt.style.borderColor = '#fff';
+        };
+    });
+
+    // Save
+    document.getElementById('save-create-event-btn').onclick = saveNewEvent;
+}
+
+async function saveNewEvent() {
+    const title = document.getElementById('create-event-title').value.trim();
+    const dateStr = document.getElementById('create-event-date').value;
+    const startStr = document.getElementById('create-event-start').value;
+    const endStr = document.getElementById('create-event-end').value;
+    const color = document.querySelector('.create-color-opt.active')?.dataset.color || '#06B6D4';
+
+    if (!title) { showToast('Lütfen bir etkinlik adı girin', 'error'); return; }
+    if (!dateStr || !startStr || !endStr) { showToast('Tarih ve saat zorunlu', 'error'); return; }
+
+    const startDateTime = new Date(`${dateStr}T${startStr}`);
+    const endDateTime = new Date(`${dateStr}T${endStr}`);
+    if (endDateTime <= startDateTime) { showToast('Bitiş saati başlangıçtan sonra olmalı', 'error'); return; }
+
+    const btn = document.getElementById('save-create-event-btn');
+    btn.textContent = 'Kaydediliyor...';
+    btn.disabled = true;
+
+    try {
+        const { error } = await supabaseClient
+            .from('class_sessions')
+            .insert({
+                title,
+                start_time: startDateTime.toISOString(),
+                end_time: endDateTime.toISOString(),
+                trainer_id: selectedTrainerId,
+                color,
+                status: 'scheduled'
+            });
+
+        if (error) throw error;
+
+        showToast('Etkinlik eklendi ✅', 'success');
+        document.getElementById('create-event-modal').classList.remove('active');
+        await updateView();
+    } catch (err) {
+        showToast('Kaydedilemedi: ' + err.message, 'error');
+    } finally {
+        btn.textContent = 'Kaydet';
+        btn.disabled = false;
+    }
 }
 
 async function initializeTrainers() {
@@ -429,6 +519,13 @@ function renderGrid() {
 
             if (session) {
                 cell.appendChild(createSessionElement(session));
+            } else {
+                // Empty cell: click to create new event
+                cell.addEventListener('click', () => {
+                    openCreateEventModal(dayIndex, hour);
+                });
+                cell.style.cursor = 'pointer';
+                cell.title = 'Tıkla: Etkinlik ekle';
             }
 
             // Drag events
