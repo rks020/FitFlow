@@ -16,10 +16,10 @@ export async function loadWeeklySchedule() {
                     <div class="tab loading">Hocalar yükleniyor...</div>
                 </div>
                 <div class="week-nav">
-                    <button id="prev-week" class="nav-btn">❮</button>
+                    <button id="prev-week" class="nav-btn" title="Geri"><span>❮</span></button>
                     <div id="week-label" class="week-label">Yükleniyor...</div>
-                    <button id="next-week" class="nav-btn">❯</button>
-                    <button id="today-btn" class="btn btn-secondary" style="margin-left: 10px; padding: 6px 12px; font-size: 13px;">Bugün</button>
+                    <button id="next-week" class="nav-btn" title="İleri"><span>❯</span></button>
+                    <button id="today-btn" class="nav-btn-today">Bugün</button>
                 </div>
             </div>
 
@@ -75,14 +75,65 @@ export async function loadWeeklySchedule() {
             .week-nav {
                 display: flex;
                 align-items: center;
-                gap: 15px;
+                gap: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 6px;
+                border-radius: 14px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .nav-btn {
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                color: #fff;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 14px;
+            }
+
+            .nav-btn:hover {
+                background: rgba(255, 255, 255, 0.15);
+                border-color: #FFD700;
+                transform: translateY(-1px);
+            }
+
+            .nav-btn:active {
+                transform: translateY(0);
+            }
+
+            .nav-btn-today {
+                padding: 0 16px;
+                height: 36px;
+                background: rgba(255, 215, 0, 0.1);
+                border: 1px solid rgba(255, 215, 0, 0.2);
+                border-radius: 10px;
+                color: #FFD700;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-left: 4px;
+            }
+
+            .nav-btn-today:hover {
+                background: #FFD700;
+                color: #000;
+                box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
             }
 
             .week-label {
-                font-weight: 600;
+                font-weight: 700;
                 color: #fff;
-                min-width: 180px;
+                min-width: 160px;
                 text-align: center;
+                font-size: 14px;
+                letter-spacing: -0.2px;
             }
 
             .grid-wrapper {
@@ -230,7 +281,7 @@ async function initializeTrainers() {
             .from('profiles')
             .select('*')
             .eq('organization_id', profile.organization_id)
-            .eq('role', 'trainer')
+            .in('role', ['trainer', 'owner'])
             .order('first_name');
 
         if (error) throw error;
@@ -257,6 +308,7 @@ function renderTrainerTabs() {
         <div class="trainer-tab ${selectedTrainerId === trainer.id ? 'active' : ''}" 
              onclick="window.selectTrainer('${trainer.id}')">
             ${trainer.first_name} ${trainer.last_name || ''}
+            ${trainer.role === 'owner' ? '<span style="font-size: 9px; opacity: 0.7; margin-left: 4px; vertical-align: middle;">(Yönetici)</span>' : ''}
         </div>
     `).join('');
 }
