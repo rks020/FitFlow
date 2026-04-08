@@ -12,10 +12,7 @@ export async function loadWeeklySchedule() {
     
     // Disable outer scrolling for this module to fit everything on screen
     contentArea.style.overflow = 'hidden';
-    contentArea.style.height = 'calc(100vh - 84px)'; // Account for content-header
-
-    setupClassDetailModal();
-    setUpdateCallback(updateView);
+    contentArea.style.height = 'calc(100vh - 84px)';
 
     contentArea.innerHTML = `
         <div class="weekly-schedule-container">
@@ -29,7 +26,7 @@ export async function loadWeeklySchedule() {
                         <span id="week-label" class="week-label">Yükleniyor...</span>
                         <button id="next-week" class="nav-btn">&gt;</button>
                     </div>
-                    <button id="today-btn" class="today-btn">Bugün</button>
+                    <button id="today-btn" class="nav-btn-today">Bugün</button>
                 </div>
             </div>
 
@@ -252,6 +249,8 @@ export async function loadWeeklySchedule() {
     `;
 
     setupEventListeners();
+    setupClassDetailModal();
+    setUpdateCallback(updateView);
     await initializeTrainers();
 }
 

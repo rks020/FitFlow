@@ -15,7 +15,8 @@ export async function openClassDetailModal(sessionId) {
     const updateBtn = document.getElementById('update-class-btn');
 
     // Reset UI
-    document.getElementById('detail-title').textContent = 'Yükleniyor...';
+    const titleInput = document.getElementById('detail-title-input');
+    if (titleInput) titleInput.value = 'Yükleniyor...';
     document.getElementById('detail-member-name').textContent = '-';
     document.getElementById('detail-avatar').textContent = '-';
     document.getElementById('detail-date-input').value = '';
@@ -49,8 +50,6 @@ export async function openClassDetailModal(sessionId) {
         // Populate Data
         const startDate = new Date(session.start_time);
         const endDate = new Date(session.end_time);
-
-        document.getElementById('detail-title').textContent = session.title || 'Bireysel Ders';
 
         // Date & Time Inputs
         const dateStr = startDate.toISOString().split('T')[0];
