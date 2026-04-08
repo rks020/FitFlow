@@ -297,7 +297,9 @@ function openCreateEventModal(dayIndex, hour) {
     // Pre-fill fields
     document.getElementById('create-event-date').value = dateStr;
     document.getElementById('create-event-start').value = `${String(hour).padStart(2, '0')}:00`;
-    document.getElementById('create-event-end').value = `${String(Math.min(hour + 1, 23)).padStart(2, '0')}:00`;
+    // 23:00 slot → bitiş gece yarısı (00:00 ertesi gün)
+    const endHour = hour + 1;
+    document.getElementById('create-event-end').value = endHour >= 24 ? '00:00' : `${String(endHour).padStart(2, '0')}:00`;
     document.getElementById('create-event-title').value = '';
 
     // Reset color
@@ -380,8 +382,11 @@ async function saveNewEvent() {
     if (!dateStr || !startStr || !endStr) { showToast('Tarih ve saat zorunlu', 'error'); return; }
 
     const startDateTime = new Date(`${dateStr}T${startStr}`);
-    const endDateTime = new Date(`${dateStr}T${endStr}`);
-    if (endDateTime <= startDateTime) { showToast('Bitiş saati başlangıçtan sonra olmalı', 'error'); return; }
+    let endDateTime = new Date(`${dateStr}T${endStr}`);
+    // Midnight wrap: if end <= start, it means next day (e.g. 23:00 → 00:00)
+    if (endDateTime <= startDateTime) {
+        endDateTime.setDate(endDateTime.getDate() + 1);
+    }
 
     let title, memberId;
 
