@@ -8,6 +8,10 @@ let sessionsCache = [];
 
 export async function loadWeeklySchedule() {
     const contentArea = document.getElementById('content-area');
+    
+    // Disable outer scrolling for this module to fit everything on screen
+    contentArea.style.overflow = 'hidden';
+    contentArea.style.height = 'calc(100vh - 84px)'; // Account for content-header
 
     contentArea.innerHTML = `
         <div class="weekly-schedule-container">
@@ -34,8 +38,8 @@ export async function loadWeeklySchedule() {
             .weekly-schedule-container {
                 display: flex;
                 flex-direction: column;
-                gap: 20px;
-                height: calc(100vh - 120px);
+                gap: 12px;
+                height: 100%;
             }
 
             .schedule-controls {
@@ -138,49 +142,58 @@ export async function loadWeeklySchedule() {
 
             .grid-wrapper {
                 flex: 1;
-                overflow: auto;
+                overflow-x: auto;
+                overflow-y: hidden;
                 background: #1C1C1E;
                 border-radius: 20px;
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 position: relative;
+                min-height: 0;
             }
 
             .schedule-grid {
                 display: grid;
-                grid-template-columns: 80px repeat(7, 1fr);
-                min-width: 900px; /* Ensure columns don't get too thin */
+                grid-template-columns: 70px repeat(7, 1fr);
+                grid-template-rows: auto repeat(16, 1fr); /* Header + 16 hour slots (07:00-22:00) */
+                height: 100%;
+                min-width: 900px;
+                min-height: 0;
             }
 
             .grid-header-cell {
-                padding: 15px;
+                padding: 10px 5px;
                 text-align: center;
                 background: rgba(255, 255, 255, 0.02);
                 border-bottom: 2px solid rgba(255, 255, 255, 0.05);
                 position: sticky;
                 top: 0;
                 z-index: 10;
+                font-size: 13px;
             }
 
             .day-name { font-weight: 700; color: #FFD700; margin-bottom: 4px; }
             .day-date { font-size: 12px; color: #888; }
 
             .time-axis-cell {
-                padding: 15px;
+                padding: 5px;
                 text-align: center;
                 border-right: 1px solid rgba(255, 255, 255, 0.05);
-                font-size: 13px;
+                font-size: 11px;
                 color: #888;
                 font-weight: 600;
                 background: #1C1C1E;
                 position: sticky;
                 left: 0;
                 z-index: 9;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .grid-cell {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.03);
                 border-right: 1px solid rgba(255, 255, 255, 0.03);
-                min-height: 70px;
+                min-height: 0;
                 position: relative;
                 transition: background 0.2s;
             }
@@ -205,11 +218,9 @@ export async function loadWeeklySchedule() {
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                text-align: center;
-                cursor: grab;
+                overflow: hidden;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.3);
                 transition: transform 0.2s, box-shadow 0.2s;
-                overflow: hidden;
             }
 
             .session-item:active { cursor: grabbing; }
@@ -384,8 +395,8 @@ function renderGrid() {
         grid.appendChild(headerCell);
     }
 
-    // 2. Hour Rows (10:00 - 22:00)
-    for (let hour = 10; hour <= 22; hour++) {
+    // 2. Hour Rows (07:00 - 22:00)
+    for (let hour = 7; hour <= 22; hour++) {
         // Time Axis
         const timeCell = document.createElement('div');
         timeCell.className = 'time-axis-cell';
