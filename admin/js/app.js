@@ -7,6 +7,7 @@ import { loadAnnouncements } from './modules/announcements.js';
 import { loadProfile } from './modules/profile.js';
 import { loadFinance } from './modules/finance.js';
 import { loadWorkouts } from './modules/workouts.js';
+import { loadWeeklySchedule } from './modules/schedule-grid.js';
 
 // Page Mappings
 const pageLoaders = {
@@ -17,6 +18,7 @@ const pageLoaders = {
     'announcements': loadAnnouncements,
     'finance': loadFinance,
     'workouts': loadWorkouts,
+    'weekly-schedule': loadWeeklySchedule,
     'profile': loadProfile
 };
 
@@ -82,6 +84,7 @@ function navigateTo(page) {
         'announcements': 'Duyurular',
         'finance': 'Finans & Ödemeler',
         'workouts': 'Antrenman Yönetimi',
+        'weekly-schedule': 'Haftalık Program',
         'profile': 'Profil'
     };
     document.getElementById('page-title').textContent = titles[page] || 'Dashboard';
