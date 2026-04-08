@@ -12,7 +12,7 @@ export async function loadWeeklySchedule() {
     const contentArea = document.getElementById('content-area');
     
     // Disable outer scrolling for this module to fit everything on screen
-    contentArea.style.overflow = 'auto'; // Enable scrolling if needed
+    contentArea.style.overflow = 'hidden';
     contentArea.style.height = 'calc(100vh - 80px)';
 
     contentArea.innerHTML = `
@@ -147,21 +147,21 @@ export async function loadWeeklySchedule() {
             .grid-wrapper {
                 flex: 1;
                 overflow-x: auto;
-                overflow-y: auto; /* Enable vertical scroll if grid is too tall */
+                overflow-y: hidden; /* No scroll, fit to screen */
                 background: #1C1C1E;
                 border-radius: 20px;
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 position: relative;
-                max-height: calc(100vh - 160px); /* Keep it within view */
+                height: calc(100vh - 180px); /* Fit exactly to screen */
             }
 
             .schedule-grid {
                 display: grid;
                 grid-template-columns: 70px repeat(7, 1fr);
-                grid-template-rows: auto repeat(17, minmax(50px, 1fr)); /* 07:00 - 23:00 is 17 rows */
-                height: auto;
+                grid-template-rows: auto repeat(17, 1fr); /* 07:00 - 23:00 is 17 rows, fixed 1fr to fit screen */
+                height: 100%;
                 min-width: 900px;
-                min-height: min-content;
+                min-height: 0;
             }
 
             .grid-header-cell {
