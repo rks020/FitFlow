@@ -1,5 +1,6 @@
 import { supabaseClient } from '../supabase-config.js';
 import { showToast, formatDate, turkishToLower } from '../utils.js';
+import { openClassDetailModal, setupClassDetailModal, setUpdateCallback } from './class-details.js';
 
 let currentWeekStart = getMonday(new Date());
 let selectedTrainerId = null;
@@ -13,18 +14,22 @@ export async function loadWeeklySchedule() {
     contentArea.style.overflow = 'hidden';
     contentArea.style.height = 'calc(100vh - 84px)'; // Account for content-header
 
+    setupClassDetailModal();
+    setUpdateCallback(updateView);
+
     contentArea.innerHTML = `
         <div class="weekly-schedule-container">
-            <div class="schedule-controls">
-                <h2 style="margin: 0; color: #fff; font-size: 24px; font-weight: 800;">Randevu Listesi</h2>
-                <div class="trainer-tabs" id="trainer-tabs">
+            <div class="schedule-controls" style="display: flex; align-items: center; justify-content: space-between;">
+                <div class="trainer-tabs" id="trainer-tabs" style="justify-content: flex-start; margin-left: 0;">
                     <div class="tab loading">Hocalar yükleniyor...</div>
                 </div>
-                <div class="week-nav">
-                    <button id="prev-week" class="nav-btn" title="Geri"><span>❮</span></button>
-                    <div id="week-label" class="week-label">Yükleniyor...</div>
-                    <button id="next-week" class="nav-btn" title="İleri"><span>❯</span></button>
-                    <button id="today-btn" class="nav-btn-today">Bugün</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div class="week-nav">
+                        <button id="prev-week" class="nav-btn">&lt;</button>
+                        <span id="week-label" class="week-label">Yükleniyor...</span>
+                        <button id="next-week" class="nav-btn">&gt;</button>
+                    </div>
+                    <button id="today-btn" class="today-btn">Bugün</button>
                 </div>
             </div>
 
@@ -339,11 +344,6 @@ async function updateView() {
     updateWeekLabel();
     await fetchSessions();
     renderGrid();
-    
-    // Ensure detail modal listeners are set up
-    if (window.setupClassDetailModal) {
-        window.setupClassDetailModal();
-    }
 }
 
 function updateWeekLabel() {
@@ -510,9 +510,7 @@ function createSessionElement(session) {
 
     // Edit on click?
     div.addEventListener('click', () => {
-        if (window.openClassDetailModal) {
-            window.openClassDetailModal(session.id);
-        }
+        openClassDetailModal(session.id);
     });
 
     return div;
