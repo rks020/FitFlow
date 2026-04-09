@@ -292,11 +292,23 @@
 
                 <!-- Member selector (Ders only) -->
                 <div id="create-member-section" style="margin-bottom: 16px;">
-                    <label style="display: block; color: #888; font-size: 12px; margin-bottom: 6px;">Üye Seç</label>
-                    <select id="create-member-select"
-                        style="width: 100%; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 12px; border-radius: 10px; font-size: 15px; box-sizing: border-box;">
-                        <option value="">Yükleniyor...</option>
-                    </select>
+                    <label style="display: block; color: #888; font-size: 12px; margin-bottom: 6px;">Üye Seç (Birden fazla seçebilirsiniz)</label>
+                    
+                    <!-- Selected Members Tags -->
+                    <div id="selected-members-tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <!-- Tags will be injected here -->
+                    </div>
+
+                    <div style="position: relative;">
+                        <input type="text" id="member-search-input" placeholder="Üye ara..."
+                            style="width: 100%; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 12px; border-radius: 10px; font-size: 15px; box-sizing: border-box;">
+                        
+                        <!-- Search Results Dropdown -->
+                        <div id="member-search-results" 
+                            style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); border-top: none; border-radius: 0 0 10px 10px; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                            <!-- Results will be injected here -->
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Title (Etkinlik only — hidden for Ders) -->

@@ -7,6 +7,7 @@ let selectedTrainerId = null;
 let trainersCache = [];
 let sessionsCache = [];
 let closedDaysCache = []; // stores date strings 'YYYY-MM-DD' for the selected trainer
+let selectedMembersForCreate = []; // [{id, name}, ...]
 
 export async function loadWeeklySchedule() {
     const contentArea = document.getElementById('content-area');
@@ -246,6 +247,15 @@ export async function loadWeeklySchedule() {
                 opacity: 0.7;
                 margin-top: 2px;
             }
+
+            .search-result-item:hover {
+                background: rgba(255, 215, 0, 0.1) !important;
+                color: #FFD700 !important;
+            }
+
+            .member-tag span:hover {
+                color: #EF4444 !important;
+            }
         </style>
     `;
 
@@ -312,9 +322,29 @@ function openCreateEventModal(dayIndex, hour) {
 
     // Default to Ders mode
     setCreateType('ders');
+    
+    // Clear previous member selection
+    selectedMembersForCreate = [];
+    renderSelectedMemberTags();
 
     document.getElementById('create-event-modal').classList.add('active');
 }
+
+function renderSelectedMemberTags() {
+    const container = document.getElementById('selected-members-tags');
+    if (!container) return;
+    container.innerHTML = selectedMembersForCreate.map(m => `
+        <div class="member-tag" style="background: rgba(255, 215, 0, 0.2); color: #FFD700; padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255, 215, 0, 0.3);">
+            ${m.name}
+            <span onclick="removeMemberFromCreate('${m.id}')" style="cursor: pointer; opacity: 0.7;">&times;</span>
+        </div>
+    `).join('');
+}
+
+window.removeMemberFromCreate = function(id) {
+    selectedMembersForCreate = selectedMembersForCreate.filter(m => m.id !== id);
+    renderSelectedMemberTags();
+};
 
 window.setCreateType = function(type) {
     createEventType = type;
@@ -329,26 +359,67 @@ window.setCreateType = function(type) {
     }
 };
 
-async function loadMembersIntoSelect() {
-    const select = document.getElementById('create-member-select');
-    if (!select) return;
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const { data: profile } = await supabaseClient.from('profiles').select('organization_id').eq('id', user.id).single();
-        if (!profile?.organization_id) return;
+async function setupMemberSearch() {
+    const input = document.getElementById('member-search-input');
+    const results = document.getElementById('member-search-results');
+    if (!input || !results) return;
 
-        const { data: members } = await supabaseClient
-            .from('members')
-            .select('id, name')
-            .eq('organization_id', profile.organization_id)
-            .eq('is_active', true)
-            .order('name');
+    // Load ALL members once for local filtering (simple approach) or search on type
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: profile } = await supabaseClient.from('profiles').select('organization_id').eq('id', user.id).single();
+    if (!profile?.organization_id) return;
 
-        select.innerHTML = '<option value="">-- Üye Seçin --</option>' +
-            (members || []).map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-    } catch (e) {
-        select.innerHTML = '<option value="">Üyeler yüklenemedi</option>';
-    }
+    const { data: allMembers } = await supabaseClient
+        .from('members')
+        .select('id, name')
+        .eq('organization_id', profile.organization_id)
+        .eq('is_active', true)
+        .order('name');
+
+    const members = allMembers || [];
+
+    input.oninput = (e) => {
+        const val = e.target.value.trim().toLocaleLowerCase('tr');
+        if (!val) {
+            results.style.display = 'none';
+            return;
+        }
+
+        const filtered = members.filter(m => 
+            m.name.toLocaleLowerCase('tr').includes(val) && 
+            !selectedMembersForCreate.find(s => s.id === m.id)
+        );
+
+        if (filtered.length > 0) {
+            results.innerHTML = filtered.map(m => `
+                <div class="search-result-item" 
+                    style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff;"
+                    onclick="addMemberToCreate('${m.id}', '${m.name.replace(/'/g, "\\'")}')">
+                    ${m.name}
+                </div>
+            `).join('');
+            results.style.display = 'block';
+        } else {
+            results.innerHTML = '<div style="padding: 10px 15px; color: #666;">Üye bulunamadı</div>';
+            results.style.display = 'block';
+        }
+    };
+
+    window.addMemberToCreate = (id, name) => {
+        if (!selectedMembersForCreate.find(m => m.id === id)) {
+            selectedMembersForCreate.push({ id, name });
+            renderSelectedMemberTags();
+        }
+        input.value = '';
+        results.style.display = 'none';
+    };
+
+    // Global click listener to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
 }
 
 function setupCreateEventModal() {
@@ -369,8 +440,8 @@ function setupCreateEventModal() {
 
     document.getElementById('save-create-event-btn').onclick = saveNewEvent;
 
-    // Load members once
-    loadMembersIntoSelect();
+    // Setup member search
+    setupMemberSearch();
 }
 
 async function saveNewEvent() {
@@ -388,13 +459,9 @@ async function saveNewEvent() {
         endDateTime.setDate(endDateTime.getDate() + 1);
     }
 
-    let title, memberId;
-
     if (createEventType === 'ders') {
-        const select = document.getElementById('create-member-select');
-        memberId = select.value;
-        if (!memberId) { showToast('Lütfen bir üye seçin', 'error'); return; }
-        title = select.options[select.selectedIndex].text; // member name as title
+        if (selectedMembersForCreate.length === 0) { showToast('Lütfen en az bir üye seçin', 'error'); return; }
+        title = selectedMembersForCreate.map(m => m.name).join(' - '); // Joined names
     } else {
         title = document.getElementById('create-event-title').value.trim();
         if (!title) { showToast('Lütfen bir etkinlik adı girin', 'error'); return; }
@@ -421,11 +488,18 @@ async function saveNewEvent() {
 
         if (sessionError) throw sessionError;
 
-        // 2. If Ders: also create enrollment
-        if (createEventType === 'ders' && memberId) {
+        // 2. If Ders: also create enrollments
+        if (createEventType === 'ders' && selectedMembersForCreate.length > 0) {
+            const enrollments = selectedMembersForCreate.map(m => ({
+                class_id: newSession.id,
+                member_id: m.id,
+                status: 'booked'
+            }));
+            
             const { error: enrollError } = await supabaseClient
                 .from('class_enrollments')
-                .insert({ class_id: newSession.id, member_id: memberId, status: 'booked' });
+                .insert(enrollments);
+                
             if (enrollError) throw enrollError;
         }
 

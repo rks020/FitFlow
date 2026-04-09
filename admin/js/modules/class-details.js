@@ -52,8 +52,8 @@ export async function openClassDetailModal(sessionId) {
         const endDate = new Date(session.end_time);
 
         // Detect type: 'ders' if has enrollment, 'etkinlik' if free event
-        const enrollment = session.enrollments ? session.enrollments[0] : null;
-        const isClass = !!(enrollment && enrollment.member);
+        const hasEnrollments = session.enrollments && session.enrollments.length > 0;
+        const isClass = hasEnrollments;
         const typeLabel = isClass ? 'Ders' : 'Etkinlik';
 
         // Update modal labels
@@ -91,8 +91,9 @@ export async function openClassDetailModal(sessionId) {
 
         // Member Info (Ders only)
         if (isClass) {
-            document.getElementById('detail-member-name').textContent = enrollment.member.name;
-            document.getElementById('detail-avatar').textContent = enrollment.member.name.charAt(0).toUpperCase();
+            const memberNames = session.enrollments.map(e => e.member.name).join(' - ');
+            document.getElementById('detail-member-name').textContent = memberNames;
+            document.getElementById('detail-avatar').textContent = session.enrollments.length > 1 ? '👥' : session.enrollments[0].member.name.charAt(0).toUpperCase();
         } else {
             document.getElementById('detail-member-name').textContent = '—';
             document.getElementById('detail-avatar').textContent = '🎉';
