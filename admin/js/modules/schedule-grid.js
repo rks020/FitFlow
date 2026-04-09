@@ -459,6 +459,8 @@ async function saveNewEvent() {
         endDateTime.setDate(endDateTime.getDate() + 1);
     }
 
+    let title;
+
     if (createEventType === 'ders') {
         if (selectedMembersForCreate.length === 0) { showToast('Lütfen en az bir üye seçin', 'error'); return; }
         title = selectedMembersForCreate.map(m => m.name).join(' - '); // Joined names
