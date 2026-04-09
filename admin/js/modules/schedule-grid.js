@@ -690,6 +690,75 @@ async function toggleClosedDay(dateStr, isCurrentlyClosed) {
     await updateView();
 }
 
+async function blockSlot(dayIndex, hour) {
+    if (!selectedTrainerId) return;
+
+    const startDateTime = new Date(currentWeekStart);
+    startDateTime.setDate(startDateTime.getDate() + dayIndex);
+    startDateTime.setHours(hour, 0, 0, 0);
+
+    const endDateTime = new Date(startDateTime);
+    endDateTime.setHours(hour + 1, 0, 0, 0);
+
+    try {
+        const { data: newSession, error: sessionError } = await supabaseClient
+            .from('class_sessions')
+            .insert({
+                title: 'Kapalı Slot',
+                start_time: startDateTime.toISOString(),
+                end_time: endDateTime.toISOString(),
+                trainer_id: selectedTrainerId,
+                color: '#4B5563', // gray
+                status: 'scheduled', 
+                is_template: true
+            })
+            .select()
+            .single();
+
+        if (sessionError) throw sessionError;
+
+        const targetDay = startDateTime.getDay();
+        const generatedSessions = [];
+        
+        let currentDate = new Date();
+        currentDate.setHours(0,0,0,0);
+        while (currentDate.getDay() !== targetDay) {
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        for (let i = 0; i < 52; i++) {
+            const iterStartDate = new Date(currentDate);
+            iterStartDate.setDate(iterStartDate.getDate() + (i * 7));
+            iterStartDate.setHours(startDateTime.getHours(), startDateTime.getMinutes(), 0, 0);
+            
+            const iterEndDate = new Date(iterStartDate);
+            iterEndDate.setHours(hour + 1, 0, 0, 0);
+
+            generatedSessions.push({
+                title: 'Kapalı Slot',
+                start_time: iterStartDate.toISOString(),
+                end_time: iterEndDate.toISOString(),
+                trainer_id: selectedTrainerId,
+                color: '#4B5563',
+                status: 'scheduled',
+                is_template: false,
+                template_id: newSession.id
+            });
+        }
+
+        const { error: genError } = await supabaseClient
+            .from('class_sessions')
+            .insert(generatedSessions);
+
+        if (genError) throw genError;
+
+        showToast('Saat kapalı olarak işaretlendi 🔒', 'success');
+        await updateView();
+    } catch (err) {
+        showToast('Saat kapatılamadı: ' + err.message, 'error');
+    }
+}
+
 function renderGrid() {
     const grid = document.getElementById('schedule-grid');
     if (!grid) return;
@@ -712,7 +781,7 @@ function renderGrid() {
         headerCell.innerHTML = `
             <div class="day-name" style="color: ${isClosed ? '#EF4444' : ''}; font-size: 16px; margin-top: 8px;">${days[i]}${isClosed ? ' 🔒' : ''}</div>
         `;
-        // headerCell.addEventListener('click', () => toggleClosedDay(dateStr, isClosed));
+        headerCell.addEventListener('click', () => toggleClosedDay(dateStr, isClosed));
         grid.appendChild(headerCell);
     }
 
@@ -752,12 +821,18 @@ function renderGrid() {
                 if (session) {
                     cell.appendChild(createSessionElement(session));
                 } else {
-                    // Empty cell: click to create new event
+                    // Empty cell: click to create new event, right click to block
                     cell.addEventListener('click', () => {
                         openCreateEventModal(dayIndex, hour);
                     });
+                    cell.addEventListener('contextmenu', async (e) => {
+                        e.preventDefault();
+                        if (confirm('Bu saati kapatmak (bloklamak) istiyor musunuz?')) {
+                            await blockSlot(dayIndex, hour);
+                        }
+                    });
                     cell.style.cursor = 'pointer';
-                    cell.title = 'Tıkla: Etkinlik ekle';
+                    cell.title = 'Sol Tık: Etkinlik Ekle | Sağ Tık: Saati Kapat';
                 }
             }
 
