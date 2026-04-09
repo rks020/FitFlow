@@ -165,15 +165,17 @@ export function setupClassDetailModal() {
         const typeLabel = modal.dataset.sessionType || 'Ders';
         const delHeading = document.getElementById('delete-modal-heading');
         const delSingleText = document.getElementById('delete-single-text');
-        if (delHeading) delHeading.textContent = `${typeLabel}i Sil`;
-        if (delSingleText) delSingleText.textContent = `Sadece Bu ${typeLabel}i Sil`;
+        const delProgramBtn = document.getElementById('delete-program-btn');
+        if (delHeading) delHeading.textContent = `${typeLabel} Şablonunu Sil`;
+        if (delSingleText) delSingleText.textContent = `Şablonu ve Gelecek Tüm Kopyaları Sil`;
+        if (delProgramBtn) delProgramBtn.style.display = 'none'; // hide extra button
+
         modal.classList.remove('active');
         document.getElementById('delete-confirm-modal').classList.add('active');
     };
 
     // Delete Actions
-    document.getElementById('delete-single-btn').onclick = () => deleteClass('single');
-    document.getElementById('delete-program-btn').onclick = () => deleteClass('program');
+    document.getElementById('delete-single-btn').onclick = () => deleteClass();
 
     // Cancel Delete
     const cancelDelete = document.getElementById('cancel-delete-btn');
@@ -223,7 +225,18 @@ async function saveChanges() {
             .eq('id', currentSessionId);
 
         if (error) throw error;
-        showToast('Ders güncellendi', 'success');
+
+        // Also update future copies (only title and color, not time!)
+        await supabaseClient
+            .from('class_sessions')
+            .update({
+                title: newTitle,
+                color: activeColor
+            })
+            .eq('template_id', currentSessionId)
+            .gt('start_time', new Date().toISOString());
+
+        showToast('Şablon güncellendi. (Saat değişimleri gelecekteki kopyalara uygulanmaz, gerekirse şablonu silip yeniden ekleyin)', 'success');
         document.getElementById('class-detail-modal').classList.remove('active');
         if (currentCallback) currentCallback();
 
@@ -235,52 +248,27 @@ async function saveChanges() {
     }
 }
 
-async function deleteClass(mode) {
+async function deleteClass() {
     if (!currentSessionId) return;
     const modal = document.getElementById('delete-confirm-modal');
 
     try {
-        if (mode === 'single') {
-            const { error } = await supabaseClient
-                .from('class_sessions')
-                .delete()
-                .eq('id', currentSessionId);
-            if (error) throw error;
-            showToast('Ders silindi', 'success');
-        } else {
-            // Get member Id first from the session... or passing it might be cleaner. 
-            // Reuse the logic from before: Find enrollment -> find member -> delete future sessions
+        // 1. Delete FUTURE generated sessions tied to this template
+        await supabaseClient
+            .from('class_sessions')
+            .delete()
+            .eq('template_id', currentSessionId)
+            .gt('start_time', new Date().toISOString());
 
-            // 1. Get enrollments for this session to identify the member
-            const { data: session } = await supabaseClient
-                .from('class_sessions')
-                .select('class_enrollments(member_id)')
-                .eq('id', currentSessionId)
-                .single();
+        // 2. Delete the template itself (past copies stay with template_id = NULL)
+        const { error } = await supabaseClient
+            .from('class_sessions')
+            .delete()
+            .eq('id', currentSessionId);
 
-            const memberId = session?.class_enrollments?.[0]?.member_id;
-            if (!memberId) throw new Error('Üye bilgisi bulunamadı');
-
-            // 2. Find all future schedules for this member
-            const { data: enrollments } = await supabaseClient
-                .from('class_enrollments')
-                .select('class_id, class_sessions!inner(status, start_time)')
-                .eq('member_id', memberId)
-                .eq('class_sessions.status', 'scheduled')
-                .gt('class_sessions.start_time', new Date().toISOString());
-
-            if (enrollments && enrollments.length > 0) {
-                const ids = enrollments.map(e => e.class_id);
-                const { error: delError } = await supabaseClient
-                    .from('class_sessions')
-                    .delete()
-                    .in('id', ids);
-                if (delError) throw delError;
-                showToast('Tüm program silindi', 'success');
-            } else {
-                showToast('Silinecek program bulunamadı', 'info');
-            }
-        }
+        if (error) throw error;
+        
+        showToast('Şablon ve gelecek dersler başarıyla silindi', 'success');
         modal.classList.remove('active');
         if (currentCallback) currentCallback();
 
