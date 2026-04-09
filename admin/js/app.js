@@ -8,6 +8,7 @@ import { loadProfile } from './modules/profile.js';
 import { loadFinance } from './modules/finance.js';
 import { loadWorkouts } from './modules/workouts.js';
 import { loadWeeklySchedule } from './modules/schedule-grid.js';
+import { initNotifications, setupNotificationListeners } from './modules/notifications.js';
 
 // Page Mappings
 const pageLoaders = {
@@ -42,6 +43,10 @@ function init() {
 
     // Check initial hash
     handleNavigation();
+
+    // Hook notifications logic
+    setupNotificationListeners();
+    initNotifications();
 }
 
 // Handle race condition: check if DOM is already loaded

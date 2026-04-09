@@ -80,12 +80,34 @@
         <main class="main-content">
             <header class="content-header">
                 <h1 id="page-title">Dashboard</h1>
-                <div class="user-info" onclick="window.location.hash='profile'" style="cursor: pointer;">
-                    <div class="user-meta" style="text-align: right; margin-right: 12px;">
-                        <div id="user-name" style="font-weight: 600;">Yükleniyor...</div>
-                        <div id="org-name" style="font-size: 13px; color: var(--text-secondary);"></div>
+                
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <!-- Notification Bell -->
+                    <div class="notification-wrapper" style="position: relative;">
+                        <button id="notification-btn" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); font-size: 18px; cursor: pointer; padding: 5px; position: relative; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            🔔
+                            <span id="notification-badge" style="display: none; position: absolute; top: -3px; right: -3px; background: #EF4444; color: white; border-radius: 50%; font-size: 10px; font-weight: 800; width: 18px; height: 18px; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #1C1C1E; line-height: 18px;">0</span>
+                        </button>
+                        
+                        <!-- Dropdown -->
+                        <div id="notification-dropdown" style="display: none; position: absolute; top: 50px; right: 0; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 300px; z-index: 1000; overflow: hidden;">
+                            <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600; font-size: 14px; color: #fff; background: rgba(0,0,0,0.2);">
+                                Kalan Ders Bildirimleri
+                            </div>
+                            <div id="notification-list" style="max-height: 350px; overflow-y: auto;">
+                                <!-- Items injected here via JS -->
+                                <div style="padding: 15px; text-align: center; color: #888; font-size: 13px;">Yükleniyor...</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="user-avatar" id="user-avatar">👤</div>
+
+                    <div class="user-info" onclick="window.location.hash='profile'" style="cursor: pointer;">
+                        <div class="user-meta" style="text-align: right; margin-right: 12px;">
+                            <div id="user-name" style="font-weight: 600;">Yükleniyor...</div>
+                            <div id="org-name" style="font-size: 13px; color: var(--text-secondary);"></div>
+                        </div>
+                        <div class="user-avatar" id="user-avatar">👤</div>
+                    </div>
                 </div>
             </header>
             <div id="content-area" class="content-area">
