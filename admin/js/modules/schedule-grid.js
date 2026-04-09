@@ -35,6 +35,14 @@ export async function loadWeeklySchedule() {
             </div>
         </div>
 
+        <!-- Custom Context Menu for Slot -->
+        <div id="slot-context-menu" style="display: none; position: fixed; z-index: 1000; background: #2C2C2E; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); padding: 8px; width: 220px;">
+            <div style="font-size: 12px; color: #888; padding: 4px 8px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05);">Saat Seçenekleri</div>
+            <div class="ctx-item" id="ctx-action-block" style="padding: 10px 8px; border-radius: 8px; color: #EF4444; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; transition: background 0.2s; font-weight: 500;">
+                <span style="font-size: 16px;">🔒</span> Bu Saati Kapat
+            </div>
+        </div>
+
         <style>
             .weekly-schedule-container {
                 display: flex;
@@ -252,6 +260,10 @@ export async function loadWeeklySchedule() {
             .member-tag span:hover {
                 color: #EF4444 !important;
             }
+
+            .ctx-item:hover {
+                background: rgba(255, 255, 255, 0.05);
+            }
         </style>
     `;
 
@@ -271,8 +283,34 @@ function getMonday(d) {
     return monday;
 }
 
+let currentCtxDay = null;
+let currentCtxHour = null;
+
 function setupEventListeners() {
-    // Navigation removed for fixed template
+    // Context menu handlers
+    const ctxBlock = document.getElementById('ctx-action-block');
+    if (ctxBlock) {
+        ctxBlock.addEventListener('click', async () => {
+            if (currentCtxDay !== null && currentCtxHour !== null) {
+                const ctx = document.getElementById('slot-context-menu');
+                if (ctx) ctx.style.display = 'none';
+                await blockSlot(currentCtxDay, currentCtxHour);
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const ctx = document.getElementById('slot-context-menu');
+        if (ctx && e.target !== ctx && !ctx.contains(e.target)) {
+            ctx.style.display = 'none';
+        }
+    });
+
+    // Hide context menu on scroll just in case
+    window.addEventListener('scroll', () => {
+        const ctx = document.getElementById('slot-context-menu');
+        if (ctx) ctx.style.display = 'none';
+    }, true);
 }
 
 let createEventType = 'ders'; // 'ders' | 'etkinlik'
@@ -809,7 +847,10 @@ function renderGrid() {
                 // Closed day: show KAPALI
                 cell.style.background = 'rgba(239,68,68,0.12)';
                 cell.style.borderLeft = '2px solid rgba(239,68,68,0.3)';
-                cell.innerHTML = `<div style="color: #EF4444; font-size: 10px; font-weight: 700; text-align: center; opacity: 0.8;">KAPALI</div>`;
+                cell.style.display = 'flex';
+                cell.style.alignItems = 'center';
+                cell.style.justifyContent = 'center';
+                cell.innerHTML = `<div style="color: #EF4444; font-size: 11px; font-weight: 700; opacity: 0.8; letter-spacing: 1px;">KAPALI</div>`;
                 cell.style.cursor = 'default';
             } else {
                 // Find session in this slot
@@ -825,10 +866,22 @@ function renderGrid() {
                     cell.addEventListener('click', () => {
                         openCreateEventModal(dayIndex, hour);
                     });
-                    cell.addEventListener('contextmenu', async (e) => {
+                    cell.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
-                        if (confirm('Bu saati kapatmak (bloklamak) istiyor musunuz?')) {
-                            await blockSlot(dayIndex, hour);
+                        const ctx = document.getElementById('slot-context-menu');
+                        if (ctx) {
+                            currentCtxDay = dayIndex;
+                            currentCtxHour = hour;
+                            ctx.style.display = 'block';
+                            
+                            let x = e.clientX;
+                            let y = e.clientY;
+                            
+                            if (x + 220 > window.innerWidth) x = window.innerWidth - 230;
+                            if (y + 100 > window.innerHeight) y = window.innerHeight - 110;
+
+                            ctx.style.left = x + 'px';
+                            ctx.style.top = y + 'px';
                         }
                     });
                     cell.style.cursor = 'pointer';
