@@ -157,7 +157,7 @@ export async function loadWeeklySchedule() {
                 border-radius: 20px;
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 position: relative;
-                height: calc(100vh - 80px); /* Use more vertical space */
+                height: calc(100vh - 20px); /* Fill almost entire screen height */
             }
 
             .schedule-grid {
