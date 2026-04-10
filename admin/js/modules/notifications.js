@@ -43,9 +43,18 @@ function updateNotificationUI(members) {
     
     if (!badge || !list) return;
 
-    if (members.length > 0) {
+    window.currentNotificationMembersCount = members.length;
+    const lastReadCount = parseInt(localStorage.getItem('fitflow_last_read_notif_count') || '0');
+    
+    let unreadCount = members.length - lastReadCount;
+    if (unreadCount <= 0) {
+        unreadCount = 0;
+        localStorage.setItem('fitflow_last_read_notif_count', members.length.toString());
+    }
+
+    if (unreadCount > 0) {
         badge.style.display = 'flex';
-        badge.textContent = members.length > 99 ? '99+' : members.length;
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
     } else {
         badge.style.display = 'none';
         badge.textContent = '0';
@@ -91,7 +100,16 @@ export function setupNotificationListeners() {
     if (btn && dropdown) {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            dropdown.style.display = dropdown.style.display === 'none' || dropdown.style.display === '' ? 'block' : 'none';
+            const isOpening = dropdown.style.display === 'none' || dropdown.style.display === '';
+            dropdown.style.display = isOpening ? 'block' : 'none';
+            
+            if (isOpening) {
+                if (window.currentNotificationMembersCount !== undefined) {
+                    localStorage.setItem('fitflow_last_read_notif_count', window.currentNotificationMembersCount.toString());
+                }
+                const badge = document.getElementById('notification-badge');
+                if (badge) badge.style.display = 'none';
+            }
         });
 
         // Outside click to close

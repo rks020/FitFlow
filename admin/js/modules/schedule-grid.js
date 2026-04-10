@@ -853,11 +853,11 @@ function createSessionElement(session) {
     div.style.background = bgColor;
     
     // Contrast check for text color (simple)
-    const isLight = ['#FFD700', 'yellow', '#10B981'].includes(bgColor.toUpperCase()) || bgColor === '#FFD700';
+    const isLight = ['#FFD700', '#06B6D4', '#10B981', 'YELLOW'].includes(bgColor.toUpperCase());
     div.style.color = isLight ? '#000' : '#fff';
 
     div.innerHTML = `
-        <div class="member-name" style="font-size: 11px; line-height: 1.1; max-height: 100%; overflow: hidden;" title="${memberNames}">${memberNames}</div>
+        <div class="member-name" style="font-size: 11px; font-weight: 700; line-height: 1.1; max-height: 100%; overflow: hidden;" title="${memberNames}">${memberNames}</div>
     `;
 
     div.addEventListener('dragstart', (e) => {
