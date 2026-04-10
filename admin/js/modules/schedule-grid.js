@@ -202,7 +202,7 @@ export async function loadWeeklySchedule() {
             .grid-cell {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.03);
                 border-right: 1px solid rgba(255, 255, 255, 0.03);
-                min-height: 60px;
+                min-height: 20px; /* Allow shrinking to fit 23:00 */
                 position: relative;
                 transition: background 0.2s;
                 display: flex;
