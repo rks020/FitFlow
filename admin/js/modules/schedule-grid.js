@@ -152,7 +152,7 @@ export async function loadWeeklySchedule() {
             .grid-wrapper {
                 flex: 1;
                 overflow-x: auto;
-                overflow-y: auto; /* Scroll if content expands */
+                overflow-y: hidden; /* No scroll, fit to screen fixed */
                 background: #1C1C1E;
                 border-radius: 20px;
                 border: 1px solid rgba(255, 255, 255, 0.08);
@@ -163,7 +163,7 @@ export async function loadWeeklySchedule() {
             .schedule-grid {
                 display: grid;
                 grid-template-columns: 70px repeat(7, 1fr);
-                grid-template-rows: auto repeat(17, minmax(60px, auto)); /* 07:00 - 23:00 is 17 rows, grows with content */
+                grid-template-rows: auto repeat(17, 1fr); /* Fixed rows to fit screen */
                 height: 100%;
                 min-width: 900px;
                 min-height: 0;
@@ -218,7 +218,8 @@ export async function loadWeeklySchedule() {
                 position: relative;
                 width: calc(100% - 4px);
                 margin: 2px;
-                min-height: 40px;
+                flex: 1; /* Share height if multiple */
+                min-height: 0;
                 background: #06B6D4; /* Default Cyan */
                 border-radius: 8px;
                 padding: 4px 8px;
