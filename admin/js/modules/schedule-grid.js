@@ -219,7 +219,7 @@ export async function loadWeeklySchedule() {
                 bottom: 2px;
                 background: #06B6D4; /* Default Cyan */
                 border-radius: 8px;
-                padding: 8px;
+                padding: 4px 8px;
                 font-size: 12px;
                 font-weight: 700;
                 color: #000;
