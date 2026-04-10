@@ -18,6 +18,8 @@ export async function initNotifications() {
             .select('id, name, session_count, is_multisport, is_meditopia')
             .eq('organization_id', profile.organization_id)
             .eq('is_active', true)
+            .eq('is_multisport', false)
+            .eq('is_meditopia', false)
             .lte('session_count', 2)
             .order('session_count', { ascending: true }); // 0 comes first
 

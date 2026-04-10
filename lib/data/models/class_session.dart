@@ -11,6 +11,9 @@ class ClassSession {
   final String status; // 'scheduled', 'completed', 'cancelled'
   final String? trainerSignatureUrl;
   final String? trainerName;
+  final String? color;
+  final bool isTemplate;
+  final String? templateId;
   
   // Extension for calculating duration
   int get durationMinutes => endTime.difference(startTime).inMinutes;
@@ -37,6 +40,9 @@ class ClassSession {
     this.workoutName,
     this.currentEnrollments = 0,
     this.isPublic = false,
+    this.color,
+    this.isTemplate = false,
+    this.templateId,
   });
 
   Map<String, dynamic> toJson() {
@@ -53,6 +59,9 @@ class ClassSession {
       'trainer_signature_url': trainerSignatureUrl,
       'workout_id': workoutId,
       'is_public': isPublic,
+      'color': color,
+      'is_template': isTemplate,
+      'template_id': templateId,
     };
   }
 
@@ -78,6 +87,9 @@ class ClassSession {
       workoutName: json['workouts'] != null ? json['workouts']['name'] as String? : null,
       currentEnrollments: json['enrollments_count'] ?? 0,
       isPublic: json['is_public'] as bool? ?? false,
+      color: json['color'] as String?,
+      isTemplate: json['is_template'] as bool? ?? false,
+      templateId: json['template_id'] as String?,
     );
   }
 }

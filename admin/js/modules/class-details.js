@@ -296,18 +296,20 @@ async function completeClass() {
 
         if (error) throw error;
 
-        // Update count if member exists
+        // Update count if member exists and is NOT Multisport/Meditopia
         if (memberId) {
             const { data: member } = await supabaseClient
                 .from('members')
-                .select('used_session_count')
+                .select('used_session_count, is_multisport, is_meditopia')
                 .eq('id', memberId)
                 .single();
 
-            await supabaseClient
-                .from('members')
-                .update({ used_session_count: (member?.used_session_count || 0) + 1 })
-                .eq('id', memberId);
+            if (member && !member.is_multisport && !member.is_meditopia) {
+                await supabaseClient
+                    .from('members')
+                    .update({ used_session_count: (member?.used_session_count || 0) + 1 })
+                    .eq('id', memberId);
+            }
         }
 
         showToast('Ders tamamlandı', 'success');

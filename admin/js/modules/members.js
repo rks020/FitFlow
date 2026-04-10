@@ -146,8 +146,10 @@ async function loadMembersList(searchQuery = '') {
                     <div class="member-info" style="flex: 1;">
                         <h3>${member.name}</h3>
                         <p>${member.email || '-'}</p>
-                        <p style="font-size: 11px; color: #888;">Paket: ${member.subscription_package || '-'}</p>
-                        <p style="font-size: 11px; color: #888;">Kalan Ders: ${member.session_count || 0}</p>
+                        ${(!member.is_multisport && !member.is_meditopia) ? `
+                            <p style="font-size: 11px; color: #888;">Paket: ${member.subscription_package || '-'}</p>
+                            <p style="font-size: 11px; color: #888;">Kalan Ders: ${member.session_count || 0}</p>
+                        ` : ''}
                     </div>
                     <div class="member-badges" style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                         ${member.is_active ? '<span style="font-size: 10px; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap;">Aktif</span>' : ''}

@@ -17,6 +17,8 @@ import 'trainer_schedule_screen.dart';
 import 'change_password_screen.dart';
 import 'upgrade_to_pro_screen.dart';
 import 'support_screen.dart';
+import 'master_schedule_screen.dart';
+import 'low_session_notifications_screen.dart';
 
 import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 import 'package:fitflow/shared/widgets/ambient_background.dart';
@@ -536,6 +538,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                context,
                                MaterialPageRoute(
                                  builder: (context) => const TrainerScheduleScreen(),
+                               ),
+                             );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Sabit Randevu Listesi Entry
+                      GlassCard(
+                        child: _ProfileOption(
+                          icon: Icons.view_week_rounded,
+                          title: 'Sabit Randevu Listesi',
+                          onTap: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => const MasterScheduleScreen(),
+                               ),
+                             );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Kalan Ders Bildirimleri Entry
+                      GlassCard(
+                        child: _ProfileOption(
+                          icon: Icons.notifications_active_rounded,
+                          title: 'Kalan Ders Bildirimleri',
+                          onTap: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => const LowSessionNotificationsScreen(),
                                ),
                              );
                           },

@@ -96,9 +96,13 @@ function navigateTo(page) {
 
     // Load page content
     if (pageLoaders[page]) {
-        // Clear content area first
+        // Clear content area first and reset any styles (like those from schedule-grid)
         const contentArea = document.getElementById('content-area');
-        if (contentArea) contentArea.innerHTML = '<div style="padding: 20px; text-align: center;">Yükleniyor...</div>';
+        if (contentArea) {
+            contentArea.innerHTML = '<div style="padding: 20px; text-align: center;">Yükleniyor...</div>';
+            contentArea.style.overflow = '';
+            contentArea.style.height = '';
+        }
 
         pageLoaders[page]();
     }

@@ -59,6 +59,7 @@ export async function loadClasses() {
                 gap: 24px;
                 max-width: 600px;
                 margin: 0 auto;
+                padding-bottom: 60px;
             }
 
             .module-header {
@@ -278,6 +279,7 @@ async function fetchMonthSessions(date) {
                 end_time,
                 trainer:trainer_id (first_name, last_name)
             `)
+            .eq('is_template', false)
             .gte('start_time', start)
             .lte('start_time', end)
             .order('start_time', { ascending: true });

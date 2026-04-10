@@ -62,16 +62,20 @@ async function loadMemberDetails() {
             .single();
 
         if (error) throw error;
-
         currentMember = member;
 
         document.getElementById('member-name').textContent = member.name;
         document.getElementById('member-email').textContent = member.email || 'Email yok';
 
-        // Debug / Info
-        // console.log('Member loaded:', member);
-        // showToast(`Limit Test: Toplam ${member.session_count}`, 'info');
-
+        // Hide session counts for Multisport/Meditopia
+        if (member.is_multisport || member.is_meditopia) {
+            const historyCard = document.querySelector('.detail-card[onclick="showSection(\'history\')"]');
+            if (historyCard) {
+                // Optionally hide or change text
+                const p = historyCard.querySelector('p');
+                if (p) p.textContent = 'Katılım Geçmişi';
+            }
+        }
     } catch (error) {
         console.error('Error loading member:', error);
         showToast('Üye bilgileri yüklenemedi', 'error');

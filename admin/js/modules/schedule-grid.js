@@ -525,67 +525,6 @@ async function saveNewEvent() {
             if (tempEnrollError) throw tempEnrollError;
         }
 
-        // 3. GENERATE 52 WEEKS OF FUTURE EVENTS
-        const targetDay = startDateTime.getDay(); // 0(Sun) - 6(Sat)
-        const generatedSessions = [];
-        
-        let currentDate = new Date();
-        currentDate.setHours(0,0,0,0);
-        // Find the *next* occurrence of targetDay from today
-        while (currentDate.getDay() !== targetDay) {
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        for (let i = 0; i < 52; i++) {
-            const iterStartDate = new Date(currentDate);
-            iterStartDate.setDate(iterStartDate.getDate() + (i * 7));
-            iterStartDate.setHours(startDateTime.getHours(), startDateTime.getMinutes(), 0, 0);
-            
-            const iterEndDate = new Date(iterStartDate);
-            // use original duration
-            const diffMs = endDateTime.getTime() - startDateTime.getTime();
-            iterEndDate.setTime(iterStartDate.getTime() + diffMs);
-
-            generatedSessions.push({
-                title,
-                start_time: iterStartDate.toISOString(),
-                end_time: iterEndDate.toISOString(),
-                trainer_id: selectedTrainerId,
-                color,
-                status: 'scheduled',
-                is_template: false,
-                template_id: newSession.id
-            });
-        }
-
-        const { data: insertedGeneratedSessions, error: genError } = await supabaseClient
-            .from('class_sessions')
-            .insert(generatedSessions)
-            .select();
-
-        if (genError) throw genError;
-
-        // 4. Enrollments for all generated sessions
-        if (createEventType === 'ders' && selectedMembersForCreate.length > 0) {
-            let allFutureEnrollments = [];
-            insertedGeneratedSessions.forEach(sess => {
-                selectedMembersForCreate.forEach(m => {
-                    allFutureEnrollments.push({
-                        class_id: sess.id,
-                        member_id: m.id,
-                        status: 'booked'
-                    });
-                });
-            });
-
-            // supabase has a limit on bulk inserts (usually 1000 or similar), 52 * members shouldn't exceed it unless members > 19
-            const { error: genEnrollError } = await supabaseClient
-                .from('class_enrollments')
-                .insert(allFutureEnrollments);
-                
-            if (genEnrollError) throw genEnrollError;
-        }
-
         showToast(createEventType === 'ders' ? 'Ders eklendi ✅' : 'Etkinlik eklendi ✅', 'success');
         document.getElementById('create-event-modal').classList.remove('active');
         await updateView();
@@ -754,41 +693,6 @@ async function blockSlot(dayIndex, hour) {
             .single();
 
         if (sessionError) throw sessionError;
-
-        const targetDay = startDateTime.getDay();
-        const generatedSessions = [];
-        
-        let currentDate = new Date();
-        currentDate.setHours(0,0,0,0);
-        while (currentDate.getDay() !== targetDay) {
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        for (let i = 0; i < 52; i++) {
-            const iterStartDate = new Date(currentDate);
-            iterStartDate.setDate(iterStartDate.getDate() + (i * 7));
-            iterStartDate.setHours(startDateTime.getHours(), startDateTime.getMinutes(), 0, 0);
-            
-            const iterEndDate = new Date(iterStartDate);
-            iterEndDate.setHours(hour + 1, 0, 0, 0);
-
-            generatedSessions.push({
-                title: 'Kapalı Slot',
-                start_time: iterStartDate.toISOString(),
-                end_time: iterEndDate.toISOString(),
-                trainer_id: selectedTrainerId,
-                color: '#4B5563',
-                status: 'scheduled',
-                is_template: false,
-                template_id: newSession.id
-            });
-        }
-
-        const { error: genError } = await supabaseClient
-            .from('class_sessions')
-            .insert(generatedSessions);
-
-        if (genError) throw genError;
 
         showToast('Saat kapalı olarak işaretlendi 🔒', 'success');
         await updateView();
