@@ -152,7 +152,7 @@ export async function loadWeeklySchedule() {
             .grid-wrapper {
                 flex: 1;
                 overflow-x: auto;
-                overflow-y: hidden; /* No scroll, fit to screen */
+                overflow-y: auto; /* Scroll if content expands */
                 background: #1C1C1E;
                 border-radius: 20px;
                 border: 1px solid rgba(255, 255, 255, 0.08);
@@ -163,7 +163,7 @@ export async function loadWeeklySchedule() {
             .schedule-grid {
                 display: grid;
                 grid-template-columns: 70px repeat(7, 1fr);
-                grid-template-rows: auto repeat(17, 1fr); /* 07:00 - 23:00 is 17 rows, fixed 1fr to fit screen */
+                grid-template-rows: auto repeat(17, minmax(60px, auto)); /* 07:00 - 23:00 is 17 rows, grows with content */
                 height: 100%;
                 min-width: 900px;
                 min-height: 0;
@@ -202,9 +202,12 @@ export async function loadWeeklySchedule() {
             .grid-cell {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.03);
                 border-right: 1px solid rgba(255, 255, 255, 0.03);
-                min-height: 0;
+                min-height: 60px;
                 position: relative;
                 transition: background 0.2s;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
             }
 
             .grid-cell.drag-over {
@@ -212,11 +215,10 @@ export async function loadWeeklySchedule() {
             }
 
             .session-item {
-                position: absolute;
-                top: 2px;
-                left: 2px;
-                right: 2px;
-                bottom: 2px;
+                position: relative;
+                width: calc(100% - 4px);
+                margin: 2px;
+                min-height: 40px;
                 background: #06B6D4; /* Default Cyan */
                 border-radius: 8px;
                 padding: 4px 8px;
@@ -757,14 +759,16 @@ function renderGrid() {
                 cell.innerHTML = `<div style="color: #EF4444; font-size: 11px; font-weight: 700; opacity: 0.8; letter-spacing: 1px;">KAPALI</div>`;
                 cell.style.cursor = 'default';
             } else {
-                // Find session in this slot
-                const session = sessionsCache.find(s => {
+                // Find sessions in this slot
+                const sessions = sessionsCache.filter(s => {
                     const sDate = new Date(s.start_time);
                     return sDate.getHours() === hour && isSameDay(sDate, dayIndex);
                 });
-
-                if (session) {
-                    cell.appendChild(createSessionElement(session));
+                
+                if (sessions.length > 0) {
+                    sessions.forEach(s => {
+                        cell.appendChild(createSessionElement(s));
+                    });
                 } else {
                     // Empty cell: click to create new event, right click to block
                     cell.addEventListener('click', () => {
