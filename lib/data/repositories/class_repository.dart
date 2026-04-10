@@ -29,6 +29,7 @@ class ClassRepository {
     final response = await _client
         .from('class_sessions')
         .select('*, profiles(first_name, last_name), workouts(name), class_enrollments(count)')
+        .eq('is_template', false)
         .gte('start_time', start.toUtc().toIso8601String())
         .lte('start_time', end.toUtc().toIso8601String())
         .order('start_time', ascending: true);
@@ -68,6 +69,7 @@ class ClassRepository {
     final publicSessions = await _client
         .from('class_sessions')
         .select('*, profiles(first_name, last_name), workouts(name), class_enrollments(count)')
+        .eq('is_template', false)
         .gte('start_time', start.toUtc().toIso8601String())
         .lte('start_time', end.toUtc().toIso8601String())
         .eq('is_public', true)
@@ -78,6 +80,7 @@ class ClassRepository {
         .from('class_enrollments')
         .select('class_sessions!inner(*, profiles(first_name, last_name), workouts(name), class_enrollments(count))')
         .eq('member_id', memberId)
+        .eq('class_sessions.is_template', false)
         .gte('class_sessions.start_time', start.toUtc().toIso8601String())
         .lte('class_sessions.start_time', end.toUtc().toIso8601String())
         .order('class_sessions(start_time)', ascending: true);

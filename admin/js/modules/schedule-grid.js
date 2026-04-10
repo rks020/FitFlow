@@ -826,16 +826,10 @@ function createCell(content, className) {
 
 function isSameDay(date, dayIndexOffset) {
     const targetDate = new Date(currentWeekStart);
-    targetDate.setDate(targetWeekDate(dayIndexOffset));
+    targetDate.setDate(targetDate.getDate() + dayIndexOffset);
     return date.getDate() === targetDate.getDate() && 
            date.getMonth() === targetDate.getMonth() &&
            date.getFullYear() === targetDate.getFullYear();
-}
-
-function targetWeekDate(offset) {
-    const d = new Date(currentWeekStart);
-    d.setDate(currentWeekStart.getDate() + offset);
-    return d.getDate();
 }
 
 function createSessionElement(session) {

@@ -47,10 +47,12 @@ class _LowSessionNotificationsScreenState extends State<LowSessionNotificationsS
           .select('id, name, session_count, is_multisport, is_meditopia')
           .eq('organization_id', orgId)
           .eq('is_active', true)
+          .eq('is_multisport', false)
+          .eq('is_meditopia', false)
           .lte('session_count', 2);
 
       if (role == 'trainer') {
-        query = query.or('trainer_id.eq.${user.id},is_meditopia.eq.true');
+        query = query.eq('trainer_id', user.id);
       }
 
       final response = await query.order('session_count', ascending: true);

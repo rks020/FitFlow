@@ -262,61 +262,84 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.2),
+                        color: AppColors.primaryYellow.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.5)),
+                        border: Border.all(color: AppColors.primaryYellow.withOpacity(0.5)),
                       ),
                       child: Text(
                         'Multisport Üyesi',
                         style: AppTextStyles.callout.copyWith(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (_currentMember.subscriptionPackage != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.glassBorder),
-                      ),
-                      child: Text(
-                        _currentMember.subscriptionPackage!,
-                        style: AppTextStyles.subheadline.copyWith(
                           color: AppColors.primaryYellow,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
-                  if (_currentMember.sessionCount != null) ...[
+                  if (_currentMember.isMeditopia) ...[
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.glassBorder),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.confirmation_number_rounded, size: 16, color: AppColors.primaryYellow),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_currentMember.sessionCount} Ders Hakkı',
-                            style: AppTextStyles.subheadline.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      decoration: BoxDecoration(
+                        color: AppColors.neonCyan.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.neonCyan.withOpacity(0.5)),
+                      ),
+                      child: Text(
+                        'Meditopia Üyesi',
+                        style: AppTextStyles.callout.copyWith(
+                          color: AppColors.neonCyan,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                  ],
+                  if (!_currentMember.isMultisport && !_currentMember.isMeditopia) ...[
+                    if (_currentMember.subscriptionPackage != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.glassBorder),
+                        ),
+                        child: Text(
+                          _currentMember.subscriptionPackage!,
+                          style: AppTextStyles.subheadline.copyWith(
+                            color: AppColors.primaryYellow,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (_currentMember.sessionCount != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.glassBorder),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.confirmation_number_rounded, size: 16, color: AppColors.primaryYellow),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_currentMember.sessionCount} Ders Hakkı',
+                              style: AppTextStyles.subheadline.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -349,6 +372,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                      itemBuilder: (context, index) {
                        // 1. First Item: Remaining Sessions Card
                        if (index == 0) {
+                         if (_currentMember.isMultisport || _currentMember.isMeditopia) {
+                           return const SizedBox.shrink();
+                         }
                          return Container(
                            width: 140, // Slightly narrower
                            margin: const EdgeInsets.only(right: 12),

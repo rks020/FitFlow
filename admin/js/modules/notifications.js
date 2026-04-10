@@ -12,6 +12,9 @@ export async function initNotifications() {
             .single();
 
         if (!profile?.organization_id) return;
+        
+        // Use user-specific key for persistence
+        const storageKey = `fitflow_seen_low_session_ids_${user.id}`;
 
         let query = supabaseClient
             .from('members')
@@ -30,27 +33,35 @@ export async function initNotifications() {
         const { data: lowSessionMembers, error } = await query;
         if (error) throw error;
 
-        updateNotificationUI(lowSessionMembers || []);
+        console.log(`[Notifications] Found ${lowSessionMembers?.length || 0} low session members`);
+        updateNotificationUI(lowSessionMembers || [], storageKey);
 
     } catch (e) {
-        console.error('Bildirimler yüklenirken hata:', e);
+        console.error('[Notifications] Error loading notifications:', e);
     }
 }
 
-function updateNotificationUI(members) {
+function updateNotificationUI(members, storageKey) {
     const badge = document.getElementById('notification-badge');
     const list = document.getElementById('notification-list');
     
     if (!badge || !list) return;
 
-    window.currentNotificationMembersCount = members.length;
-    const lastReadCount = parseInt(localStorage.getItem('fitflow_last_read_notif_count') || '0');
+    window.currentNotificationStorageKey = storageKey;
+    window.currentNotificationMemberIds = members.map(m => String(m.id));
     
-    let unreadCount = members.length - lastReadCount;
-    if (unreadCount <= 0) {
-        unreadCount = 0;
-        localStorage.setItem('fitflow_last_read_notif_count', members.length.toString());
+    let seenIds = [];
+    try {
+        seenIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        if (!Array.isArray(seenIds)) seenIds = [];
+    } catch (e) {
+        seenIds = [];
     }
+    
+    const unreadMembers = members.filter(m => !seenIds.includes(String(m.id)));
+    const unreadCount = unreadMembers.length;
+
+    console.log(`[Notifications] Unread count: ${unreadCount}, Seen count: ${seenIds.length}`);
 
     if (unreadCount > 0) {
         badge.style.display = 'flex';
@@ -104,8 +115,18 @@ export function setupNotificationListeners() {
             dropdown.style.display = isOpening ? 'block' : 'none';
             
             if (isOpening) {
-                if (window.currentNotificationMembersCount !== undefined) {
-                    localStorage.setItem('fitflow_last_read_notif_count', window.currentNotificationMembersCount.toString());
+                if (window.currentNotificationMemberIds && window.currentNotificationMemberIds.length > 0 && window.currentNotificationStorageKey) {
+                    try {
+                        const storageKey = window.currentNotificationStorageKey;
+                        let seenIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                        if (!Array.isArray(seenIds)) seenIds = [];
+                        
+                        const updatedSeenIds = Array.from(new Set([...seenIds, ...window.currentNotificationMemberIds]));
+                        localStorage.setItem(storageKey, JSON.stringify(updatedSeenIds));
+                        console.log(`[Notifications] Marked ${window.currentNotificationMemberIds.length} notifications as seen for key ${storageKey}`);
+                    } catch (e) {
+                        console.error('[Notifications] Error updating seen IDs:', e);
+                    }
                 }
                 const badge = document.getElementById('notification-badge');
                 if (badge) badge.style.display = 'none';

@@ -91,10 +91,35 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
     }
   }
 
+  Future<void> _moveSession(Map<String, dynamic> session, int targetDay, int targetHour) async {
+    setState(() => _isLoading = true);
+    try {
+      final oldStart = DateTime.parse(session['start_time']).toLocal();
+      final oldEnd = DateTime.parse(session['end_time']).toLocal();
+      final duration = oldEnd.difference(oldStart);
+
+      final dayDate = _templateStart.add(Duration(days: targetDay));
+      final newStartLocal = DateTime(dayDate.year, dayDate.month, dayDate.day, targetHour, oldStart.minute);
+      final newEndLocal = newStartLocal.add(duration);
+
+      await _supabase.from('class_sessions').update({
+        'start_time': newStartLocal.toUtc().toIso8601String(),
+        'end_time': newEndLocal.toUtc().toIso8601String(),
+      }).eq('id', session['id']);
+
+      if (mounted) CustomSnackBar.showSuccess(context, 'Randevu taşındı');
+      await _fetchTemplateSessions();
+    } catch (e) {
+      debugPrint('Move Error: $e');
+      if (mounted) CustomSnackBar.showError(context, 'Taşıma başarısız oldu');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _blockTimeSlot(int dayIndex, int startHour, {int durationHours = 1}) async {
     setState(() => _isLoading = true);
     try {
-      // Local calculation first
       final dayDate = _templateStart.add(Duration(days: dayIndex));
       final startTimeLocal = DateTime(dayDate.year, dayDate.month, dayDate.day, startHour);
       final endTimeLocal = startTimeLocal.add(Duration(hours: durationHours));
@@ -106,33 +131,14 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
         'start_time': startTimeStr,
         'end_time': endTimeStr,
         'trainer_id': _trainerId ?? _supabase.auth.currentUser!.id,
-        'color': '#4B5563', // Web grey color
-        'status': 'scheduled', // Web uses scheduled for blocks too
+        'color': '#4B5563',
+        'status': 'scheduled',
         'is_template': true,
         'template_id': null
       };
 
-      final inserted = await _supabase.from('class_sessions').insert(templateData).select().single();
-      final realTemplateId = inserted['id'];
-
-      List<Map<String, dynamic>> copies = [];
-      for (int i = 0; i < 52; i++) {
-        final copyStart = startTimeLocal.add(Duration(days: i * 7));
-        final copyEnd = endTimeLocal.add(Duration(days: i * 7));
-        copies.add({
-          'title': 'Kapalı Slot',
-          'start_time': copyStart.toUtc().toIso8601String(),
-          'end_time': copyEnd.toUtc().toIso8601String(),
-          'trainer_id': templateData['trainer_id'],
-          'color': '#4B5563',
-          'status': 'scheduled',
-          'is_template': false,
-          'template_id': realTemplateId
-        });
-      }
-
-      await _supabase.from('class_sessions').insert(copies);
-      if (mounted) CustomSnackBar.showSuccess(context, 'Kapatma işlemi uygulandı');
+      await _supabase.from('class_sessions').insert(templateData);
+      if (mounted) CustomSnackBar.showSuccess(context, 'Saat kapatıldı');
       await _fetchTemplateSessions();
     } catch (e) {
       if (mounted) CustomSnackBar.showError(context, 'Hata oluştu.');
@@ -192,16 +198,6 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
             ? const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
             : Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    color: AppColors.primaryYellow.withOpacity(0.1),
-                    child: Text(
-                      'Burada yapılan değişiklikler 52 hafta boyunca tekrar eder.',
-                      style: AppTextStyles.caption1.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-
                   Expanded(
                     child: InteractiveViewer(
                       constrained: false,
@@ -249,7 +245,7 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
                                       ),
                                     ),
                                     for (int h = 7; h <= 23; h++)
-                                      _buildGridCell(dayIndex, h, rowHeight),
+                                      _buildGridCell(dayIndex, h, rowHeight, colWidth),
                                   ],
                                 ),
                               ),
@@ -266,7 +262,7 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
     );
   }
 
-  Widget _buildGridCell(int dayIndex, int hour, double rowHeight) {
+  Widget _buildGridCell(int dayIndex, int hour, double rowHeight, double colWidth) {
     final sessionList = _sessionsByDay[dayIndex]!;
     final sessionsInHour = sessionList.where((s) {
       final start = DateTime.parse(s['start_time']).toLocal();
@@ -282,25 +278,30 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
       ),
     );
 
-    if (sessionsInHour.isNotEmpty) {
-      return Container(
-        height: rowHeight,
-        decoration: decoration,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: sessionsInHour.map((s) {
-            final title = (s['title'] ?? '').toString();
-            final colorStr = s['color']?.toString().replaceFirst('#', '0xFF') ?? '0xFFFACC15';
-            
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => _showSessionDetails(s),
-                child: Container(
+    return DragTarget<Map<String, dynamic>>(
+      onWillAccept: (data) => data != null,
+      onAccept: (session) => _moveSession(session, dayIndex, hour),
+      builder: (context, candidateData, rejectedData) {
+        final isOver = candidateData.isNotEmpty;
+
+        if (sessionsInHour.isNotEmpty) {
+          return Container(
+            height: rowHeight,
+            decoration: decoration.copyWith(
+              color: isOver ? AppColors.primaryYellow.withOpacity(0.1) : null,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: sessionsInHour.map((s) {
+                final title = (s['title'] ?? '').toString();
+                final colorStr = s['color']?.toString().replaceFirst('#', '0xFF') ?? '0xFFFACC15';
+                
+                final sessionWidget = Container(
                   margin: const EdgeInsets.all(1),
                   padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                   decoration: BoxDecoration(
                     color: Color(int.parse(colorStr)).withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Center(
                     child: Text(
@@ -308,24 +309,46 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
                       textAlign: TextAlign.center,
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.w700),
                     ),
                   ),
-                ),
+                );
+
+                return Expanded(
+                  child: LongPressDraggable<Map<String, dynamic>>(
+                    data: s,
+                    feedback: SizedBox(
+                      width: colWidth * 0.8,
+                      height: rowHeight * 0.8,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Opacity(opacity: 0.7, child: sessionWidget),
+                      ),
+                    ),
+                    childWhenDragging: Opacity(opacity: 0.3, child: sessionWidget),
+                    child: GestureDetector(
+                      onTap: () => _showSessionDetails(s),
+                      child: sessionWidget,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        } else {
+          return InkWell(
+            onTap: () => _showEmptySlotOptions(dayIndex, hour),
+            child: Container(
+              height: rowHeight,
+              decoration: decoration.copyWith(
+                color: isOver ? AppColors.primaryYellow.withOpacity(0.2) : null,
               ),
-            );
-          }).toList(),
-        ),
-      );
-    } else {
-      return InkWell(
-        onTap: () => _showEmptySlotOptions(dayIndex, hour),
-        child: Container(
-          height: rowHeight,
-          decoration: decoration,
-        ),
-      );
-    }
+              child: isOver ? const Icon(Icons.add_circle_outline, color: AppColors.primaryYellow, size: 20) : null,
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _showDayOptions(int dayIndex) {
@@ -366,12 +389,12 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
         expand: false,
         builder: (context, scrollController) => _EditSessionForm(
           session: session,
-          onUpdate: (newData, isSeries) async {
-            await _handleUpdate(session, newData, isSeries);
+          onUpdate: (newData) async {
+            await _handleUpdate(session, newData);
             _fetchTemplateSessions(); // Refresh grid
           },
-          onDelete: (isSeries) async {
-            await _handleDelete(session, isSeries);
+          onDelete: () async {
+            await _handleDelete(session);
             _fetchTemplateSessions(); // Refresh grid
           },
         ),
@@ -379,60 +402,34 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
     );
   }
 
-  Future<void> _handleUpdate(Map<String, dynamic> session, Map<String, dynamic> newData, bool isSeries) async {
+  Future<void> _handleUpdate(Map<String, dynamic> session, Map<String, dynamic> newData) async {
     try {
       final String sessionId = session['id'];
-      final String? templateId = session['template_id'];
 
-      // Check if title, color or trainer actually changed
-      final bool basicFieldsChanged = 
-          session['title'] != newData['title'] || 
-          session['color'] != newData['color'] || 
-          session['trainer_id'] != newData['trainer_id'];
+      // Update basic fields
+      await _supabase.from('class_sessions').update({
+        'title': newData['title'],
+        'color': newData['color'],
+        'trainer_id': newData['trainer_id'],
+      }).eq('id', sessionId);
 
-      if (basicFieldsChanged) {
-        // Update basic fields
-        var query = _supabase.from('class_sessions').update({
-          'title': newData['title'],
-          'color': newData['color'],
-          'trainer_id': newData['trainer_id'],
-        });
-
-        if (isSeries) {
-          final searchId = templateId ?? sessionId;
-          await query.or('template_id.eq.$searchId,id.eq.$searchId');
-        } else {
-          await query.eq('id', sessionId);
-        }
-      }
-
-      // Sync members for THIS specific session (standard behavior)
+      // Sync members for this session
       if (newData.containsKey('selectedMemberIds')) {
         final List<String> memberIds = List<String>.from(newData['selectedMemberIds']);
         await _syncSessionMembers(sessionId, memberIds);
       }
 
-      CustomSnackBar.showSuccess(context, isSeries ? 'Tüm seri başarıyla güncellendi!' : 'Ders güncellendi.');
+      CustomSnackBar.showSuccess(context, 'Ders güncellendi.');
     } catch (e) {
       CustomSnackBar.showError(context, 'Güncelleme sırasında hata oluştu: $e');
     }
   }
 
-  Future<void> _handleDelete(Map<String, dynamic> session, bool isSeries) async {
+  Future<void> _handleDelete(Map<String, dynamic> session) async {
     try {
       final String sessionId = session['id'];
-      final String? templateId = session['template_id'];
-      
-      var query = _supabase.from('class_sessions').delete();
-      
-      if (isSeries) {
-        final searchId = templateId ?? sessionId;
-        await query.or('template_id.eq.$searchId,id.eq.$searchId');
-      } else {
-        await query.eq('id', sessionId);
-      }
-      
-      CustomSnackBar.showSuccess(context, isSeries ? 'Tüm seri silindi.' : 'Ders silindi.');
+      await _supabase.from('class_sessions').delete().eq('id', sessionId);
+      CustomSnackBar.showSuccess(context, 'Ders silindi.');
     } catch (e) {
       CustomSnackBar.showError(context, 'Silme sırasında hata oluştu: $e');
     }
@@ -455,8 +452,8 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
 
 class _EditSessionForm extends StatefulWidget {
   final Map<String, dynamic> session;
-  final Function(Map<String, dynamic> newData, bool isSeries) onUpdate;
-  final Function(bool isSeries) onDelete;
+  final Function(Map<String, dynamic> newData) onUpdate;
+  final Function() onDelete;
 
   const _EditSessionForm({
     required this.session,
@@ -602,31 +599,16 @@ class _EditSessionFormState extends State<_EditSessionForm> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: CustomButton(
-                  text: 'Güncelle',
-                  onPressed: () => _submit(isSeries: false),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: CustomButton(
-                  text: 'Seriyi Güncelle',
-                  backgroundColor: AppColors.primaryYellow.withOpacity(0.2),
-                  foregroundColor: AppColors.primaryYellow,
-                  onPressed: () => _submit(isSeries: true),
-                ),
-              ),
-            ],
+          CustomButton(
+            text: 'Güncelle',
+            onPressed: () => _submit(),
           ),
         ],
       ),
     );
   }
 
-  void _submit({required bool isSeries}) {
+  void _submit() {
     String finalTitle = _titleController.text;
     
     // Auto-generate title if it's currently "Ders" or empty
@@ -647,7 +629,7 @@ class _EditSessionFormState extends State<_EditSessionForm> {
       'color': _selectedColor,
       'trainer_id': _selectedTrainerId,
       'selectedMemberIds': _selectedMemberIds,
-    }, isSeries);
+    });
     Navigator.pop(context);
   }
 
@@ -657,24 +639,16 @@ class _EditSessionFormState extends State<_EditSessionForm> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surfaceDark,
         title: const Text('Dersi Sil', style: TextStyle(color: Colors.white)),
-        content: const Text('Bu dersi veya tüm seriyi silmek istediğinize emin misiniz?', style: TextStyle(color: Colors.white70)),
+        content: const Text('Bu dersi silmek istediğinize emin misiniz?', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç', style: TextStyle(color: Colors.white))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              widget.onDelete(false);
+              widget.onDelete();
               Navigator.pop(context);
             }, 
-            child: const Text('Yalnızca Bu', style: TextStyle(color: Colors.red)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onDelete(true);
-              Navigator.pop(context);
-            }, 
-            child: const Text('Tüm Seri', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text('Sil', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -796,54 +770,21 @@ class _AddSessionFormState extends State<_AddSessionForm> {
       };
 
       final insertedTemplate = await _supabase.from('class_sessions').insert(templateData).select().single();
-      final realTemplateId = insertedTemplate['id'];
-
-      // 3. PROPAGATION FIX: Start 52 weeks from the CURRENT week's Monday
-      final now = DateTime.now();
-      final currentMonday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-      
-      final propagationStart = DateTime(
-        currentMonday.year,
-        currentMonday.month,
-        currentMonday.day + widget.dayIndex,
-        _startTime.hour,
-        _startTime.minute
-      );
-      final propagationEnd = propagationStart.add(Duration(minutes: (endTimeTemplate.difference(startTimeTemplate).inMinutes)));
-
-      List<Map<String, dynamic>> copies = [];
-      for (int i = 0; i < 52; i++) {
-        final copyStart = propagationStart.add(Duration(days: i * 7));
-        final copyEnd = propagationEnd.add(Duration(days: i * 7));
-        copies.add({
-          'title': finalTitle,
-          'start_time': copyStart.toUtc().toIso8601String(),
-          'end_time': copyEnd.toUtc().toIso8601String(),
-          'trainer_id': widget.trainerId,
-          'color': finalColor,
-          'status': 'scheduled',
-          'is_template': false,
-          'template_id': realTemplateId
-        });
-      }
-
-      final insertedCopies = await _supabase.from('class_sessions').insert(copies).select();
 
       // Insert members if selected
       if (_selectedMemberIds.isNotEmpty) {
          List<Map<String, dynamic>> memberInserts = [];
          for (var mId in _selectedMemberIds) {
-            memberInserts.add({'class_id': insertedTemplate['id'], 'member_id': mId});
-         }
-         for (var copy in insertedCopies) {
-            for (var mId in _selectedMemberIds) {
-               memberInserts.add({'class_id': copy['id'], 'member_id': mId});
-            }
+            memberInserts.add({
+              'class_id': insertedTemplate['id'], 
+              'member_id': mId,
+              'status': 'booked'
+            });
          }
          await _supabase.from('class_enrollments').insert(memberInserts);
       }
 
-      CustomSnackBar.showSuccess(context, 'Ders 52 haftaya başarıyla eklendi!');
+      CustomSnackBar.showSuccess(context, 'Ders başarıyla eklendi!');
       widget.onSaved();
     } catch (e) {
       debugPrint('Save Error: $e');
