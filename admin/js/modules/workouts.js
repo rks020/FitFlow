@@ -105,7 +105,6 @@ function renderExercises(data) {
         <div class="exercise-grid">
             ${data.map(ex => `
                 <div class="exercise-card">
-                    <div class="exercise-icon">💪</div>
                     <div class="exercise-info">
                         <h4>${ex.name}</h4>
                         <p>${ex.target_muscle}</p>
