@@ -16,12 +16,13 @@ export async function loadMembers() {
             <input type="text" id="member-search" placeholder="Üye ara...">
         </div>
 
-        <!-- Filter Buttons -->
-        <div class="filter-tabs" style="display: flex; gap: 15px; margin-bottom: 30px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
-            <button class="btn btn-filter active" data-filter="my_members" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Üyelerim</button>
-            <button class="btn btn-filter" data-filter="multisport" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Multisport</button>
-            <button class="btn btn-filter" data-filter="meditopia" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Meditopia</button>
-            <button class="btn btn-filter" data-filter="all" style="flex:1; padding: 16px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s ease;">Tümü</button>
+        <div class="filter-tabs" style="display: flex; gap: 8px; margin-bottom: 30px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">
+            <button class="btn btn-filter active" data-filter="my_members" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Üyelerim</button>
+            <button class="btn btn-filter" data-filter="active" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Aktif</button>
+            <button class="btn btn-filter" data-filter="passive" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Pasif</button>
+            <button class="btn btn-filter" data-filter="multisport" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Multisport</button>
+            <button class="btn btn-filter" data-filter="meditopia" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Meditopia</button>
+            <button class="btn btn-filter" data-filter="all" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Tümü</button>
         </div>
 
         <div class="members-list" id="members-list">
@@ -29,12 +30,24 @@ export async function loadMembers() {
         </div>
     `;
 
+    // Initialize Filter from Query
+    if (window.currentQuery === 'status=active') {
+        currentFilter = 'active';
+    } else if (window.currentQuery === 'status=passive') {
+        currentFilter = 'passive';
+    } else {
+        currentFilter = 'my_members';
+    }
+
     // Filter Click Handlers
     document.querySelectorAll('.btn-filter').forEach(btn => {
         btn.addEventListener('click', (e) => {
             // Update UI
-            document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active', 'btn-primary'));
-            document.querySelectorAll('.btn-filter').forEach(b => b.style.backgroundColor = '#333');
+            document.querySelectorAll('.btn-filter').forEach(b => {
+                b.classList.remove('active');
+                b.style.backgroundColor = 'transparent';
+                b.style.color = '#888';
+            });
 
             e.target.classList.add('active');
             e.target.style.backgroundColor = '#FFD700';
@@ -46,11 +59,13 @@ export async function loadMembers() {
         });
     });
 
-    // Initialize Filter UI (Default My Members)
-    const defaultBtn = document.querySelector('[data-filter="my_members"]');
-    if (defaultBtn) {
-        defaultBtn.style.backgroundColor = '#FFD700';
-        defaultBtn.style.color = 'black';
+    // Apply Initial Filter UI
+    const startBtn = document.querySelector(`[data-filter="${currentFilter}"]`);
+    if (startBtn) {
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        startBtn.classList.add('active');
+        startBtn.style.backgroundColor = '#FFD700';
+        startBtn.style.color = 'black';
     }
 
     // Load members
@@ -97,6 +112,10 @@ async function loadMembersList(searchQuery = '') {
         // Apply Filters
         if (currentFilter === 'my_members') {
             query = query.eq('trainer_id', user.id);
+        } else if (currentFilter === 'active') {
+            query = query.eq('is_active', true);
+        } else if (currentFilter === 'passive') {
+            query = query.eq('is_active', false);
         } else if (currentFilter === 'multisport') {
             query = query.eq('is_multisport', true);
             // If Trainer, verify visibility rule

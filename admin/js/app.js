@@ -70,7 +70,7 @@ function setupNavigation() {
 }
 
 // Navigate to Page
-function navigateTo(page) {
+function navigateTo(page, query = '') {
     // Update active nav item
     document.querySelectorAll('.nav-item').forEach(item => {
         if (item.getAttribute('data-page') === page) {
@@ -107,23 +107,25 @@ function navigateTo(page) {
         pageLoaders[page]();
     }
 
-    // Update URL hash
-    window.location.hash = page;
+    // Update URL hash WITHOUT triggering a loop if possible, or just ensure consistency
+    const targetHash = query ? `${page}?${query}` : page;
+    if (window.location.hash.slice(1) !== targetHash) {
+        window.location.hash = targetHash;
+    }
 }
 
 // Handle hash navigation
 function handleNavigation() {
-    // Split hash into page and query string (e.g. #announcements?action=new -> page: announcements, query: ?action=new)
-    const [page, query] = (window.location.hash.slice(1) || 'dashboard').split('?');
+    const hash = window.location.hash.slice(1) || 'dashboard';
+    const [page, query] = hash.split('?');
 
     console.log('Navigating to:', page, 'Query:', query);
+    
+    // Store query globally for modules to access
+    window.currentQuery = query;
 
     if (pageLoaders[page]) {
-        // We can pass the query string to the loader if needed, or just let the loader check URL
-        // But our init architecture is simple, so we just load the page.
-        // We might need to store the query to be accessed by the module
-        window.currentQuery = query;
-        navigateTo(page);
+        navigateTo(page, query);
     } else {
         console.warn('No loader found for page:', page);
         navigateTo('dashboard');

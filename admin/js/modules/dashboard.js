@@ -13,14 +13,14 @@ export async function loadDashboard() {
                     <p class="stat-value" id="total-members">-</p>
                 </div>
             </div>
-            <div class="stat-card clickable-card" onclick="window.location.hash='members'">
+            <div class="stat-card clickable-card" onclick="window.location.hash='members?status=active'">
                 <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">✔️</div>
                 <div class="stat-content">
                     <h3>Aktif Üye</h3>
                     <p class="stat-value" id="active-members" style="color: #10b981;">-</p>
                 </div>
             </div>
-            <div class="stat-card clickable-card" onclick="window.location.hash='members'">
+            <div class="stat-card clickable-card" onclick="window.location.hash='members?status=passive'">
                 <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">✖️</div>
                 <div class="stat-content">
                     <h3>Pasif Üye</h3>
