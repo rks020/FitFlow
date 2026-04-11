@@ -801,7 +801,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
                       totalCount: _totalMembers,
                       activeCount: _activeMembers,
                       passiveCount: _passiveMembers,
-                      backgroundImage: 'assets/images/stats/members_bg.jpg',
+                      backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
                       onTap: () => widget.onNavigate(1),
                     ),
                     StatCard(
