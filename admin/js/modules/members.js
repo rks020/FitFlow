@@ -3,6 +3,15 @@ import { showToast, turkishToLower } from '../utils.js';
 
 let currentFilter = 'my_members'; // my_members, multisport, meditopia, all
 
+const DEFAULT_FILTERS = [
+    { id: 'my_members', label: 'Üyelerim' },
+    { id: 'multisport', label: 'Multisport' },
+    { id: 'meditopia', label: 'Meditopia' },
+    { id: 'active', label: 'Aktif' },
+    { id: 'passive', label: 'Pasif' },
+    { id: 'all', label: 'Tümü' }
+];
+
 export async function loadMembers() {
     const contentArea = document.getElementById('content-area');
 
@@ -16,19 +25,16 @@ export async function loadMembers() {
             <input type="text" id="member-search" placeholder="Üye ara...">
         </div>
 
-        <div class="filter-tabs" style="display: flex; gap: 8px; margin-bottom: 30px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">
-            <button class="btn btn-filter active" data-filter="my_members" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Üyelerim</button>
-            <button class="btn btn-filter" data-filter="active" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Aktif</button>
-            <button class="btn btn-filter" data-filter="passive" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Pasif</button>
-            <button class="btn btn-filter" data-filter="multisport" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Multisport</button>
-            <button class="btn btn-filter" data-filter="meditopia" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Meditopia</button>
-            <button class="btn btn-filter" data-filter="all" style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; background: transparent; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease;">Tümü</button>
+        <div class="filter-tabs" id="filter-tabs" style="display: flex; gap: 8px; margin-bottom: 30px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">
+            <!-- Filters will be injected here -->
         </div>
 
         <div class="members-list" id="members-list">
             <p>Yükleniyor...</p>
         </div>
     `;
+
+    renderFilters();
 
     // Initialize Filter from Query
     if (window.currentQuery === 'status=active') {
@@ -39,34 +45,7 @@ export async function loadMembers() {
         currentFilter = 'my_members';
     }
 
-    // Filter Click Handlers
-    document.querySelectorAll('.btn-filter').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            // Update UI
-            document.querySelectorAll('.btn-filter').forEach(b => {
-                b.classList.remove('active');
-                b.style.backgroundColor = 'transparent';
-                b.style.color = '#888';
-            });
-
-            e.target.classList.add('active');
-            e.target.style.backgroundColor = '#FFD700';
-            e.target.style.color = 'black';
-
-            // Update Logic
-            currentFilter = e.target.getAttribute('data-filter');
-            loadMembersList(document.getElementById('member-search').value);
-        });
-    });
-
-    // Apply Initial Filter UI
-    const startBtn = document.querySelector(`[data-filter="${currentFilter}"]`);
-    if (startBtn) {
-        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
-        startBtn.classList.add('active');
-        startBtn.style.backgroundColor = '#FFD700';
-        startBtn.style.color = 'black';
-    }
+    // Apply Initial Filter UI (handled in renderFilters)
 
     // Load members
     await loadMembersList();
@@ -465,3 +444,80 @@ window.deleteMember = async (id) => {
         }
     });
 };
+let dragSrcEl = null;
+
+function getDragAfterElement(container, x) {
+    const draggableElements = [...container.querySelectorAll('.btn-filter:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = x - box.left - box.width / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function renderFilters() {
+    const tabsContainer = document.getElementById('filter-tabs');
+    if (!tabsContainer) return;
+
+    let filters = [...DEFAULT_FILTERS];
+    const savedOrder = localStorage.getItem('member_filters_order');
+    if (savedOrder) {
+        try {
+            const orderIds = JSON.parse(savedOrder);
+            filters.sort((a, b) => {
+                const indexA = orderIds.indexOf(a.id);
+                const indexB = orderIds.indexOf(b.id);
+                return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+            });
+        } catch (e) {}
+    }
+
+    tabsContainer.innerHTML = filters.map(f => `
+        <button class="btn btn-filter ${currentFilter === f.id ? 'active' : ''}" 
+                data-filter="${f.id}" 
+                draggable="true"
+                style="flex:1; min-width: 100px; padding: 12px; border-radius: 12px; border: none; 
+                       background: ${currentFilter === f.id ? '#FFD700' : 'transparent'}; 
+                       color: ${currentFilter === f.id ? 'black' : '#888'}; 
+                       font-weight: 600; font-size: 14px; cursor: grab; transition: background 0.3s ease, color 0.3s ease;">
+            ${f.label}
+        </button>
+    `).join('');
+
+    tabsContainer.querySelectorAll('.btn-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilter = btn.getAttribute('data-filter');
+            renderFilters();
+            loadMembersList(document.getElementById('member-search').value);
+        });
+
+        btn.addEventListener('dragstart', () => {
+            btn.classList.add('dragging');
+            dragSrcEl = btn;
+        });
+
+        btn.addEventListener('dragend', () => {
+            btn.classList.remove('dragging');
+            const newOrder = Array.from(tabsContainer.querySelectorAll('.btn-filter'))
+                .map(b => b.getAttribute('data-filter'));
+            localStorage.setItem('member_filters_order', JSON.stringify(newOrder));
+        });
+    });
+
+    tabsContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(tabsContainer, e.clientX);
+        const dragging = document.querySelector('.dragging');
+        if (dragging) {
+            if (afterElement == null) {
+                tabsContainer.appendChild(dragging);
+            } else {
+                tabsContainer.insertBefore(dragging, afterElement);
+            }
+        }
+    });
+}

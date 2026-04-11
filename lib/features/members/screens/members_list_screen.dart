@@ -12,6 +12,7 @@ import '../../../data/repositories/profile_repository.dart'; // Added
 
 import '../../../shared/widgets/ambient_background.dart';
 import '../../../core/utils/string_utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MembersListScreen extends StatefulWidget {
   final Profile? trainer;
@@ -27,7 +28,15 @@ class _MembersListScreenState extends State<MembersListScreen> {
   
   List<Member> _members = [];
   List<Member> _filteredMembers = [];
-  String _filterType = 'my_members'; // 'my_members', 'multisport', 'meditopia', 'all'
+  String _filterType = 'my_members';
+  List<Map<String, String>> _filterItems = [
+    {'id': 'my_members', 'label': 'Üyelerim'},
+    {'id': 'multisport', 'label': 'Multisport'},
+    {'id': 'meditopia', 'label': 'Meditopia'},
+    {'id': 'active', 'label': 'Aktif'},
+    {'id': 'passive', 'label': 'Pasif'},
+    {'id': 'all', 'label': 'Tümü'},
+  ];
   bool _isLoading = true;
 
   @override
@@ -37,9 +46,38 @@ class _MembersListScreenState extends State<MembersListScreen> {
     if (widget.trainer != null) {
       _filterType = 'all';
     }
+    _loadFilterOrder();
     _loadCurrentUserProfile(); // Added
     _loadMembers();
     _searchController.addListener(_filterMembers);
+  }
+
+  Future<void> _loadFilterOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedOrder = prefs.getStringList('member_filters_order');
+    if (savedOrder != null) {
+      setState(() {
+        final newItems = <Map<String, String>>[];
+        for (var id in savedOrder) {
+          final item = _filterItems.firstWhere((element) => element['id'] == id, orElse: () => {});
+          if (item.isNotEmpty) {
+            newItems.add(item);
+          }
+        }
+        // Add any missing items (e.g. if we add new filters later)
+        for (var item in _filterItems) {
+          if (!savedOrder.contains(item['id'])) {
+            newItems.add(item);
+          }
+        }
+        _filterItems = newItems;
+      });
+    }
+  }
+
+  Future<void> _saveFilterOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('member_filters_order', _filterItems.map((e) => e['id']!).toList());
   }
 
   Profile? _currentUserProfile;
@@ -218,24 +256,40 @@ class _MembersListScreenState extends State<MembersListScreen> {
                   ),
                   const SizedBox(height: 12),
                   // Filter Toggle
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        if (widget.trainer == null)
-                          _buildFilterChip('Üyelerim', 'my_members'),
-                        if (widget.trainer == null) const SizedBox(width: 8),
-                        _buildFilterChip('Aktif', 'active'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Pasif', 'passive'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Multisport', 'multisport'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Meditopia', 'meditopia'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Tümü', 'all'),
-                      ],
+                  SizedBox(
+                    height: 45,
+                    child: ReorderableListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(bottom: 4),
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (newIndex > oldIndex) newIndex -= 1;
+                          final item = _filterItems.removeAt(oldIndex);
+                          _filterItems.insert(newIndex, item);
+                          _saveFilterOrder();
+                        });
+                      },
+                      proxyDecorator: (child, index, animation) {
+                        return Material(
+                          color: Colors.transparent,
+                          child: child,
+                        );
+                      },
+                      children: _filterItems.map((item) {
+                        final id = item['id']!;
+                        final label = item['label']!;
+                        
+                        // "Üyelerim" visibility check logic
+                        if (id == 'my_members' && widget.trainer != null) {
+                          return Container(key: ValueKey(id));
+                        }
+
+                        return Padding(
+                          key: ValueKey(id),
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildFilterChip(label, id),
+                        );
+                      }).toList(),
                     ),
                   ),
                 ],
