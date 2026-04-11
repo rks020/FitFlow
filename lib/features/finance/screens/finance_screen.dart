@@ -403,67 +403,163 @@ class _FinanceScreenState extends State<FinanceScreen> {
 }
 
   Widget _buildDateFilters() {
-    return Column(
+    return Row(
       children: [
         // Year selection
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: _years.reversed.map((year) {
-              final isSelected = _selectedYear == year;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(year.toString()),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _selectedYear = year);
-                      _loadData();
-                    }
-                  },
-                  backgroundColor: AppColors.surfaceDark,
-                  selectedColor: AppColors.primaryYellow,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.black : Colors.white,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              );
-            }).toList(),
+        Expanded(
+          child: _buildSelector(
+            label: 'YIL SEÇİMİ',
+            value: _selectedYear.toString(),
+            onTap: () => _showYearPicker(),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(width: 12),
         // Month selection
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: List.generate(12, (index) {
-              final monthIdx = index + 1;
-              final isSelected = _selectedMonth == monthIdx;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(_months[index]),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _selectedMonth = monthIdx);
-                      _loadData();
-                    }
-                  },
-                  backgroundColor: AppColors.surfaceDark,
-                  selectedColor: AppColors.primaryYellow,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.black : Colors.white,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              );
-            }),
+        Expanded(
+          child: _buildSelector(
+            label: 'AY SEÇİMİ',
+            value: _months[_selectedMonth - 1],
+            onTap: () => _showMonthPicker(),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSelector({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppColors.primaryYellow,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDark,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.textTertiary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showYearPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildPickerSheet(
+        title: 'Yıl Seçin',
+        items: _years.reversed.toList(),
+        selectedValue: _selectedYear,
+        onSelected: (year) {
+          setState(() => _selectedYear = year);
+          _loadData();
+        },
+      ),
+    );
+  }
+
+  void _showMonthPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildPickerSheet(
+        title: 'Ay Seçin',
+        items: List.generate(12, (index) => index + 1),
+        itemLabel: (month) => _months[month - 1],
+        selectedValue: _selectedMonth,
+        onSelected: (month) {
+          setState(() => _selectedMonth = month);
+          _loadData();
+        },
+      ),
+    );
+  }
+
+  Widget _buildPickerSheet<T>({
+    required String title,
+    required List<T> items,
+    required T selectedValue,
+    required Function(T) onSelected,
+    String Function(T)? itemLabel,
+  }) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.title3.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final isSelected = item == selectedValue;
+                final label = itemLabel != null ? itemLabel(item) : item.toString();
+
+                return ListTile(
+                  title: Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? AppColors.primaryYellow : Colors.white,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  onTap: () {
+                    onSelected(item);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
