@@ -92,23 +92,18 @@ class _MembersListScreenState extends State<MembersListScreen> {
           if (member.trainerId != widget.trainer!.id) return false;
         }
 
-        // Apply Local Filters (Only if NOT viewing a specific trainer)
-        if (widget.trainer == null) {
-          if (_filterType == 'my_members') {
-             final userId = Supabase.instance.client.auth.currentUser?.id;
-             if (member.trainerId != userId) return false;
-          } else if (_filterType == 'multisport') {
-             if (!member.isMultisport) return false;
-          } else if (_filterType == 'meditopia') {
-             if (!member.isMeditopia) return false;
-          }
-        } else {
-          // If viewing specific trainer, we might still want to filter by multisport
-          if (_filterType == 'multisport') {
-            if (!member.isMultisport) return false;
-          } else if (_filterType == 'meditopia') {
-            if (!member.isMeditopia) return false;
-          }
+        // Apply Local Filters
+        if (_filterType == 'my_members' && widget.trainer == null) {
+          final userId = Supabase.instance.client.auth.currentUser?.id;
+          if (member.trainerId != userId) return false;
+        } else if (_filterType == 'active') {
+          if (!member.isActive) return false;
+        } else if (_filterType == 'passive') {
+          if (member.isActive) return false;
+        } else if (_filterType == 'multisport') {
+          if (!member.isMultisport) return false;
+        } else if (_filterType == 'meditopia') {
+          if (!member.isMeditopia) return false;
         }
         
         // Apply search filter
@@ -227,129 +222,25 @@ class _MembersListScreenState extends State<MembersListScreen> {
                   ),
                   const SizedBox(height: 12),
                   // Filter Toggle
-                  Row(
-                    children: [
-                      if (widget.trainer == null)
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _filterType = 'my_members';
-                              _filterMembers();
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _filterType == 'my_members'
-                                  ? AppColors.primaryYellow
-                                  : AppColors.surfaceDark,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Üyelerim',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.callout.copyWith(
-                                color: _filterType == 'my_members'
-                                    ? Colors.black
-                                    : AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (widget.trainer == null) const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _filterType = 'multisport';
-                              _filterMembers();
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _filterType == 'multisport'
-                                  ? AppColors.primaryYellow
-                                  : AppColors.surfaceDark,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Multisport',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.callout.copyWith(
-                                color: _filterType == 'multisport'
-                                    ? Colors.black
-                                    : AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _filterType = 'meditopia';
-                              _filterMembers();
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _filterType == 'meditopia'
-                                  ? AppColors.primaryYellow
-                                  : AppColors.surfaceDark,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Meditopia',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.callout.copyWith(
-                                color: _filterType == 'meditopia'
-                                    ? Colors.black
-                                    : AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _filterType = 'all';
-                              _filterMembers();
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _filterType == 'all'
-                                  ? AppColors.primaryYellow
-                                  : AppColors.surfaceDark,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Tümü',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.callout.copyWith(
-                                color: _filterType == 'all'
-                                    ? Colors.black
-                                    : AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        if (widget.trainer == null)
+                          _buildFilterChip('Üyelerim', 'my_members'),
+                        if (widget.trainer == null) const SizedBox(width: 8),
+                        _buildFilterChip('Aktif', 'active'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Pasif', 'passive'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Multisport', 'multisport'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Meditopia', 'meditopia'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Tümü', 'all'),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -424,6 +315,35 @@ class _MembersListScreenState extends State<MembersListScreen> {
         icon: const Icon(Icons.add_rounded),
         label: Text('Üye Ekle', style: AppTextStyles.headline.copyWith(color: Colors.black)),
       ) : null,
+    );
+  }
+
+  Widget _buildFilterChip(String label, String type) {
+    final isSelected = _filterType == type;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _filterType = type;
+          _filterMembers();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryYellow : AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primaryYellow : AppColors.glassBorder,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.callout.copyWith(
+            color: isSelected ? Colors.black : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 

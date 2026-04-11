@@ -13,6 +13,7 @@ import '../../../data/models/class_session.dart';
 import '../../classes/screens/class_detail_screen.dart';
 import '../../classes/screens/class_schedule_screen.dart';
 import '../widgets/stat_card.dart';
+import '../widgets/member_stat_card.dart';
 import '../../../shared/widgets/glass_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/member_repository.dart';
@@ -371,6 +372,7 @@ class _QuickActionData {
 class _DashboardHomeState extends State<_DashboardHome> {
   int _totalMembers = 0;
   int _activeMembers = 0;
+  int _passiveMembers = 0;
   int _totalMeasurements = 0;
   int _todayClasses = 0;
   int _onlineTrainersCount = 0;
@@ -584,7 +586,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
         setState(() {
           _totalMembers = totalMembers;
           _activeMembers = activeMembers;
-          _activeMembers = activeMembers;
+          _passiveMembers = totalMembers - activeMembers;
           // _totalMeasurements = totalMeasurements;
           _todayClasses = todayClasses;
           _onlineTrainersCount = trainersCount;
@@ -795,13 +797,12 @@ class _DashboardHomeState extends State<_DashboardHome> {
                   childAspectRatio: 1.35,
                 ),
                   delegate: SliverChildListDelegate([
-                    StatCard(
-                      title: 'Toplam Üye',
-                      value: '$_totalMembers',
-                      icon: Icons.people_rounded,
-                      color: AppColors.accentBlue,
-                      onTap: () => widget.onNavigate(1), // Navigate to Members
-                      backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
+                    MemberStatCard(
+                      totalCount: _totalMembers,
+                      activeCount: _activeMembers,
+                      passiveCount: _passiveMembers,
+                      backgroundImage: 'assets/images/stats/members_bg.jpg',
+                      onTap: () => widget.onNavigate(1),
                     ),
                     StatCard(
                       title: 'Duyurular',
