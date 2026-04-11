@@ -13,6 +13,20 @@ export async function loadDashboard() {
                     <p class="stat-value" id="total-members">-</p>
                 </div>
             </div>
+            <div class="stat-card clickable-card" onclick="window.location.hash='members'">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">✔️</div>
+                <div class="stat-content">
+                    <h3>Aktif Üye</h3>
+                    <p class="stat-value" id="active-members" style="color: #10b981;">-</p>
+                </div>
+            </div>
+            <div class="stat-card clickable-card" onclick="window.location.hash='members'">
+                <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">✖️</div>
+                <div class="stat-content">
+                    <h3>Pasif Üye</h3>
+                    <p class="stat-value" id="passive-members" style="color: #ef4444;">-</p>
+                </div>
+            </div>
             <div class="stat-card clickable-card" onclick="window.location.hash='trainers'">
                 <div class="stat-icon">💪</div>
                 <div class="stat-content">
@@ -177,24 +191,28 @@ async function loadStatistics() {
         const orgId = profile.organization_id;
 
         // Count members
-        const { count: membersCount } = await supabaseClient
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', orgId);
-
-        // Count trainers
-        const { count: trainersCount } = await supabaseClient
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', orgId)
-            .eq('role', 'trainer');
+        const [
+            { count: totalCount },
+            { count: activeCount },
+            { count: passiveCount },
+            { count: trainersCount }
+        ] = await Promise.all([
+            supabaseClient.from('members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId),
+            supabaseClient.from('members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
+            supabaseClient.from('members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', false),
+            supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('role', 'trainer')
+        ]);
 
         // Update UI
-        const membersElement = document.getElementById('total-members');
-        if (!membersElement) return; // Stop if user navigated away
+        const totalEl = document.getElementById('total-members');
+        const activeEl = document.getElementById('active-members');
+        const passiveEl = document.getElementById('passive-members');
+        const trainersEl = document.getElementById('total-trainers');
 
-        membersElement.textContent = membersCount || 0;
-        document.getElementById('total-trainers').textContent = trainersCount || 0;
+        if (totalEl) totalEl.textContent = totalCount || 0;
+        if (activeEl) activeEl.textContent = activeCount || 0;
+        if (passiveEl) passiveEl.textContent = passiveCount || 0;
+        if (trainersEl) trainersEl.textContent = trainersCount || 0;
 
     } catch (error) {
         console.error('Error loading statistics:', error);
