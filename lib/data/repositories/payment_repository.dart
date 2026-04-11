@@ -30,11 +30,20 @@ class PaymentRepository {
         .toList();
   }
 
-  // Get all recent payments (for dashboard/finance screen)
-  Future<List<Payment>> getRecentPayments({int limit = 50}) async {
-    final response = await _client
+  // Get recent payments (with optional date range filter)
+  Future<List<Payment>> getRecentPayments({DateTime? start, DateTime? end, int limit = 50}) async {
+    var query = _client
         .from('payments')
-        .select('*, members(name, photo_url)')
+        .select('*, members(name, photo_url)');
+    
+    if (start != null) {
+      query = query.gte('date', start.toIso8601String());
+    }
+    if (end != null) {
+      query = query.lte('date', end.toIso8601String());
+    }
+    
+    final response = await query
         .order('date', ascending: false)
         .limit(limit);
     

@@ -24,27 +24,44 @@ class _FinanceScreenState extends State<FinanceScreen> {
   final _repository = PaymentRepository();
   bool _isLoading = true;
   List<Payment> _payments = [];
+  int _selectedYear = DateTime.now().year;
+  int _selectedMonth = DateTime.now().month;
+  
+  final List<String> _months = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ];
+
+  late final List<int> _years;
+
   Map<String, double> _monthlyStats = {
     'total': 0,
     'cash': 0,
     'card': 0,
     'transfer': 0,
+    'cash_count': 0,
+    'card_count': 0,
+    'transfer_count': 0,
   };
 
   @override
   void initState() {
     super.initState();
+    _years = List.generate(DateTime.now().year - 2024 + 2, (index) => 2024 + index);
     _loadData();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final payments = await _repository.getRecentPayments();
+      final startOfMonth = DateTime(_selectedYear, _selectedMonth, 1);
+      final endOfMonth = DateTime(_selectedYear, _selectedMonth + 1, 0, 23, 59, 59);
       
-      final now = DateTime.now();
-      final startOfMonth = DateTime(now.year, now.month, 1);
-      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+      final payments = await _repository.getRecentPayments(
+        start: startOfMonth,
+        end: endOfMonth,
+        limit: 100,
+      );
       
       final stats = await _repository.getIncomeReport(startOfMonth, endOfMonth);
 
@@ -169,6 +186,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
+                      // Year & Month Selection
+                      _buildDateFilters(),
+                      const SizedBox(height: 20),
+
                       // Monthly Summary Card
                       GlassCard(
                         padding: const EdgeInsets.all(20),
@@ -176,7 +197,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Bu Ay Ödeme Dağılımı',
+                              '${_months[_selectedMonth - 1]} $_selectedYear Özet',
                               style: AppTextStyles.title3.copyWith(
                                 color: AppColors.primaryYellow,
                                 fontWeight: FontWeight.bold,
@@ -380,6 +401,71 @@ class _FinanceScreenState extends State<FinanceScreen> {
     ),
   );
 }
+
+  Widget _buildDateFilters() {
+    return Column(
+      children: [
+        // Year selection
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _years.reversed.map((year) {
+              final isSelected = _selectedYear == year;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(year.toString()),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedYear = year);
+                      _loadData();
+                    }
+                  },
+                  backgroundColor: AppColors.surfaceDark,
+                  selectedColor: AppColors.primaryYellow,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.black : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Month selection
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(12, (index) {
+              final monthIdx = index + 1;
+              final isSelected = _selectedMonth == monthIdx;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(_months[index]),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedMonth = monthIdx);
+                      _loadData();
+                    }
+                  },
+                  backgroundColor: AppColors.surfaceDark,
+                  selectedColor: AppColors.primaryYellow,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.black : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
 
   IconData _getPaymentIcon(PaymentType type) {
     switch (type) {

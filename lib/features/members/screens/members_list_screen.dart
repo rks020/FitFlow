@@ -189,35 +189,31 @@ class _MembersListScreenState extends State<MembersListScreen> {
                   const SizedBox(height: 16),
                   // Search Bar
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 50,
                     decoration: BoxDecoration(
                       color: AppColors.surfaceDark,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.glassBorder,
+                        color: AppColors.glassBorder.withOpacity(0.5),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
+                    child: TextField(
+                      controller: _searchController,
+                      style: AppTextStyles.body.copyWith(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Üye ara...',
+                        hintStyle: AppTextStyles.body.copyWith(
+                          color: AppColors.textTertiary,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: const Icon(
                           Icons.search_rounded,
                           color: AppColors.textSecondary,
+                          size: 22,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            style: AppTextStyles.body,
-                            decoration: InputDecoration(
-                              hintText: 'Üye ara...',
-                              hintStyle: AppTextStyles.body.copyWith(
-                                color: AppColors.textTertiary,
-                              ),
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                      ],
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
