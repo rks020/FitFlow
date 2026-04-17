@@ -153,14 +153,11 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        minChildSize: 0.5,
-        maxChildSize: 1.0,
-        expand: false,
-        builder: (_, __) => _AddSessionForm(
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: _AddSessionForm(
           dayIndex: dayIndex,
           startHour: hour,
           trainerId: _trainerId ?? _supabase.auth.currentUser!.id,
@@ -181,59 +178,6 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const double rowHeight = 60.0;
-    const double timeColWidth = 50.0;
-    const double fixedColWidth = 100.0;
-    // Izgara’nın toplam piksel boyutları (değişmez)
-    const double gridW = timeColWidth + 7 * fixedColWidth; // 750
-    const double gridH = 50.0 + 17 * rowHeight;            // 1070
-
-    // Izgara içeriği her iki modda da aynı sabit boyutla çizilir
-    Widget fixedGrid = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: timeColWidth,
-          child: Column(
-            children: [
-              Container(height: 50, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10)))),
-              for (int h = 7; h <= 23; h++)
-                Container(
-                  height: rowHeight,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
-                  ),
-                  child: Text('${h.toString().padLeft(2, '0')}:00', style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
-                ),
-            ],
-          ),
-        ),
-        for (int dayIndex = 0; dayIndex < 7; dayIndex++)
-          SizedBox(
-            width: fixedColWidth,
-            child: Column(
-              children: [
-                GestureDetector(
-                  onTap: () => _showDayOptions(dayIndex),
-                  child: Container(
-                    width: fixedColWidth,
-                    height: 50,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
-                    ),
-                    child: Text(_days[dayIndex], style: const TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                ),
-                for (int h = 7; h <= 23; h++)
-                  _buildGridCell(dayIndex, h, rowHeight, fixedColWidth),
-              ],
-            ),
-          ),
-      ],
-    );
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -253,27 +197,99 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
             : OrientationBuilder(
                 builder: (context, orientation) {
                   final isLandscape = orientation == Orientation.landscape;
+
                   return LayoutBuilder(
                     builder: (context, constraints) {
+                      const double timeColWidth = 50.0;
+                      const int numHours = 17; // 07:00 - 23:00
+                      const double headerHeight = 44.0;
+
+                      double colWidth;
+                      double rowHeight;
+
                       if (isLandscape) {
-                        // Landscape: FittedBox ile tüm ızgara ekrana tam sığsın
-                        // Herhangi bir kaydırma veya zoom yok
+                        // Landscape: ekrana tam sığacak şekilde dinamik hesapla
+                        colWidth = (constraints.maxWidth - timeColWidth) / 7;
+                        rowHeight = (constraints.maxHeight - headerHeight) / numHours;
+                      } else {
+                        // Portrait: sabit boyutlar, scroll+zoom aktif
+                        colWidth = 100.0;
+                        rowHeight = 60.0;
+                      }
+
+                      Widget grid = Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Saat sütunu
+                          SizedBox(
+                            width: timeColWidth,
+                            child: Column(
+                              children: [
+                                Container(
+                                  height: headerHeight,
+                                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10))),
+                                ),
+                                for (int h = 7; h <= 23; h++)
+                                  Container(
+                                    height: rowHeight,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
+                                    ),
+                                    child: Text(
+                                      '${h.toString().padLeft(2, '0')}:00',
+                                      style: AppTextStyles.caption2.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontSize: isLandscape ? 9 : null,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          // Gün sütunları
+                          for (int dayIndex = 0; dayIndex < 7; dayIndex++)
+                            SizedBox(
+                              width: colWidth,
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _showDayOptions(dayIndex),
+                                    child: Container(
+                                      width: colWidth,
+                                      height: headerHeight,
+                                      alignment: Alignment.center,
+                                      decoration: const BoxDecoration(
+                                        border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
+                                      ),
+                                      child: Text(
+                                        _days[dayIndex],
+                                        style: TextStyle(
+                                          color: AppColors.primaryYellow,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isLandscape ? 10 : 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  for (int h = 7; h <= 23; h++)
+                                    _buildGridCell(dayIndex, h, rowHeight, colWidth),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+
+                      if (isLandscape) {
+                        // Landscape: tam ekran, kaydırma/zoom yok
                         return SizedBox(
                           width: constraints.maxWidth,
                           height: constraints.maxHeight,
-                          child: FittedBox(
-                            fit: BoxFit.contain,
-                            alignment: Alignment.topLeft,
-                            child: SizedBox(
-                              width: gridW,
-                              height: gridH,
-                              child: fixedGrid,
-                            ),
-                          ),
+                          child: grid,
                         );
                       }
 
-                      // Portrait: yatay + dikey scroll + zoom (eski davranış)
+                      // Portrait: scroll + zoom
                       return InteractiveViewer(
                         constrained: false,
                         scaleEnabled: true,
@@ -282,7 +298,7 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
                         child: SingleChildScrollView(
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: fixedGrid,
+                            child: grid,
                           ),
                         ),
                       );
@@ -294,7 +310,6 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
       ),
     );
   }
-
   Widget _buildGridCell(int dayIndex, int hour, double rowHeight, double colWidth) {
     final sessionList = _sessionsByDay[dayIndex]!;
     final sessionsInHour = sessionList.where((s) {
@@ -893,30 +908,15 @@ class _AddSessionFormState extends State<_AddSessionForm> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+      padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
+        color: Color(0xFF1A1A1A), // Matches screenshot dark theme
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
           // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1069,14 +1069,9 @@ class _AddSessionFormState extends State<_AddSessionForm> {
                   leading: const Icon(Icons.block, color: AppColors.accentRed),
                   title: const Text('Bu Saati Kapat', style: TextStyle(color: Colors.white)),
                   onTap: widget.onBlockRequested,
-               ),
+               )
             ],
-          ),
-          const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
+          )
         ],
       ),
     );
