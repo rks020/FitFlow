@@ -1,3 +1,4 @@
+import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -29,6 +30,7 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
   };
 
   final TransformationController _transformController = TransformationController();
+  Orientation? _lastOrientation;
 
   @override
   void initState() {
@@ -178,6 +180,56 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
   Widget build(BuildContext context) {
     const double rowHeight = 60.0;
     const double timeColWidth = 50.0;
+    const double fixedColWidth = 100.0;
+    // Izgara’nın toplam piksel boyutları (değişmez)
+    const double gridW = timeColWidth + 7 * fixedColWidth; // 750
+    const double gridH = 50.0 + 17 * rowHeight;            // 1070
+
+    // Izgara içeriği her iki modda da aynı sabit boyutla çizilir
+    Widget fixedGrid = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: timeColWidth,
+          child: Column(
+            children: [
+              Container(height: 50, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10)))),
+              for (int h = 7; h <= 23; h++)
+                Container(
+                  height: rowHeight,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
+                  ),
+                  child: Text('${h.toString().padLeft(2, '0')}:00', style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
+                ),
+            ],
+          ),
+        ),
+        for (int dayIndex = 0; dayIndex < 7; dayIndex++)
+          SizedBox(
+            width: fixedColWidth,
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: () => _showDayOptions(dayIndex),
+                  child: Container(
+                    width: fixedColWidth,
+                    height: 50,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
+                    ),
+                    child: Text(_days[dayIndex], style: const TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+                for (int h = 7; h <= 23; h++)
+                  _buildGridCell(dayIndex, h, rowHeight, fixedColWidth),
+              ],
+            ),
+          ),
+      ],
+    );
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -197,83 +249,66 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
             ? const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
             : OrientationBuilder(
                 builder: (context, orientation) {
-                  final screenWidth = MediaQuery.of(context).size.width;
                   final isLandscape = orientation == Orientation.landscape;
 
-                  // Landscape: tüm 7 gün sabit genişlikte ekrana sığsın
-                  // Portrait: horizontal scroll ile 100px sabit
-                  final double colWidth = isLandscape
-                      ? (screenWidth - timeColWidth) / 7
-                      : 100.0;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Landscape: tüm ızgara ekrana sığsın, sadece zoom
+                      if (isLandscape) {
+                        // Orientation değiştiğinde başlangıç transform'ı fit oranına ayarla
+                        if (orientation != _lastOrientation) {
+                          _lastOrientation = orientation;
+                          final fitScale = min(
+                            constraints.maxWidth / gridW,
+                            constraints.maxHeight / gridH,
+                          ) * 0.97;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              _transformController.value =
+                                  Matrix4.identity()..scale(fitScale, fitScale);
+                            }
+                          });
+                        }
 
-                  final gridContent = Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: timeColWidth,
-                        child: Column(
-                          children: [
-                            Container(height: 50, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10)))),
-                            for (int h = 7; h <= 23; h++)
-                              Container(
-                                height: rowHeight,
-                                alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
-                                ),
-                                child: Text('${h.toString().padLeft(2, '0')}:00', style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
-                              ),
-                          ],
-                        ),
-                      ),
-                      for (int dayIndex = 0; dayIndex < 7; dayIndex++)
-                        SizedBox(
-                          width: colWidth,
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () => _showDayOptions(dayIndex),
-                                child: Container(
-                                  width: colWidth,
-                                  height: 50,
-                                  alignment: Alignment.center,
-                                  decoration: const BoxDecoration(
-                                    border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
-                                  ),
-                                  child: Text(_days[dayIndex], style: TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold, fontSize: isLandscape ? 11 : 13)),
-                                ),
-                              ),
-                              for (int h = 7; h <= 23; h++)
-                                _buildGridCell(dayIndex, h, rowHeight, colWidth),
-                            ],
+                        final fitScale = min(
+                          constraints.maxWidth / gridW,
+                          constraints.maxHeight / gridH,
+                        ) * 0.97;
+
+                        return InteractiveViewer(
+                          transformationController: _transformController,
+                          constrained: false,
+                          minScale: fitScale * 0.5,
+                          maxScale: 3.0,
+                          boundaryMargin: const EdgeInsets.all(double.infinity),
+                          child: SizedBox(
+                            width: gridW,
+                            height: gridH,
+                            child: fixedGrid,
+                          ),
+                        );
+                      }
+
+                      // Portrait: yatay + dikey scroll + zoom (eski davranış)
+                      if (orientation != _lastOrientation) {
+                        _lastOrientation = orientation;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) _transformController.value = Matrix4.identity();
+                        });
+                      }
+                      return InteractiveViewer(
+                        constrained: false,
+                        scaleEnabled: true,
+                        minScale: 0.5,
+                        maxScale: 2.5,
+                        child: SingleChildScrollView(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: fixedGrid,
                           ),
                         ),
-                    ],
-                  );
-
-                  return Column(
-                    children: [
-                      Expanded(
-                        child: isLandscape
-                            // Landscape: sadece dikey kaydırma, tüm günler görünür
-                            ? SingleChildScrollView(
-                                child: gridContent,
-                              )
-                            // Portrait: hem dikey hem yatay kaydırma + zoom
-                            : InteractiveViewer(
-                                constrained: false,
-                                scaleEnabled: true,
-                                minScale: 0.5,
-                                maxScale: 2.5,
-                                child: SingleChildScrollView(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: gridContent,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ],
+                      );
+                    },
                   );
                 },
               ),
