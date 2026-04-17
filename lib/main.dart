@@ -14,6 +14,70 @@ import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 
 import 'features/profile/screens/change_password_screen.dart';
 import 'features/auth/screens/auth_check_screen.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsEnabled = prefs.getBool('water_notifications') ?? true;
+      if (!notificationsEnabled) return Future.value(true);
+
+      // Supabase is required for checking water logs
+      await Supabase.initialize(
+        url: SupabaseConfig.supabaseUrl,
+        anonKey: SupabaseConfig.supabaseAnonKey,
+      );
+
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return Future.value(true);
+
+      final now = DateTime.now();
+      final startOfDay =
+          DateTime(now.year, now.month, now.day).toIso8601String();
+      final endOfDay =
+          DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+
+      final response = await Supabase.instance.client
+          .from('water_logs')
+          .select('amount_ml')
+          .eq('member_id', user.id)
+          .gte('consumed_at', startOfDay)
+          .lte('consumed_at', endOfDay);
+
+      int total = 0;
+      for (var row in response as List) {
+        total += (row['amount_ml'] as int);
+      }
+
+      if (total < 3000) {
+        final flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
+        const androidInit =
+            AndroidInitializationSettings('@mipmap/launcher_icon');
+        const iosInit = DarwinInitializationSettings();
+        await flutterLocalNotificationsPlugin.initialize(
+            const InitializationSettings(android: androidInit, iOS: iosInit));
+
+        await flutterLocalNotificationsPlugin.show(
+          DateTime.now().millisecond,
+          'Su İçme Vakti! 💧',
+          'Şu ana kadar $total ml su içtin. 3000 ml hedefine ulaşmak için hemen bir bardak su iç!',
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+                'water_reminders', 'Su Hatırlatıcıları',
+                importance: Importance.max),
+            iOS: DarwinNotificationDetails(),
+          ),
+        );
+      }
+    } catch (_) {}
+    return Future.value(true);
+  });
+}
 
 // Helper function to check password_changed from database
 Future<bool> _checkPasswordChanged(String userId) async {
@@ -23,11 +87,11 @@ Future<bool> _checkPasswordChanged(String userId) async {
         .select('password_changed')
         .eq('id', userId)
         .maybeSingle();
-    
+
     if (response == null) {
       return true; // Default to true if profile not found
     }
-    
+
     final passwordChanged = response['password_changed'] as bool? ?? true;
     return passwordChanged;
   } catch (e) {
@@ -39,19 +103,20 @@ Future<void> main() async {
   // Wrap in runZonedGuarded to catch async errors (like expired links)
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     // Initialize Supabase
     await Supabase.initialize(
       url: SupabaseConfig.supabaseUrl,
       anonKey: SupabaseConfig.supabaseAnonKey,
     );
-    
+
     // Initialize Firebase & Notifications asynchronously to avoid blocking runApp
     // on iOS release builds where APNS token fetching can time out.
     Future.microtask(() async {
       try {
         await Firebase.initializeApp();
-        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+        FirebaseMessaging.onBackgroundMessage(
+            firebaseMessagingBackgroundHandler);
         await NotificationService().initialize();
       } catch (e) {
         // Firebase/Notification init error
@@ -59,7 +124,7 @@ Future<void> main() async {
     });
 
     await initializeDateFormatting('tr_TR', null);
-    
+
     // Set system UI overlay style
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -67,22 +132,33 @@ Future<void> main() async {
         statusBarIconBrightness: Brightness.light,
       ),
     );
-    
+
+    // Initialize WorkManager for background tasks
+    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    await Workmanager().registerPeriodicTask(
+      "water_tracker_1hr",
+      "checkWaterIntakeTask",
+      frequency: const Duration(hours: 1),
+      initialDelay: const Duration(hours: 1),
+      constraints: Constraints(networkType: NetworkType.connected),
+    );
+
     runApp(const PTBodyChangeApp());
   }, (error, stack) {
     if (error.toString().contains('Email link is invalid or has expired')) {
-       // We can't use context here easily
-       final context = navigatorKey.currentContext;
-       if (context != null) {
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(
-             content: Text('Bağlantı süresi dolmuş. Lütfen yeni bir şifre sıfırlama bağlantısı isteyin.'),
-             backgroundColor: Colors.red,
-             behavior: SnackBarBehavior.floating,
-             duration: Duration(seconds: 4),
-           ),
-         );
-       }
+      // We can't use context here easily
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Bağlantı süresi dolmuş. Lütfen yeni bir şifre sıfırlama bağlantısı isteyin.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   });
 }
@@ -96,7 +172,8 @@ class PTBodyChangeApp extends StatefulWidget {
   State<PTBodyChangeApp> createState() => _PTBodyChangeAppState();
 }
 
-class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingObserver {
+class _PTBodyChangeAppState extends State<PTBodyChangeApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -110,7 +187,6 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
     // });
     // This prevents race condition where ChatScreen is pushed before AuthCheck/Dashboard is ready
   }
-
 
   @override
   void dispose() {
@@ -143,7 +219,8 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
       try {
         await Supabase.instance.client.from('profiles').update({
           'is_online': isOnline,
-          'last_seen': isOnline ? null : DateTime.now().toUtc().toIso8601String(),
+          'last_seen':
+              isOnline ? null : DateTime.now().toUtc().toIso8601String(),
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', user.id);
       } catch (e) {
@@ -155,10 +232,10 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
   void _setupAuthListener() {
     Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final user = data.session?.user;
-      
+
       if (data.event == AuthChangeEvent.passwordRecovery) {
         debugPrint('Password recovery detected!'); // Debug log
-        
+
         // Ignore if provider is google
         // Google accounts don't use password recovery flow in this app
         final provider = user?.appMetadata['provider'];
@@ -169,13 +246,10 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
         // User is completing invitation - mark password as changed
         if (user != null) {
           try {
-            await Supabase.instance.client
-                .from('profiles')
-                .update({
-                  'password_changed': true,
-                  'updated_at': DateTime.now().toIso8601String()
-                })
-                .eq('id', user.id);
+            await Supabase.instance.client.from('profiles').update({
+              'password_changed': true,
+              'updated_at': DateTime.now().toIso8601String()
+            }).eq('id', user.id);
 
             // 2. Update Auth Metadata (Best effort)
             await Supabase.instance.client.auth.updateUser(
@@ -188,7 +262,7 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
             // We continue anyway so they can change their password
           }
         }
-        
+
         _navigateToChangePassword();
       }
     });
@@ -225,36 +299,37 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp> with WidgetsBindingOb
         stream: Supabase.instance.client.auth.onAuthStateChange,
         builder: (context, snapshot) {
           final session = Supabase.instance.client.auth.currentSession;
-          
+
           // User is logged in
           if (session != null) {
             final user = session.user;
-            
+
             // Fetch fresh password_changed value from database instead of stale session metadata
             return FutureBuilder<bool>(
               future: _checkPasswordChanged(user.id),
               builder: (context, passwordSnapshot) {
                 // Show loading while checking
-                if (passwordSnapshot.connectionState == ConnectionState.waiting) {
+                if (passwordSnapshot.connectionState ==
+                    ConnectionState.waiting) {
                   return const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   );
                 }
-                
+
                 // Default to true if error (allow access to avoid blocking users)
                 final passwordChanged = passwordSnapshot.data ?? true;
-                
+
                 if (passwordChanged == false) {
                   // Not completed invitation - show Change Password screen for first login
                   return const ChangePasswordScreen(isFirstLogin: true);
                 }
-                
+
                 // Completed invitation - check profile validity before showing dashboard
                 return const AuthCheckScreen();
               },
-            );  
+            );
           }
-          
+
           // No session - show welcome screen
           return const WelcomeScreen();
         },

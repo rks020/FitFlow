@@ -5,6 +5,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../models/diet_model.dart';
 import '../repositories/diet_repository.dart';
+import '../widgets/water_tracker_widget.dart';
 import 'create_diet_screen.dart';
 import 'dart:async';
 
@@ -159,15 +160,27 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
               onRefresh: _loadDiets,
               color: AppColors.primaryYellow,
               backgroundColor: AppColors.surfaceDark,
-              child: _diets.isEmpty
-                  ? _buildEmpty()
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _diets.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) =>
-                          _buildDietCard(_diets[index]),
-                    ),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const WaterTrackerWidget(),
+                    const SizedBox(height: 24),
+                    _diets.isEmpty
+                        ? _buildEmpty()
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _diets.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (context, index) =>
+                                _buildDietCard(_diets[index]),
+                          ),
+                  ],
+                ),
+              ),
             ),
           ),
           // Yeni Ekle Butonu
@@ -198,31 +211,22 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
   }
 
   Widget _buildEmpty() {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height - 250,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.restaurant_rounded,
-                  size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
-              const SizedBox(height: 16),
-              Text(
-                'Henüz bir beslenme programı yok.',
-                style: AppTextStyles.headline
-                    .copyWith(color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Aşağıdan ekleyebilirsin.',
-                style:
-                    AppTextStyles.body.copyWith(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
+    return SizedBox(
+      height: 200,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.restaurant_rounded,
+                size: 48, color: AppColors.textSecondary.withOpacity(0.4)),
+            const SizedBox(height: 16),
+            Text(
+              'Henüz bir beslenme programı yok.',
+              style:
+                  AppTextStyles.title3.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
