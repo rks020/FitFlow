@@ -39,15 +39,15 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     _pageController = PageController(); // Initialize Controller
     _screens = [
       _MemberHomeScreen(onTabChange: _onTabTapped), // Tab 0: Home
-      const MemberScheduleScreen(),                 // Tab 1: Program
-      const MemberDietScreen(),                     // Tab 2: Diet
-      const MemberMeasurementsScreen(),             // Tab 3: Progress
-      const ProfileScreen(),                        // Tab 4: Profile
+      const MemberScheduleScreen(), // Tab 1: Program
+      const MemberDietScreen(), // Tab 2: Diet
+      const MemberMeasurementsScreen(), // Tab 3: Progress
+      const ProfileScreen(), // Tab 4: Profile
     ];
     _loadUnreadCount();
     _loadUnreadCount();
     _setupRealtimeSubscription();
-    
+
     // Handle pending notification
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handlePendingNotification();
@@ -71,14 +71,15 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
   }
 
   void _setupRealtimeSubscription() {
-    _supabase.channel('member_dashboard_messages')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'messages',
-        callback: (payload) => _loadUnreadCount(),
-      )
-      .subscribe();
+    _supabase
+        .channel('member_dashboard_messages')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) => _loadUnreadCount(),
+        )
+        .subscribe();
   }
 
   void _handlePendingNotification() {
@@ -87,7 +88,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       debugPrint('🔔 MemberDashboardScreen: Processing pending notification');
       final data = pendingMessage.data;
       final type = data['type'];
-      
+
       if (type == 'announcement') {
         debugPrint('🔔 MemberDashboardScreen: Navigating to Announcements');
         NotificationService.clearPendingMessage();
@@ -99,18 +100,20 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         final senderId = data['sender_id'];
         final senderName = data['sender_name'] ?? 'Kullanıcı';
         final senderAvatar = data['sender_avatar'];
-         
+
         if (senderId != null) {
           debugPrint('🔔 MemberDashboardScreen: Navigating to Chat');
           final dummyProfile = Profile(
             id: senderId,
             firstName: senderName.split(' ').first,
-            lastName: senderName.split(' ').length > 1 ? senderName.split(' ').last : '',
+            lastName: senderName.split(' ').length > 1
+                ? senderName.split(' ').last
+                : '',
             avatarUrl: senderAvatar,
           );
-           
+
           // Navigate only to ChatScreen
-           Navigator.of(context).push(
+          Navigator.of(context).push(
             PageRouteBuilder(
               pageBuilder: (_, __, ___) => ChatScreen(otherUser: dummyProfile),
               transitionDuration: Duration.zero,
@@ -133,7 +136,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       curve: Curves.easeInOut,
     );
   }
-  
+
   void _onPageChanged(int index) {
     setState(() {
       _currentIndex = index;
@@ -152,85 +155,91 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         return true; // Exit app if already on Home
       },
       child: Scaffold(
-      extendBody: true,
-      body: AmbientBackground(
-        child: PageView(
-          controller: _pageController,
-          onPageChanged: _onPageChanged,
-          physics: const BouncingScrollPhysics(), // Provide nice bounce effect
-          children: _screens,
-        ),
-      ),
-      // Only show chat FAB on Home
-      floatingActionButton: _currentIndex == 0 ? Stack(
-        alignment: Alignment.topRight,
-        children: [
-          FloatingActionButton(
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const InboxScreen()),
-              );
-              _loadUnreadCount();
-            },
-            backgroundColor: AppColors.primaryYellow,
-            child: const Icon(Icons.chat_bubble_outline, color: Colors.black),
+        extendBody: true,
+        body: AmbientBackground(
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: _onPageChanged,
+            physics:
+                const BouncingScrollPhysics(), // Provide nice bounce effect
+            children: _screens,
           ),
-          if (_unreadCount > 0)
-            Positioned(
-              right: 0,
-              top: 0,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: AppColors.accentRed,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '$_unreadCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ) : null,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E).withOpacity(0.95),
-          border: const Border(top: BorderSide(color: AppColors.glassBorder, width: 0.5)),
-          boxShadow: [
-             BoxShadow(
-               color: Colors.black.withOpacity(0.3),
-               blurRadius: 10,
-               offset: const Offset(0, -5),
-             )
-          ],
         ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Container(
-               width: MediaQuery.of(context).size.width,
-               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        // Only show chat FAB on Home
+        floatingActionButton: _currentIndex == 0
+            ? Stack(
+                alignment: Alignment.topRight,
                 children: [
-                  _buildNavItem(0, 'Ana Sayfa', Icons.home_rounded),
-                  _buildNavItem(1, 'Program', Icons.calendar_today_rounded),
-                  _buildNavItem(2, 'Beslenme', Icons.restaurant_menu_rounded),
-                  _buildNavItem(3, 'Gelişim', Icons.show_chart_rounded),
-                  _buildNavItem(4, 'Profil', Icons.person_rounded),
+                  FloatingActionButton(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const InboxScreen()),
+                      );
+                      _loadUnreadCount();
+                    },
+                    backgroundColor: AppColors.primaryYellow,
+                    child: const Icon(Icons.chat_bubble_outline,
+                        color: Colors.black),
+                  ),
+                  if (_unreadCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.accentRed,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$_unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
+              )
+            : null,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E).withOpacity(0.95),
+            border: const Border(
+                top: BorderSide(color: AppColors.glassBorder, width: 0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              )
+            ],
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildNavItem(0, 'Ana Sayfa', Icons.home_rounded),
+                    _buildNavItem(1, 'Program', Icons.calendar_today_rounded),
+                    _buildNavItem(2, 'Beslenme', Icons.restaurant_menu_rounded),
+                    _buildNavItem(3, 'Gelişim', Icons.show_chart_rounded),
+                    _buildNavItem(4, 'Profil', Icons.person_rounded),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -241,8 +250,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 12, vertical: 8),
-        decoration: isSelected 
+        padding:
+            EdgeInsets.symmetric(horizontal: isSelected ? 16 : 12, vertical: 8),
+        decoration: isSelected
             ? BoxDecoration(
                 color: AppColors.primaryYellow.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
@@ -282,6 +292,7 @@ class _MemberHomeScreen extends StatefulWidget {
 
 class _MemberHomeScreenState extends State<_MemberHomeScreen> {
   Profile? _profile;
+  Map<String, dynamic>? _memberData;
   bool _isLoading = true;
 
   int _unreadAnnouncementsCount = 0;
@@ -297,9 +308,21 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
   Future<void> _loadProfile() async {
     try {
       final profile = await ProfileRepository().getProfile();
+      final user = Supabase.instance.client.auth.currentUser;
+
+      Map<String, dynamic>? memberData;
+      if (user != null) {
+        memberData = await Supabase.instance.client
+            .from('members')
+            .select()
+            .eq('id', user.id)
+            .maybeSingle();
+      }
+
       if (mounted) {
         setState(() {
           _profile = profile;
+          _memberData = memberData;
           _isLoading = false;
         });
       }
@@ -313,7 +336,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
       final prefs = await SharedPreferences.getInstance();
       final lastViewStr = prefs.getString('last_announcements_view_time');
       final supabase = Supabase.instance.client;
-      
+
       int count = 0;
       if (lastViewStr != null) {
         final result = await supabase
@@ -322,12 +345,10 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
             .gt('created_at', lastViewStr);
         count = result.length;
       } else {
-        final result = await supabase
-            .from('announcements')
-            .select();
+        final result = await supabase.from('announcements').select();
         count = result.length;
       }
-      
+
       if (mounted) setState(() => _unreadAnnouncementsCount = count);
     } catch (e) {
       debugPrint('Error loading unread announcements: $e');
@@ -335,20 +356,22 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
   }
 
   void _setupRealtimeSubscription() {
-    Supabase.instance.client.channel('member_home_announcements')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'announcements',
-        callback: (payload) => _loadUnreadAnnouncements(),
-      )
-      .subscribe();
+    Supabase.instance.client
+        .channel('member_home_announcements')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'announcements',
+          callback: (payload) => _loadUnreadAnnouncements(),
+        )
+        .subscribe();
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow));
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.primaryYellow));
     }
 
     final firstName = _profile?.firstName ?? '';
@@ -381,14 +404,16 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                 ),
                 // Avatar
                 GestureDetector(
-                  onTap: () => widget.onTabChange(4), // Navigate to Profile (Index 4)
+                  onTap: () =>
+                      widget.onTabChange(4), // Navigate to Profile (Index 4)
                   child: Container(
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primaryYellow, width: 2),
+                      border:
+                          Border.all(color: AppColors.primaryYellow, width: 2),
                       image: _profile?.avatarUrl != null
                           ? DecorationImage(
                               image: NetworkImage(_profile!.avatarUrl!),
@@ -399,7 +424,9 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                     child: _profile?.avatarUrl == null
                         ? Center(
                             child: Text(
-                              firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
+                              firstName.isNotEmpty
+                                  ? firstName[0].toUpperCase()
+                                  : 'U',
                               style: const TextStyle(
                                 color: AppColors.primaryYellow,
                                 fontWeight: FontWeight.bold,
@@ -413,7 +440,61 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
               ],
             ),
 
-            
+            if (_memberData != null &&
+                _memberData!['is_multisport'] == false &&
+                _memberData!['is_meditopia'] == false) ...[
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryYellow.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.primaryYellow.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            color: AppColors.primaryYellow, size: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          _memberData!['subscription_package']?.toString() ??
+                              'Paket Yok',
+                          style: AppTextStyles.headline
+                              .copyWith(color: AppColors.primaryYellow),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Mevcut Paket',
+                            style: AppTextStyles.caption1
+                                .copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                    Container(
+                        width: 1, height: 40, color: AppColors.glassBorder),
+                    Column(
+                      children: [
+                        const Icon(Icons.bolt_rounded,
+                            color: AppColors.accentCyan, size: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          _memberData!['session_count']?.toString() ?? '0',
+                          style: AppTextStyles.headline.copyWith(
+                              color: AppColors.accentCyan, fontSize: 24),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Kalan Ders',
+                            style: AppTextStyles.caption1
+                                .copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 32),
             Text(
               'Hızlı Erişim',
@@ -437,9 +518,10 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   icon: Icons.calendar_today_rounded,
                   color: const Color(0xFFFACC15), // Yellow
                   onTap: () => widget.onTabChange(1), // Tab 1: Schedule
-                  backgroundImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
+                  backgroundImage:
+                      'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1470&auto=format&fit=crop',
                 ),
-                
+
                 // Beslenme / Diyetim
                 StatCard(
                   title: 'Diyetim',
@@ -447,7 +529,8 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   icon: Icons.restaurant_menu_rounded,
                   color: const Color(0xFFF472B6), // Pink/Red
                   onTap: () => widget.onTabChange(2), // Tab 2: Diet
-                  backgroundImage: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1470&auto=format&fit=crop',
+                  backgroundImage:
+                      'https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1470&auto=format&fit=crop',
                 ),
 
                 // Gelişimim
@@ -457,7 +540,8 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   icon: Icons.show_chart_rounded,
                   color: const Color(0xFF34D399), // Green
                   onTap: () => widget.onTabChange(3), // Tab 3: Measurements
-                  backgroundImage: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
+                  backgroundImage:
+                      'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=1469&auto=format&fit=crop',
                 ),
 
                 // Duyurular
@@ -469,10 +553,12 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const AnnouncementsScreen()),
                     ).then((_) => _loadUnreadAnnouncements());
                   },
-                  backgroundImage: 'assets/images/pt_megaphone_announcement.png',
+                  backgroundImage:
+                      'assets/images/pt_megaphone_announcement.png',
                   badgeCount: _unreadAnnouncementsCount,
                 ),
               ],
