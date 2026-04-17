@@ -250,52 +250,27 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
             : OrientationBuilder(
                 builder: (context, orientation) {
                   final isLandscape = orientation == Orientation.landscape;
-
                   return LayoutBuilder(
                     builder: (context, constraints) {
-                      // Landscape: tüm ızgara ekrana sığsın, sadece zoom
                       if (isLandscape) {
-                        // Orientation değiştiğinde başlangıç transform'ı fit oranına ayarla
-                        if (orientation != _lastOrientation) {
-                          _lastOrientation = orientation;
-                          final fitScale = min(
-                            constraints.maxWidth / gridW,
-                            constraints.maxHeight / gridH,
-                          ) * 0.97;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) {
-                              _transformController.value =
-                                  Matrix4.identity()..scale(fitScale, fitScale);
-                            }
-                          });
-                        }
-
-                        final fitScale = min(
-                          constraints.maxWidth / gridW,
-                          constraints.maxHeight / gridH,
-                        ) * 0.97;
-
-                        return InteractiveViewer(
-                          transformationController: _transformController,
-                          constrained: false,
-                          minScale: fitScale * 0.5,
-                          maxScale: 3.0,
-                          boundaryMargin: const EdgeInsets.all(double.infinity),
-                          child: SizedBox(
-                            width: gridW,
-                            height: gridH,
-                            child: fixedGrid,
+                        // Landscape: FittedBox ile tüm ızgara ekrana tam sığsın
+                        // Herhangi bir kaydırma veya zoom yok
+                        return SizedBox(
+                          width: constraints.maxWidth,
+                          height: constraints.maxHeight,
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            alignment: Alignment.topLeft,
+                            child: SizedBox(
+                              width: gridW,
+                              height: gridH,
+                              child: fixedGrid,
+                            ),
                           ),
                         );
                       }
 
                       // Portrait: yatay + dikey scroll + zoom (eski davranış)
-                      if (orientation != _lastOrientation) {
-                        _lastOrientation = orientation;
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) _transformController.value = Matrix4.identity();
-                        });
-                      }
                       return InteractiveViewer(
                         constrained: false,
                         scaleEnabled: true,
