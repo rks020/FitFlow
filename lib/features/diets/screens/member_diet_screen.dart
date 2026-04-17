@@ -101,6 +101,50 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
     if (result == true) _loadDiets();
   }
 
+  Future<void> _deleteDiet(Diet diet) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        title: Text('Diyeti Sil',
+            style:
+                AppTextStyles.headline.copyWith(color: AppColors.textPrimary)),
+        content: Text('Bu beslenme programını silmek istediğine emin misin?',
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child:
+                const Text('Sil', style: TextStyle(color: AppColors.accentRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      await _repository.deleteDiet(diet.id);
+      _loadDiets();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Hata: $e'), backgroundColor: AppColors.accentRed),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -121,7 +165,8 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
                       padding: const EdgeInsets.all(20),
                       itemCount: _diets.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) => _buildDietCard(_diets[index]),
+                      itemBuilder: (context, index) =>
+                          _buildDietCard(_diets[index]),
                     ),
             ),
           ),
@@ -135,12 +180,14 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
                 icon: const Icon(Icons.add, color: Colors.black),
                 label: const Text(
                   'Yeni Beslenme Programı Gir',
-                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.black, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryYellow,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
               ),
             ),
@@ -159,17 +206,20 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.restaurant_rounded, size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
+              Icon(Icons.restaurant_rounded,
+                  size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
               const SizedBox(height: 16),
               Text(
                 'Henüz bir beslenme programı yok.',
-                style: AppTextStyles.headline.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.headline
+                    .copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Aşağıdan ekleyebilirsin.',
-                style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                style:
+                    AppTextStyles.body.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -189,20 +239,31 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
             children: [
               _buildStatusBadge(diet),
               const Spacer(),
-              // Sadece üyenin kendi girdiği ve pending/needs_revision diyetleri düzenlenebilir
-              if (!diet.isTrainerSuggestion && !diet.isApproved)
+              // Sadece üyenin kendi girdiği diyetleri düzenlenebilir/silinebilir
+              if (!diet.isTrainerSuggestion) ...[
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: AppColors.primaryYellow, size: 20),
+                  icon: const Icon(Icons.edit_outlined,
+                      color: AppColors.primaryYellow, size: 20),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => _navigateToEdit(diet),
                 ),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      color: AppColors.accentRed, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _deleteDiet(diet),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
 
           // Hocanın yorumu varsa göster
-          if (diet.trainerComment != null && diet.trainerComment!.isNotEmpty) ...[
+          if (diet.trainerComment != null &&
+              diet.trainerComment!.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -222,7 +283,9 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
                   Icon(
                     Icons.chat_bubble_outline,
                     size: 16,
-                    color: diet.isApproved ? AppColors.accentGreen : AppColors.accentRed,
+                    color: diet.isApproved
+                        ? AppColors.accentGreen
+                        : AppColors.accentRed,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -232,7 +295,9 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
                         Text(
                           'Hoca Yorumu',
                           style: AppTextStyles.caption2.copyWith(
-                            color: diet.isApproved ? AppColors.accentGreen : AppColors.accentRed,
+                            color: diet.isApproved
+                                ? AppColors.accentGreen
+                                : AppColors.accentRed,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -251,7 +316,8 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
           if (diet.notes != null && diet.notes!.isNotEmpty) ...[
             Text(
               diet.notes!,
-              style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+              style:
+                  AppTextStyles.body.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
           ],
@@ -263,7 +329,8 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
             tilePadding: EdgeInsets.zero,
             title: Text(
               '${diet.items.length} Öğün  ·  ${diet.totalCalories} kcal',
-              style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption1
+                  .copyWith(color: AppColors.textSecondary),
             ),
             children: diet.items.map((item) => _buildMealRow(item)).toList(),
           ),
@@ -311,7 +378,9 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 5),
-          Text(label, style: AppTextStyles.caption2.copyWith(color: color, fontWeight: FontWeight.w600)),
+          Text(label,
+              style: AppTextStyles.caption2
+                  .copyWith(color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -331,7 +400,8 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
             ),
             child: Text(
               item.mealName,
-              style: AppTextStyles.caption2.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
+              style: AppTextStyles.caption2.copyWith(
+                  color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 12),
@@ -339,10 +409,12 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.content, style: AppTextStyles.body.copyWith(fontSize: 14)),
+                Text(item.content,
+                    style: AppTextStyles.body.copyWith(fontSize: 14)),
                 if (item.calories != null)
                   Text('${item.calories} kcal',
-                      style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
+                      style: AppTextStyles.caption2
+                          .copyWith(color: AppColors.textSecondary)),
               ],
             ),
           ),

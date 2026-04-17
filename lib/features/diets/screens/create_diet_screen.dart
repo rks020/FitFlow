@@ -93,19 +93,25 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final items = _mealControllers.asMap().entries.map((entry) {
-        final index = entry.key;
-        final controller = entry.value;
-        return DietItem(
-          mealName: controller.nameController.text.trim(),
-          content: controller.contentController.text.trim(),
-          calories: int.tryParse(controller.caloriesController.text.trim()),
-          orderIndex: index,
-        );
-      }).where((item) => item.content.isNotEmpty).toList();
+      final items = _mealControllers
+          .asMap()
+          .entries
+          .map((entry) {
+            final index = entry.key;
+            final controller = entry.value;
+            return DietItem(
+              mealName: controller.nameController.text.trim(),
+              content: controller.contentController.text.trim(),
+              calories: int.tryParse(controller.caloriesController.text.trim()),
+              orderIndex: index,
+            );
+          })
+          .where((item) => item.content.isNotEmpty)
+          .toList();
 
       if (items.isEmpty) {
-        CustomSnackBar.showError(context, 'En az bir öğün içeriği girmelisiniz.');
+        CustomSnackBar.showError(
+            context, 'En az bir öğün içeriği girmelisiniz.');
         setState(() => _isLoading = false);
         return;
       }
@@ -116,16 +122,21 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
         // Hoca ekliyorsa trainer_id set et ve status = trainer_suggestion
         trainerId: widget.isTrainerAdding ? currentUser.id : null,
         submittedBy: currentUser.id,
-        status: widget.isTrainerAdding ? 'trainer_suggestion' : (widget.existingDiet?.status ?? 'pending'),
+        status: widget.isTrainerAdding
+            ? 'trainer_suggestion'
+            : (widget.existingDiet?.status ?? 'approved'),
         startDate: widget.existingDiet?.startDate ?? DateTime.now(),
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         createdAt: widget.existingDiet?.createdAt ?? DateTime.now(),
       );
 
       if (widget.existingDiet != null) {
         await _repository.updateDiet(diet, items);
         if (mounted) {
-          CustomSnackBar.showSuccess(context, 'Diyet programı başarıyla güncellendi.');
+          CustomSnackBar.showSuccess(
+              context, 'Diyet programı başarıyla güncellendi.');
           Navigator.pop(context, true);
         }
       } else {
@@ -135,7 +146,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
             context,
             widget.isTrainerAdding
                 ? 'Öneri diyet başarıyla oluşturuldu.'
-                : 'Beslenme programınız gönderildi. Hoca değerlendirme yapacak.',
+                : 'Beslenme programınız başarıyla oluşturuldu.',
           );
           Navigator.pop(context, true);
         }
@@ -154,7 +165,8 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
     final isEditing = widget.existingDiet != null;
     String title;
     if (widget.isTrainerAdding) {
-      title = isEditing ? 'Öneri Düzenle' : '${widget.memberName} - Öneri Diyet';
+      title =
+          isEditing ? 'Öneri Düzenle' : '${widget.memberName} - Öneri Diyet';
     } else {
       title = isEditing ? 'Diyetimi Düzenle' : 'Diyetimi Gir';
     }
@@ -177,46 +189,25 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Bilgi banner'ı
-                if (!widget.isTrainerAdding) ...[
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentBlue.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.accentBlue.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: AppColors.accentBlue, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Girdiğin beslenme programı hocanın değerlendirmesine gönderilecek.',
-                            style: AppTextStyles.caption1.copyWith(color: AppColors.accentBlue),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
                 if (widget.isTrainerAdding) ...[
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.primaryYellow.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primaryYellow.withOpacity(0.3)),
+                      border: Border.all(
+                          color: AppColors.primaryYellow.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.star_outline, color: AppColors.primaryYellow, size: 20),
+                        const Icon(Icons.star_outline,
+                            color: AppColors.primaryYellow, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Bu diyet üyeye "Hoca Önerisi" olarak görünecek.',
-                            style: AppTextStyles.caption1.copyWith(color: AppColors.primaryYellow),
+                            style: AppTextStyles.caption1
+                                .copyWith(color: AppColors.primaryYellow),
                           ),
                         ),
                       ],
@@ -232,7 +223,8 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                     children: [
                       Text(
                         'Genel Bilgiler',
-                        style: AppTextStyles.headline.copyWith(color: AppColors.primaryYellow),
+                        style: AppTextStyles.headline
+                            .copyWith(color: AppColors.primaryYellow),
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
@@ -253,7 +245,8 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                     TextButton.icon(
                       onPressed: _addMeal,
                       icon: const Icon(Icons.add, color: AppColors.neonCyan),
-                      label: const Text('Öğün Ekle', style: TextStyle(color: AppColors.neonCyan)),
+                      label: const Text('Öğün Ekle',
+                          style: TextStyle(color: AppColors.neonCyan)),
                     ),
                   ],
                 ),
@@ -274,11 +267,16 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                 CustomButton(
                   text: isEditing
                       ? 'Değişiklikleri Kaydet'
-                      : (widget.isTrainerAdding ? 'Öneri Olarak Kaydet' : 'Gönder'),
+                      : (widget.isTrainerAdding
+                          ? 'Öneri Olarak Kaydet'
+                          : 'Gönder'),
                   onPressed: _saveDiet,
                   isLoading: _isLoading,
-                  backgroundColor: widget.isTrainerAdding ? AppColors.primaryYellow : AppColors.accentGreen,
-                  foregroundColor: widget.isTrainerAdding ? Colors.black : Colors.white,
+                  backgroundColor: widget.isTrainerAdding
+                      ? AppColors.primaryYellow
+                      : AppColors.accentGreen,
+                  foregroundColor:
+                      widget.isTrainerAdding ? Colors.black : Colors.white,
                 ),
                 const SizedBox(height: 40),
               ],
