@@ -5,6 +5,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../models/diet_model.dart';
 import '../repositories/diet_repository.dart';
+import 'create_diet_screen.dart';
 import 'dart:async';
 
 class MemberDietScreen extends StatefulWidget {
@@ -17,14 +18,14 @@ class MemberDietScreen extends StatefulWidget {
 class _MemberDietScreenState extends State<MemberDietScreen> {
   final _repository = DietRepository();
   bool _isLoading = true;
-  Diet? _activeDiet;
+  List<Diet> _diets = [];
 
   StreamSubscription? _dietSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadDiet();
+    _loadDiets();
     _subscribeToDiet();
   }
 
@@ -43,26 +44,61 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
         .stream(primaryKey: ['id'])
         .eq('member_id', user.id)
         .listen((data) {
-          _loadDiet();
+          _loadDiets();
         });
   }
 
-  Future<void> _loadDiet() async {
+  Future<void> _loadDiets() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
     try {
-      final diet = await _repository.getActiveDiet(user.id);
+      final diets = await _repository.getMemberDiets(user.id);
       if (mounted) {
         setState(() {
-          _activeDiet = diet;
+          _diets = diets;
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Error loading diet: $e');
+      debugPrint('Error loading diets: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _navigateToCreate() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateDietScreen(
+          memberId: user.id,
+          memberName: 'Ben',
+          isTrainerAdding: false,
+        ),
+      ),
+    );
+    if (result == true) _loadDiets();
+  }
+
+  Future<void> _navigateToEdit(Diet diet) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateDietScreen(
+          memberId: user.id,
+          memberName: 'Ben',
+          existingDiet: diet,
+          isTrainerAdding: false,
+        ),
+      ),
+    );
+    if (result == true) _loadDiets();
   }
 
   @override
@@ -71,152 +107,244 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_activeDiet == null) {
-      return RefreshIndicator(
-        onRefresh: _loadDiet,
-        color: AppColors.primaryYellow,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height - 200,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.restaurant_rounded, size: 64, color: AppColors.textSecondary.withOpacity(0.5)),
-            const SizedBox(height: 16),
-            Text(
-              'Henüz atanmış bir beslenme programınız yok.',
-              style: AppTextStyles.headline.copyWith(color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    return SafeArea(
+      child: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadDiets,
+              color: AppColors.primaryYellow,
+              backgroundColor: AppColors.surfaceDark,
+              child: _diets.isEmpty
+                  ? _buildEmpty()
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: _diets.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) => _buildDietCard(_diets[index]),
+                    ),
             ),
           ),
-        ),
-      );
-    }
-
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _loadDiet,
-        color: AppColors.primaryYellow,
-        backgroundColor: AppColors.surfaceDark,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Beslenme Programım',
-                  style: AppTextStyles.title2.copyWith(fontWeight: FontWeight.bold),
+          // Yeni Ekle Butonu
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _navigateToCreate,
+                icon: const Icon(Icons.add, color: Colors.black),
+                label: const Text(
+                  'Yeni Beslenme Programı Gir',
+                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                 ),
-                Icon(Icons.restaurant_rounded, color: AppColors.primaryYellow, size: 28),
-              ],
-            ),
-            
-            if (_activeDiet!.notes != null && _activeDiet!.notes!.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              GlassCard(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded, color: AppColors.accentBlue, size: 20),
-                        const SizedBox(width: 8),
-                        Text('Notlar', style: AppTextStyles.headline.copyWith(color: AppColors.accentBlue)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _activeDiet!.notes!,
-                      style: AppTextStyles.body,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 24),
-            
-            // Meals List
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _activeDiet!.items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final item = _activeDiet!.items[index];
-                return _buildMealCard(item);
-              },
-            ),
-            
-            const SizedBox(height: 20),
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: Column(
-                  children: [
-                    Text('Günlük Toplam Kalori', style: AppTextStyles.title3),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_activeDiet!.totalCalories} kcal',
-                       style: AppTextStyles.title2.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryYellow,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
             ),
-             const SizedBox(height: 40),
-          ],
-        ),
-      ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMealCard(DietItem item) {
+  Widget _buildEmpty() {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height - 250,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.restaurant_rounded, size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
+              const SizedBox(height: 16),
+              Text(
+                'Henüz bir beslenme programı yok.',
+                style: AppTextStyles.headline.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Aşağıdan ekleyebilirsin.',
+                style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDietCard(Diet diet) {
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Üst satır: Badge + tarih + edit butonu
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                item.mealName,
-                style: AppTextStyles.headline.copyWith(
-                  color: AppColors.primaryYellow,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (item.calories != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceDark,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.glassBorder),
-                  ),
-                  child: Text(
-                    '${item.calories} kcal',
-                    style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
-                  ),
+              _buildStatusBadge(diet),
+              const Spacer(),
+              // Sadece üyenin kendi girdiği ve pending/needs_revision diyetleri düzenlenebilir
+              if (!diet.isTrainerSuggestion && !diet.isApproved)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: AppColors.primaryYellow, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _navigateToEdit(diet),
                 ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            item.content,
-            style: AppTextStyles.body.copyWith(height: 1.5, fontSize: 16),
+
+          // Hocanın yorumu varsa göster
+          if (diet.trainerComment != null && diet.trainerComment!.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: diet.isApproved
+                    ? AppColors.accentGreen.withOpacity(0.1)
+                    : AppColors.accentRed.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: diet.isApproved
+                      ? AppColors.accentGreen.withOpacity(0.3)
+                      : AppColors.accentRed.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 16,
+                    color: diet.isApproved ? AppColors.accentGreen : AppColors.accentRed,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hoca Yorumu',
+                          style: AppTextStyles.caption2.copyWith(
+                            color: diet.isApproved ? AppColors.accentGreen : AppColors.accentRed,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(diet.trainerComment!, style: AppTextStyles.body),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Notes
+          if (diet.notes != null && diet.notes!.isNotEmpty) ...[
+            Text(
+              diet.notes!,
+              style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Öğünler (expandable)
+          ExpansionTile(
+            shape: Border.all(color: Colors.transparent),
+            collapsedShape: Border.all(color: Colors.transparent),
+            tilePadding: EdgeInsets.zero,
+            title: Text(
+              '${diet.items.length} Öğün  ·  ${diet.totalCalories} kcal',
+              style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+            ),
+            children: diet.items.map((item) => _buildMealRow(item)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(Diet diet) {
+    String label;
+    Color color;
+    IconData icon;
+
+    switch (diet.status) {
+      case 'approved':
+        label = 'Onaylandı';
+        color = AppColors.accentGreen;
+        icon = Icons.check_circle_outline;
+        break;
+      case 'needs_revision':
+        label = 'Revizyon İstendi';
+        color = AppColors.accentRed;
+        icon = Icons.warning_amber_outlined;
+        break;
+      case 'trainer_suggestion':
+        label = 'Hoca Önerisi';
+        color = AppColors.primaryYellow;
+        icon = Icons.star_outline;
+        break;
+      default: // pending
+        label = 'Onay Bekliyor';
+        color = AppColors.textSecondary;
+        icon = Icons.access_time_outlined;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(label, style: AppTextStyles.caption2.copyWith(color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealRow(DietItem item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDark,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              item.mealName,
+              style: AppTextStyles.caption2.copyWith(color: AppColors.primaryYellow, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.content, style: AppTextStyles.body.copyWith(fontSize: 14)),
+                if (item.calories != null)
+                  Text('${item.calories} kcal',
+                      style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
+              ],
+            ),
           ),
         ],
       ),

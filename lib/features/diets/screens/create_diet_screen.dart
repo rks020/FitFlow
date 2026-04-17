@@ -10,18 +10,21 @@ import '../../../../shared/widgets/ambient_background.dart';
 import '../models/diet_model.dart';
 import '../repositories/diet_repository.dart';
 
+/// [isTrainerAdding]: true → hoca öneri olarak ekliyor (trainer_suggestion)
+/// false → üye kendi diyetini giriyor (pending)
 class CreateDietScreen extends StatefulWidget {
   final String memberId;
   final String memberName;
+  final Diet? existingDiet;
+  final bool isTrainerAdding;
 
   const CreateDietScreen({
     super.key,
     required this.memberId,
     required this.memberName,
     this.existingDiet,
+    this.isTrainerAdding = false,
   });
-
-  final Diet? existingDiet;
 
   @override
   State<CreateDietScreen> createState() => _CreateDietScreenState();
@@ -40,8 +43,17 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
     if (widget.existingDiet != null) {
       _loadExistingDiet();
     } else {
-      _addDefaultMeals(); // Pre-fill with common meals
+      _addDefaultMeals();
     }
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    for (var c in _mealControllers) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   void _loadExistingDiet() {
@@ -69,26 +81,18 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
 
   void _removeMeal(int index) {
     setState(() {
+      _mealControllers[index].dispose();
       _mealControllers.removeAt(index);
     });
   }
 
   Future<void> _saveDiet() async {
-    final trainerId = Supabase.instance.client.auth.currentUser?.id;
-    if (trainerId == null) return;
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final diet = Diet(
-        id: widget.existingDiet?.id ?? '', // Use existing ID if editing
-        memberId: widget.memberId,
-        trainerId: trainerId,
-        startDate: widget.existingDiet?.startDate ?? DateTime.now(),
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        createdAt: widget.existingDiet?.createdAt ?? DateTime.now(),
-      );
-
       final items = _mealControllers.asMap().entries.map((entry) {
         final index = entry.key;
         final controller = entry.value;
@@ -106,6 +110,18 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
         return;
       }
 
+      final diet = Diet(
+        id: widget.existingDiet?.id ?? '',
+        memberId: widget.memberId,
+        // Hoca ekliyorsa trainer_id set et ve status = trainer_suggestion
+        trainerId: widget.isTrainerAdding ? currentUser.id : null,
+        submittedBy: currentUser.id,
+        status: widget.isTrainerAdding ? 'trainer_suggestion' : (widget.existingDiet?.status ?? 'pending'),
+        startDate: widget.existingDiet?.startDate ?? DateTime.now(),
+        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        createdAt: widget.existingDiet?.createdAt ?? DateTime.now(),
+      );
+
       if (widget.existingDiet != null) {
         await _repository.updateDiet(diet, items);
         if (mounted) {
@@ -115,7 +131,12 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
       } else {
         await _repository.createDiet(diet, items);
         if (mounted) {
-          CustomSnackBar.showSuccess(context, 'Diyet programı başarıyla oluşturuldu.');
+          CustomSnackBar.showSuccess(
+            context,
+            widget.isTrainerAdding
+                ? 'Öneri diyet başarıyla oluşturuldu.'
+                : 'Beslenme programınız gönderildi. Hoca değerlendirme yapacak.',
+          );
           Navigator.pop(context, true);
         }
       }
@@ -130,13 +151,18 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.existingDiet != null;
+    String title;
+    if (widget.isTrainerAdding) {
+      title = isEditing ? 'Öneri Düzenle' : '${widget.memberName} - Öneri Diyet';
+    } else {
+      title = isEditing ? 'Diyetimi Düzenle' : 'Diyetimi Gir';
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
-          '${widget.memberName} - ${widget.existingDiet != null ? "Diyeti Düzenle" : "Diyet Planı"}', 
-          style: AppTextStyles.headline
-        ),
+        title: Text(title, style: AppTextStyles.headline),
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
@@ -150,7 +176,55 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Info Card
+                // Bilgi banner'ı
+                if (!widget.isTrainerAdding) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentBlue.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.accentBlue.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: AppColors.accentBlue, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Girdiğin beslenme programı hocanın değerlendirmesine gönderilecek.',
+                            style: AppTextStyles.caption1.copyWith(color: AppColors.accentBlue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                if (widget.isTrainerAdding) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryYellow.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primaryYellow.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star_outline, color: AppColors.primaryYellow, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Bu diyet üyeye "Hoca Önerisi" olarak görünecek.',
+                            style: AppTextStyles.caption1.copyWith(color: AppColors.primaryYellow),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 GlassCard(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -171,7 +245,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -185,7 +259,6 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Meals List
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -199,11 +272,13 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
 
                 const SizedBox(height: 30),
                 CustomButton(
-                  text: widget.existingDiet != null ? 'Değişiklikleri Kaydet' : 'Diyet Programını Kaydet',
+                  text: isEditing
+                      ? 'Değişiklikleri Kaydet'
+                      : (widget.isTrainerAdding ? 'Öneri Olarak Kaydet' : 'Gönder'),
                   onPressed: _saveDiet,
                   isLoading: _isLoading,
-                  backgroundColor: AppColors.accentGreen,
-                  foregroundColor: Colors.white,
+                  backgroundColor: widget.isTrainerAdding ? AppColors.primaryYellow : AppColors.accentGreen,
+                  foregroundColor: widget.isTrainerAdding ? Colors.black : Colors.white,
                 ),
                 const SizedBox(height: 40),
               ],
@@ -222,7 +297,10 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: AppColors.error,
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: GlassCard(
@@ -273,5 +351,11 @@ class MealItemController {
     nameController = TextEditingController(text: initialName);
     contentController = TextEditingController();
     caloriesController = TextEditingController();
+  }
+
+  void dispose() {
+    nameController.dispose();
+    contentController.dispose();
+    caloriesController.dispose();
   }
 }

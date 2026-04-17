@@ -1,4 +1,3 @@
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/diet_model.dart';
 
@@ -16,7 +15,6 @@ class DietRepository {
 
     if (response == null) return null;
 
-    // Supabase returns items unordered or by ID, let's sort them in Dart or ask SQL
     final diet = Diet.fromJson(response);
     diet.items.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     return diet;
@@ -39,18 +37,26 @@ class DietRepository {
   }
 
   Future<void> createDiet(Diet diet, List<DietItem> items) async {
-    // 1. Create Diet
-    final dietResponse = await _supabase.from('diets').insert({
+    final Map<String, dynamic> dietData = {
       'member_id': diet.memberId,
-      'trainer_id': diet.trainerId,
       'start_date': diet.startDate.toIso8601String(),
       'end_date': diet.endDate?.toIso8601String(),
       'notes': diet.notes,
-    }).select().single();
+      'status': diet.status,
+    };
 
+    // Eğer trainer id varsa ekle (hoca önerisi)
+    if (diet.trainerId != null) {
+      dietData['trainer_id'] = diet.trainerId;
+    }
+    // Kimin girdiğini tut
+    if (diet.submittedBy != null) {
+      dietData['submitted_by'] = diet.submittedBy;
+    }
+
+    final dietResponse = await _supabase.from('diets').insert(dietData).select().single();
     final dietId = dietResponse['id'];
 
-    // 2. Create Items
     final itemsData = items.map((item) {
       final json = item.toJson();
       json['diet_id'] = dietId;
@@ -63,15 +69,10 @@ class DietRepository {
   }
 
   Future<void> updateDiet(Diet diet, List<DietItem> newItems) async {
-    // 1. Update Diet metadata
     await _supabase.from('diets').update({
       'notes': diet.notes,
-      // dates usually don't change but if needed:
-      // 'start_date': diet.startDate.toIso8601String(),
     }).eq('id', diet.id);
 
-    // 2. Replace Items (Delete all old, insert all new)
-    // This is simpler than difffing for this use case
     await _supabase.from('diet_items').delete().eq('diet_id', diet.id);
 
     final itemsData = newItems.map((item) {
@@ -83,6 +84,14 @@ class DietRepository {
     if (itemsData.isNotEmpty) {
       await _supabase.from('diet_items').insert(itemsData);
     }
+  }
+
+  /// Hocanın değerlendirme yorumu ve durumu güncelleme
+  Future<void> evaluateDiet(String dietId, {required String status, String? comment}) async {
+    await _supabase.from('diets').update({
+      'status': status,
+      if (comment != null) 'trainer_comment': comment,
+    }).eq('id', dietId);
   }
 
   Future<void> deleteDiet(String dietId) async {
