@@ -176,10 +176,9 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const double colWidth = 100.0;
     const double rowHeight = 60.0;
     const double timeColWidth = 50.0;
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -194,68 +193,89 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
       ),
       body: AmbientBackground(
         child: SafeArea(
-          child: _isLoading 
+          child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
-            : Column(
-                children: [
-                  Expanded(
-                    child: InteractiveViewer(
-                      constrained: false,
-                      scaleEnabled: true,
-                      minScale: 0.5,
-                      maxScale: 2.5,
-                      child: SingleChildScrollView(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            : OrientationBuilder(
+                builder: (context, orientation) {
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isLandscape = orientation == Orientation.landscape;
+
+                  // Landscape: tüm 7 gün sabit genişlikte ekrana sığsın
+                  // Portrait: horizontal scroll ile 100px sabit
+                  final double colWidth = isLandscape
+                      ? (screenWidth - timeColWidth) / 7
+                      : 100.0;
+
+                  final gridContent = Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: timeColWidth,
+                        child: Column(
                           children: [
-                            SizedBox(
-                              width: timeColWidth,
-                              child: Column(
-                                children: [
-                                  Container(height: 50, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10)))),
-                                  for (int h = 7; h <= 23; h++)
-                                    Container(
-                                      height: rowHeight,
-                                      alignment: Alignment.center,
-                                      decoration: const BoxDecoration(
-                                        border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
-                                      ),
-                                      child: Text('${h.toString().padLeft(2, '0')}:00', style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            for (int dayIndex = 0; dayIndex < 7; dayIndex++)
-                              SizedBox(
-                                width: colWidth,
-                                child: Column(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => _showDayOptions(dayIndex),
-                                      child: Container(
-                                        width: colWidth,
-                                        height: 50,
-                                        alignment: Alignment.center,
-                                        decoration: const BoxDecoration(
-                                          border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
-                                        ),
-                                        child: Text(_days[dayIndex], style: const TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ),
-                                    for (int h = 7; h <= 23; h++)
-                                      _buildGridCell(dayIndex, h, rowHeight, colWidth),
-                                  ],
+                            Container(height: 50, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10)))),
+                            for (int h = 7; h <= 23; h++)
+                              Container(
+                                height: rowHeight,
+                                alignment: Alignment.center,
+                                decoration: const BoxDecoration(
+                                  border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
                                 ),
+                                child: Text('${h.toString().padLeft(2, '0')}:00', style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary)),
                               ),
                           ],
                         ),
                       ),
-                    ),
-                    ), // InteractiveViewer
-                  ),
-                ],
+                      for (int dayIndex = 0; dayIndex < 7; dayIndex++)
+                        SizedBox(
+                          width: colWidth,
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () => _showDayOptions(dayIndex),
+                                child: Container(
+                                  width: colWidth,
+                                  height: 50,
+                                  alignment: Alignment.center,
+                                  decoration: const BoxDecoration(
+                                    border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
+                                  ),
+                                  child: Text(_days[dayIndex], style: TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold, fontSize: isLandscape ? 11 : 13)),
+                                ),
+                              ),
+                              for (int h = 7; h <= 23; h++)
+                                _buildGridCell(dayIndex, h, rowHeight, colWidth),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: isLandscape
+                            // Landscape: sadece dikey kaydırma, tüm günler görünür
+                            ? SingleChildScrollView(
+                                child: gridContent,
+                              )
+                            // Portrait: hem dikey hem yatay kaydırma + zoom
+                            : InteractiveViewer(
+                                constrained: false,
+                                scaleEnabled: true,
+                                minScale: 0.5,
+                                maxScale: 2.5,
+                                child: SingleChildScrollView(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: gridContent,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  );
+                },
               ),
         ),
       ),
