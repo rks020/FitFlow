@@ -47,6 +47,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   final _chestController = TextEditingController();
   final _waistController = TextEditingController();
   final _hipsController = TextEditingController();
+  final _shouldersController = TextEditingController();
   final _leftArmController = TextEditingController();
   final _rightArmController = TextEditingController();
   final _leftThighController = TextEditingController();
@@ -95,6 +96,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     if (m.chest != null) _chestController.text = m.chest.toString();
     if (m.waist != null) _waistController.text = m.waist.toString();
     if (m.hips != null) _hipsController.text = m.hips.toString();
+    if (m.shoulders != null) _shouldersController.text = m.shoulders.toString();
     if (m.leftArm != null) _leftArmController.text = m.leftArm.toString();
     if (m.rightArm != null) _rightArmController.text = m.rightArm.toString();
     if (m.leftThigh != null) _leftThighController.text = m.leftThigh.toString();
@@ -121,6 +123,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     _chestController.dispose();
     _waistController.dispose();
     _hipsController.dispose();
+    _shouldersController.dispose();
     _leftArmController.dispose();
     _rightArmController.dispose();
     _leftThighController.dispose();
@@ -207,23 +210,23 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         id: widget.existingMeasurement?.id, // Preserve ID if editing
         memberId: widget.member.id,
         date: _selectedDate,
-        weight: double.parse(_weightController.text),
-        height: double.parse(_heightController.text),
+        weight: _parseDouble(_weightController.text)!,
+        height: _parseDouble(_heightController.text)!,
         age: _ageController.text.isNotEmpty ? int.parse(_ageController.text) : null,
-        bodyFatPercentage: _bodyFatController.text.isNotEmpty 
-            ? double.parse(_bodyFatController.text) : null,
-        boneMass: _boneMassController.text.isNotEmpty ? double.parse(_boneMassController.text) : null,
-        waterPercentage: _waterPercentageController.text.isNotEmpty ? double.parse(_waterPercentageController.text) : null,
+        bodyFatPercentage: _parseDouble(_bodyFatController.text),
+        boneMass: _parseDouble(_boneMassController.text),
+        waterPercentage: _parseDouble(_waterPercentageController.text),
         metabolicAge: _metabolicAgeController.text.isNotEmpty ? int.parse(_metabolicAgeController.text) : null,
-        visceralFatRating: _visceralFatController.text.isNotEmpty ? double.parse(_visceralFatController.text) : null,
+        visceralFatRating: _parseDouble(_visceralFatController.text),
         basalMetabolicRate: _bmrController.text.isNotEmpty ? int.parse(_bmrController.text) : null,
-        chest: _chestController.text.isNotEmpty ? double.parse(_chestController.text) : null,
-        waist: _waistController.text.isNotEmpty ? double.parse(_waistController.text) : null,
-        hips: _hipsController.text.isNotEmpty ? double.parse(_hipsController.text) : null,
-        leftArm: _leftArmController.text.isNotEmpty ? double.parse(_leftArmController.text) : null,
-        rightArm: _rightArmController.text.isNotEmpty ? double.parse(_rightArmController.text) : null,
-        leftThigh: _leftThighController.text.isNotEmpty ? double.parse(_leftThighController.text) : null,
-        rightThigh: _rightThighController.text.isNotEmpty ? double.parse(_rightThighController.text) : null,
+        chest: _parseDouble(_chestController.text),
+        waist: _parseDouble(_waistController.text),
+        hips: _parseDouble(_hipsController.text),
+        shoulders: _parseDouble(_shouldersController.text),
+        leftArm: _parseDouble(_leftArmController.text),
+        rightArm: _parseDouble(_rightArmController.text),
+        leftThigh: _parseDouble(_leftThighController.text),
+        rightThigh: _parseDouble(_rightThighController.text),
         frontPhotoUrl: _frontUrl, // Keep existing URLs
         sidePhotoUrl: _sideUrl,
         backPhotoUrl: _backUrl,
@@ -319,6 +322,13 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  // Güvenli double parse: virgülü noktaya çevirir, boşsa null döner
+  double? _parseDouble(String text) {
+    final cleaned = text.trim().replaceAll(',', '.');
+    if (cleaned.isEmpty) return null;
+    return double.tryParse(cleaned);
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -442,6 +452,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                       _buildNumberInput(_waistController, 'Bel'),
                       const SizedBox(height: 12),
                       _buildNumberInput(_hipsController, 'Kalça'),
+                      const SizedBox(height: 12),
+                      _buildNumberInput(_shouldersController, 'Omuz'),
                       const SizedBox(height: 12),
                       Row(
                         children: [

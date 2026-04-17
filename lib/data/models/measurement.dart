@@ -86,6 +86,7 @@ class Measurement {
       'right_arm_cm': rightArm,
       'left_thigh_cm': leftThigh,
       'right_thigh_cm': rightThigh,
+      'shoulders_cm': shoulders,
       'front_photo_url': frontPhotoUrl,
       'side_photo_url': sidePhotoUrl,
       'back_photo_url': backPhotoUrl,
@@ -116,8 +117,8 @@ class Measurement {
       rightArm: map['right_arm_cm'] != null ? (map['right_arm_cm'] as num).toDouble() : null,
       leftThigh: map['left_thigh_cm'] != null ? (map['left_thigh_cm'] as num).toDouble() : null,
       rightThigh: map['right_thigh_cm'] != null ? (map['right_thigh_cm'] as num).toDouble() : null,
-      shoulders: null, // Not in new schema
-      neck: null, // Not in new schema
+      shoulders: map['shoulders_cm'] != null ? (map['shoulders_cm'] as num).toDouble() : null,
+      neck: null,
       frontPhotoUrl: map['front_photo_url'] as String?,
       sidePhotoUrl: map['side_photo_url'] as String?,
       backPhotoUrl: map['back_photo_url'] as String?,
@@ -163,6 +164,10 @@ class Measurement {
       case 'rightArm':
         current = rightArm;
         previous = other.rightArm;
+        break;
+      case 'shoulders':
+        current = shoulders;
+        previous = other.shoulders;
         break;
       case 'leftThigh':
         current = leftThigh;
