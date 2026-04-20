@@ -530,7 +530,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
               const SizedBox(height: 24),
             ],
 
-            const DailyTipWidget(),
+            DailyTipWidget(memberData: _memberData),
             const SizedBox(height: 32),
 
             Row(

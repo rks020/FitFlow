@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 
-class DailyTipWidget extends StatelessWidget {
-  const DailyTipWidget({super.key});
+class DailyTipWidget extends StatefulWidget {
+  final Map<String, dynamic>? memberData;
+
+  const DailyTipWidget({super.key, this.memberData});
+
+  @override
+  State<DailyTipWidget> createState() => _DailyTipWidgetState();
+}
+
+class _DailyTipWidgetState extends State<DailyTipWidget> {
+  String? _customTip;
+  bool _isLoading = true;
 
   static const List<Map<String, String>> _tips = [
     {
@@ -150,10 +161,67 @@ class DailyTipWidget extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchCustomTip();
+  }
+
+  Future<void> _fetchCustomTip() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      String? orgId = widget.memberData?['organization_id'];
+
+      // If no org in memberData, try finding it via members
+      if (orgId == null) {
+        final profile = await Supabase.instance.client
+            .from('members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (profile != null) {
+          orgId = profile['organization_id'] as String?;
+        }
+      }
+
+      if (orgId != null) {
+        final orgResult = await Supabase.instance.client
+            .from('organizations')
+            .select('daily_tip')
+            .eq('id', orgId)
+            .maybeSingle();
+
+        if (orgResult != null && orgResult['daily_tip'] != null) {
+          _customTip = orgResult['daily_tip'] as String;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading custom tip: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const SizedBox(
+          height: 80,
+          child: Center(
+              child:
+                  CircularProgressIndicator(color: AppColors.primaryYellow)));
+    }
+
     final dayOfYear =
         DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
-    final tip = _tips[dayOfYear % _tips.length];
+    final tipData = _tips[dayOfYear % _tips.length];
+
+    final displayEmoji = _customTip != null ? '📢' : tipData['emoji']!;
+    final displayTip = _customTip ?? tipData['tip']!;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -178,7 +246,7 @@ class DailyTipWidget extends StatelessWidget {
               color: AppColors.primaryYellow.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(tip['emoji']!, style: const TextStyle(fontSize: 26)),
+            child: Text(displayEmoji, style: const TextStyle(fontSize: 26)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -195,7 +263,7 @@ class DailyTipWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  tip['tip']!,
+                  displayTip,
                   style: AppTextStyles.body.copyWith(
                     color: Colors.white.withOpacity(0.9),
                     height: 1.5,
