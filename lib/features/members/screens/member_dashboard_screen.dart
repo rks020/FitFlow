@@ -16,6 +16,13 @@ import 'package:fitflow/features/dashboard/screens/announcements_screen.dart';
 import '../../../core/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../chat/screens/chat_screen.dart';
+import '../../gamification/models/streak_model.dart';
+import '../../gamification/models/badge_model.dart';
+import '../../gamification/repositories/gamification_repository.dart';
+import '../../gamification/widgets/streak_banner_widget.dart';
+import '../../gamification/widgets/badge_collection_widget.dart';
+import '../../gamification/widgets/daily_tip_widget.dart';
+import '../../gamification/screens/leaderboard_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({super.key});
@@ -296,13 +303,28 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
   bool _isLoading = true;
 
   int _unreadAnnouncementsCount = 0;
+  StreakModel? _streak;
+  List<BadgeModel> _badges = [];
+  final _gamificationRepo = GamificationRepository();
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadGamificationData();
     _loadUnreadAnnouncements();
     _setupRealtimeSubscription();
+  }
+
+  Future<void> _loadGamificationData() async {
+    final streak = await _gamificationRepo.getStreak();
+    final badges = await _gamificationRepo.getBadges();
+    if (mounted) {
+      setState(() {
+        _streak = streak;
+        _badges = badges;
+      });
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -496,9 +518,37 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
             ],
 
             const SizedBox(height: 32),
-            Text(
-              'Hızlı Erişim',
-              style: AppTextStyles.title3.copyWith(color: Colors.white),
+            
+            // Gamification Section
+            if (_streak != null) ...[
+              StreakBannerWidget(streak: _streak!),
+              const SizedBox(height: 24),
+            ],
+            
+            if (_badges.isNotEmpty) ...[
+              BadgeCollectionWidget(badges: _badges),
+              const SizedBox(height: 24),
+            ],
+
+            const DailyTipWidget(),
+            const SizedBox(height: 32),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Hızlı Erişim',
+                  style: AppTextStyles.title3.copyWith(color: Colors.white),
+                ),
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+                  ),
+                  icon: const Icon(Icons.emoji_events, color: AppColors.primaryYellow, size: 20),
+                  label: const Text('Liderlik Tablosu', style: TextStyle(color: AppColors.primaryYellow)),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 

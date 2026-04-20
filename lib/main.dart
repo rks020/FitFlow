@@ -14,71 +14,6 @@ import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 
 import 'features/profile/screens/change_password_screen.dart';
 import 'features/auth/screens/auth_check_screen.dart';
-import 'package:workmanager/workmanager.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final notificationsEnabled = prefs.getBool('water_notifications') ?? true;
-      if (!notificationsEnabled) return Future.value(true);
-
-      // Supabase is required for checking water logs
-      await Supabase.initialize(
-        url: SupabaseConfig.supabaseUrl,
-        anonKey: SupabaseConfig.supabaseAnonKey,
-      );
-
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return Future.value(true);
-
-      final now = DateTime.now();
-      final startOfDay =
-          DateTime(now.year, now.month, now.day).toIso8601String();
-      final endOfDay =
-          DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
-
-      final response = await Supabase.instance.client
-          .from('water_logs')
-          .select('amount_ml')
-          .eq('member_id', user.id)
-          .gte('consumed_at', startOfDay)
-          .lte('consumed_at', endOfDay);
-
-      int total = 0;
-      for (var row in response as List) {
-        total += (row['amount_ml'] as int);
-      }
-
-      if (total < 3000) {
-        final flutterLocalNotificationsPlugin =
-            FlutterLocalNotificationsPlugin();
-        const androidInit =
-            AndroidInitializationSettings('@mipmap/launcher_icon');
-        const iosInit = DarwinInitializationSettings();
-        await flutterLocalNotificationsPlugin.initialize(
-            const InitializationSettings(android: androidInit, iOS: iosInit));
-
-        await flutterLocalNotificationsPlugin.show(
-          DateTime.now().millisecond,
-          'Su İçme Vakti! 💧',
-          'Şu ana kadar $total ml su içtin. 3000 ml hedefine ulaşmak için hemen bir bardak su iç!',
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-                'water_reminders', 'Su Hatırlatıcıları',
-                importance: Importance.max),
-            iOS: DarwinNotificationDetails(),
-          ),
-        );
-      }
-    } catch (_) {}
-    return Future.value(true);
-  });
-}
-
 // Helper function to check password_changed from database
 Future<bool> _checkPasswordChanged(String userId) async {
   try {
@@ -133,16 +68,7 @@ Future<void> main() async {
       ),
     );
 
-    // Initialize WorkManager for background tasks
-    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
-    await Workmanager().registerPeriodicTask(
-      "water_tracker_1hr",
-      "checkWaterIntakeTask",
-      frequency: const Duration(hours: 1),
-      initialDelay: const Duration(hours: 1),
-      constraints: Constraints(networkType: NetworkType.connected),
-    );
-
+    // Run app
     runApp(const PTBodyChangeApp());
   }, (error, stack) {
     if (error.toString().contains('Email link is invalid or has expired')) {

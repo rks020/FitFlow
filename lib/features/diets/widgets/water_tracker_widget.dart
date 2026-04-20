@@ -3,9 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../gamification/repositories/gamification_repository.dart';
 import '../models/water_log_model.dart';
 import '../repositories/water_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../repositories/water_repository.dart';
 
 class WaterTrackerWidget extends StatefulWidget {
   const WaterTrackerWidget({super.key});
@@ -30,18 +31,49 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
   }
 
   Future<void> _loadNotificationPref() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _notificationsEnabled = prefs.getBool('water_notifications') ?? true;
-    });
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final res = await Supabase.instance.client
+          .from('members')
+          .select('water_notification_enabled')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (res != null && mounted) {
+        setState(() {
+          _notificationsEnabled = res['water_notification_enabled'] == true;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _toggleNotifications(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('water_notifications', value);
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    // Optimistic UI update
     setState(() {
       _notificationsEnabled = value;
     });
+
+    try {
+      await Supabase.instance.client
+          .from('members')
+          .update({'water_notification_enabled': value})
+          .eq('id', user.id);
+    } catch (e) {
+      // Revert if error
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = !value;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Hata: $e'), backgroundColor: AppColors.accentRed),
+        );
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -78,6 +110,33 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
 
     try {
       await _repository.addWater(user.id, amount);
+      
+      // Update gamification streak and points
+      final profile = await Supabase.instance.client.from('profiles').select('id').eq('id', user.id).maybeSingle();
+      if (profile != null) {
+          // If water goal reached today, update streak
+          if (_totalIntake >= _goal && (_totalIntake - amount) < _goal) {
+              final gamification = GamificationRepository();
+              await gamification.recordActivity();
+              await gamification.addPoints('water_goal', 50);
+              
+              if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: const [
+                          Text('💧', style: TextStyle(fontSize: 20)),
+                          SizedBox(width: 8),
+                          Text('Su hedefine ulaştın! Seri devam ediyor (+50 pt)'),
+                        ],
+                      ),
+                      backgroundColor: AppColors.accentGreen,
+                    ),
+                  );
+              }
+          }
+      }
+
       _loadData();
     } catch (e) {
       // Revert if failed
