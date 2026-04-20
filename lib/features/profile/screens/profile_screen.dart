@@ -655,25 +655,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 16),
 
-                          // Signature Log Entry
-                          GlassCard(
-                            child: _ProfileOption(
-                              icon: Icons.history_edu_rounded,
-                              title: 'Ders Kaydı Defteri',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const SignatureLogScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
                           // Günün Sözü (Owner / Trainer)
                           GlassCard(
                             child: _ProfileOption(
@@ -691,6 +672,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ],
+
+                        const SizedBox(height: 16),
+
+                        // Signature Log Entry
+                        GlassCard(
+                          child: _ProfileOption(
+                            icon: Icons.history_edu_rounded,
+                            title: 'Ders Kaydı Defteri',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const SignatureLogScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
 
                         const SizedBox(height: 24),
 
