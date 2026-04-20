@@ -499,12 +499,12 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                     Column(
                       children: [
                         const Icon(Icons.bolt_rounded,
-                            color: AppColors.accentCyan, size: 28),
+                            color: AppColors.neonCyan, size: 28),
                         const SizedBox(height: 8),
                         Text(
                           _memberData!['session_count']?.toString() ?? '0',
                           style: AppTextStyles.headline.copyWith(
-                              color: AppColors.accentCyan, fontSize: 24),
+                              color: AppColors.neonCyan, fontSize: 24),
                         ),
                         const SizedBox(height: 4),
                         Text('Kalan Ders',

@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'streak_model.dart';
-import 'badge_model.dart';
+import '../models/streak_model.dart';
+import '../models/badge_model.dart';
 
 class GamificationRepository {
   final _supabase = Supabase.instance.client;

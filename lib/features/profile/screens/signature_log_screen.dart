@@ -107,11 +107,13 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
     if (isTrainer) {
       return _buildHistoryList(_historySessions);
     } else {
-      return CustomScrollView(
-        padding: const EdgeInsets.all(20),
-        slivers: [
-          SliverToBoxAdapter(child: _buildMemberInfoCard()),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            SliverToBoxAdapter(child: _buildMemberInfoCard()),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           if (_upcomingSessions.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: Padding(
@@ -164,7 +166,7 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
               ),
             ),
           ],
-        ],
+        ),
       );
     }
   }
@@ -229,13 +231,11 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
           Container(width: 1, height: 40, color: AppColors.glassBorder),
           Column(
             children: [
-              const Icon(Icons.bolt_rounded,
-                  color: AppColors.accentCyan, size: 28),
+              const Icon(Icons.bolt_rounded, color: AppColors.neonCyan, size: 28),
               const SizedBox(height: 8),
               Text(
                 sessionCount.toString(),
-                style: AppTextStyles.headline
-                    .copyWith(color: AppColors.accentCyan, fontSize: 24),
+                style: AppTextStyles.headline.copyWith(color: AppColors.neonCyan, fontSize: 24),
               ),
               const SizedBox(height: 4),
               Text('Kalan Ders',

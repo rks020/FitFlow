@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../shared/widgets/glass_card.dart';
-import '../../../gamification/repositories/gamification_repository.dart';
+import '../../gamification/repositories/gamification_repository.dart';
 import '../models/water_log_model.dart';
 import '../repositories/water_repository.dart';
 import '../repositories/water_repository.dart';

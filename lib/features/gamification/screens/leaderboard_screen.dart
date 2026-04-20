@@ -244,7 +244,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           Text(
             '${entry.totalPoints} pt',
             style: TextStyle(
-              color: isMe ? AppColors.primaryYellow : AppColors.accentCyan,
+              color: isMe ? AppColors.primaryYellow : AppColors.neonCyan,
               fontWeight: FontWeight.bold,
             ),
           ),
