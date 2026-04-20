@@ -166,8 +166,9 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
               ),
             ),
           ],
-        ),
-      );
+        ],
+      ),
+    );
     }
   }
 
