@@ -8,6 +8,7 @@ class Diet {
   final DateTime startDate;
   final DateTime? endDate;
   final String? notes;
+  final int? targetCalories;
   final List<DietItem> items;
   final DateTime createdAt;
 
@@ -22,6 +23,7 @@ class Diet {
     this.endDate,
     this.items = const [],
     this.notes,
+    this.targetCalories,
     required this.createdAt,
   });
 
@@ -36,6 +38,7 @@ class Diet {
       startDate: DateTime.parse(json['start_date']),
       endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
       notes: json['notes'],
+      targetCalories: json['target_calories'],
       createdAt: DateTime.parse(json['created_at']),
       items: json['diet_items'] != null
           ? (json['diet_items'] as List).map((i) => DietItem.fromJson(i)).toList()
@@ -52,6 +55,7 @@ class Diet {
       'start_date': startDate.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
       'notes': notes,
+      if (targetCalories != null) 'target_calories': targetCalories,
     };
   }
 

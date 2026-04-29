@@ -29,6 +29,7 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
   
   final Map<String, String> _metricLabels = {
     'Kilo': 'weight',
+    'Omuz': 'shoulders',
     'Yağ Oranı': 'bodyFat',
     'Su (%)': 'water',
     'Kemik (kg)': 'bone',
@@ -80,6 +81,7 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
       case 'metabolicAge': return m.metabolicAge?.toDouble();
       case 'bmr': return m.basalMetabolicRate?.toDouble();
       case 'chest': return m.chest;
+      case 'shoulders': return m.shoulders;
       case 'waist': return m.waist;
       case 'hips': return m.hips;
       case 'leftArm': return m.leftArm;
@@ -304,7 +306,7 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
     if (diff == 0) {
       color = AppColors.primaryYellow;
     } else {
-      bool isDecreaseGood = ['weight', 'bodyFat', 'waist', 'hips', 'visceral', 'metabolicAge'].contains(metricKey);
+      bool isDecreaseGood = ['weight', 'bodyFat', 'waist', 'hips', 'chest', 'visceral', 'metabolicAge'].contains(metricKey);
       bool isGood = (isDecreaseGood && diff < 0) || (!isDecreaseGood && diff > 0);
       color = isGood ? AppColors.accentGreen : AppColors.accentRed;
     }

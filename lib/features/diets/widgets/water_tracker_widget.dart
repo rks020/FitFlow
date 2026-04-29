@@ -6,10 +6,15 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../gamification/repositories/gamification_repository.dart';
 import '../models/water_log_model.dart';
 import '../repositories/water_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/services/notification_service.dart';
 import '../repositories/water_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/services/notification_service.dart';
 
 class WaterTrackerWidget extends StatefulWidget {
-  const WaterTrackerWidget({super.key});
+  final bool showSettings;
+  const WaterTrackerWidget({super.key, this.showSettings = true});
 
   @override
   State<WaterTrackerWidget> createState() => _WaterTrackerWidgetState();
@@ -22,6 +27,7 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
   int _totalIntake = 0;
   final int _goal = 3000;
   bool _notificationsEnabled = true;
+  int _intervalMinutes = 120; // default 2 hours = 120 minutes
 
   @override
   void initState() {
@@ -40,6 +46,10 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
           .eq('id', user.id)
           .maybeSingle();
 
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _intervalMinutes = prefs.getInt('water_interval_minutes') ?? 120;
+      });
       if (res != null && mounted) {
         setState(() {
           _notificationsEnabled = res['water_notification_enabled'] == true;
@@ -58,10 +68,22 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
     });
 
     try {
+      // Save locally first (so refresh always works even offline)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('water_notifications_enabled', value);
+
       await Supabase.instance.client
           .from('members')
           .update({'water_notification_enabled': value})
           .eq('id', user.id);
+      
+      final notificationService = NotificationService();
+      if (value) {
+         await notificationService.scheduleWaterRemindersByMinutes(_intervalMinutes);
+      } else {
+         await notificationService.cancelWaterReminders();
+      }
+
     } catch (e) {
       // Revert if error
       if (mounted) {
@@ -73,6 +95,32 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
               content: Text('Hata: $e'), backgroundColor: AppColors.accentRed),
         );
       }
+    }
+  }
+
+  Future<void> _changeInterval(int minutes) async {
+    setState(() {
+      _intervalMinutes = minutes;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('water_interval_minutes', minutes);
+    
+    // Sync with Supabase for server-side Android FCM
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+       try {
+          await Supabase.instance.client
+              .from('members')
+              .update({'water_interval_minutes': minutes})
+              .eq('id', user.id);
+       } catch (e) {
+          debugPrint('Failed to sync interval to Supabase: $e');
+       }
+    }
+    
+    if (_notificationsEnabled) {
+       final notificationService = NotificationService();
+       await notificationService.scheduleWaterRemindersByMinutes(minutes);
     }
   }
 
@@ -204,30 +252,89 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
                           .copyWith(color: AppColors.accentBlue)),
                 ],
               ),
-              // Bildirimleri aç/kapat toggle
-              Row(
-                children: [
-                  Icon(
-                    _notificationsEnabled
-                        ? Icons.notifications_active
-                        : Icons.notifications_off,
-                    color: _notificationsEnabled
-                        ? AppColors.accentBlue
-                        : AppColors.textSecondary,
-                    size: 16,
-                  ),
-                  Switch(
-                    value: _notificationsEnabled,
-                    onChanged: _toggleNotifications,
-                    activeColor: AppColors.accentBlue,
-                    activeTrackColor: AppColors.accentBlue.withOpacity(0.3),
-                    inactiveThumbColor: AppColors.textSecondary,
-                    inactiveTrackColor: AppColors.surfaceLight,
-                  ),
-                ],
-              ),
+              // Bildirimleri aç/kapat toggle (Only if showSettings is true)
+              if (widget.showSettings)
+                Row(
+                  children: [
+                    Icon(
+                      _notificationsEnabled
+                          ? Icons.notifications_active
+                          : Icons.notifications_off,
+                      color: _notificationsEnabled
+                          ? AppColors.accentBlue
+                          : AppColors.textSecondary,
+                      size: 16,
+                    ),
+                    Switch(
+                      value: _notificationsEnabled,
+                      onChanged: _toggleNotifications,
+                      activeColor: AppColors.accentBlue,
+                      activeTrackColor: AppColors.accentBlue.withOpacity(0.3),
+                      inactiveThumbColor: AppColors.textSecondary,
+                      inactiveTrackColor: AppColors.surfaceLight,
+                    ),
+                  ],
+                ),
             ],
           ),
+          if (widget.showSettings && _notificationsEnabled) ...[
+            const SizedBox(height: 12),
+            Text('Sıklık:', style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // Dakika seçenekleri
+                  for (final entry in [
+                    {'label': '10 dk', 'value': 10},
+                    {'label': '15 dk', 'value': 15},
+                    {'label': '20 dk', 'value': 20},
+                    {'label': '25 dk', 'value': 25},
+                    {'label': '30 dk', 'value': 30},
+                    // Saat seçenekleri (dakikaya çevrilmiş)
+                    {'label': '1 sa', 'value': 60},
+                    {'label': '2 sa', 'value': 120},
+                    {'label': '5 sa', 'value': 300},
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => _changeInterval(entry['value'] as int),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _intervalMinutes == entry['value']
+                                ? AppColors.accentBlue.withOpacity(0.25)
+                                : AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _intervalMinutes == entry['value']
+                                  ? AppColors.accentBlue
+                                  : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            entry['label'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: _intervalMinutes == entry['value']
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: _intervalMinutes == entry['value']
+                                  ? AppColors.accentBlue
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

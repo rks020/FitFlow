@@ -19,6 +19,7 @@ import 'upgrade_to_pro_screen.dart';
 import 'support_screen.dart';
 import 'master_schedule_screen.dart';
 import 'low_session_notifications_screen.dart';
+import 'water_notification_settings_screen.dart';
 
 import 'package:fitflow/features/auth/screens/welcome_screen.dart';
 import 'package:fitflow/shared/widgets/ambient_background.dart';
@@ -573,6 +574,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           const SupportScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              Divider(color: AppColors.glassBorder, height: 1),
+                              _ProfileOption(
+                                icon: Icons.water_drop_rounded,
+                                title: 'Su Bildirimi Ayarları',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const WaterNotificationSettingsScreen(),
                                     ),
                                   );
                                 },

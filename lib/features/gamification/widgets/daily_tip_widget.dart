@@ -14,6 +14,7 @@ class DailyTipWidget extends StatefulWidget {
 
 class _DailyTipWidgetState extends State<DailyTipWidget> {
   String? _customTip;
+  String? _customAuthor;
   bool _isLoading = true;
 
   static const List<Map<String, String>> _tips = [
@@ -191,12 +192,13 @@ class _DailyTipWidgetState extends State<DailyTipWidget> {
       if (orgId != null) {
         final orgResult = await Supabase.instance.client
             .from('organizations')
-            .select('daily_tip')
+            .select('daily_tip, daily_tip_author')
             .eq('id', orgId)
             .maybeSingle();
 
         if (orgResult != null && orgResult['daily_tip'] != null) {
           _customTip = orgResult['daily_tip'] as String;
+          _customAuthor = orgResult['daily_tip_author'] as String?;
         }
       }
     } catch (e) {
@@ -269,6 +271,20 @@ class _DailyTipWidgetState extends State<DailyTipWidget> {
                     height: 1.5,
                   ),
                 ),
+                if (_customAuthor != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Text(
+                      '— $_customAuthor',
+                      style: AppTextStyles.caption2.copyWith(
+                        color: AppColors.primaryYellow.withOpacity(0.8),
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

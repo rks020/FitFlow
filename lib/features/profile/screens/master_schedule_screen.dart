@@ -21,6 +21,10 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
   bool _isLoading = true;
   String? _orgId;
   String? _trainerId;
+  bool _isTrainer = false;
+  List<Map<String, dynamic>> _trainers = [];
+  String? _selectedTrainerId;
+  String? _currentUserId;
 
   final List<String> _days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
   // Use local time for template calculation to match grid labels (7-23)
@@ -43,12 +47,29 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
+      _currentUserId = user.id;
+
       final profilePath = await _supabase.from('profiles').select('organization_id, role').eq('id', user.id).single();
       _orgId = profilePath['organization_id'];
       final role = profilePath['role'];
-      _trainerId = (role == 'trainer') ? user.id : null;
-      // Note: class_sessions table does NOT have organization_id. 
-      // We will fetch all templates for now.
+      _isTrainer = (role == 'trainer');
+      _trainerId = _isTrainer ? user.id : null;
+      _selectedTrainerId = user.id; // Default to self
+
+      // Fetch all trainers in the organization
+      final trainersData = await _supabase
+          .from('profiles')
+          .select('id, first_name, last_name, role')
+          .eq('organization_id', _orgId!)
+          .or('role.eq.trainer,role.eq.admin,role.eq.owner,role.eq.manager')
+          .order('first_name');
+      
+      _trainers = List<Map<String, dynamic>>.from(trainersData);
+
+      // If trainer, only show themselves in the list to restrict view
+      if (_isTrainer) {
+        _trainers = _trainers.where((t) => t['id'] == _currentUserId).toList();
+      }
 
       await _fetchTemplateSessions();
     } catch (e) {
@@ -72,7 +93,9 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
           .lt('start_time', endRange.toIso8601String())
           .eq('is_template', true);
 
-      if (_trainerId != null) query = query.eq('trainer_id', _trainerId!);
+      if (_selectedTrainerId != null) {
+        query = query.eq('trainer_id', _selectedTrainerId!);
+      }
 
       final data = await query;
       debugPrint('Template sessions fetched: ${data.length}');
@@ -160,7 +183,8 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
         child: _AddSessionForm(
           dayIndex: dayIndex,
           startHour: hour,
-          trainerId: _trainerId ?? _supabase.auth.currentUser!.id,
+          trainerId: _selectedTrainerId ?? _currentUserId!,
+          isTrainer: _isTrainer,
           orgId: _orgId!,
           templateStart: _templateStart,
           onSaved: () {
@@ -178,9 +202,11 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
+      appBar: isLandscape ? null : AppBar(
         title: const Text('Sabit Randevu Listesi'),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -194,117 +220,157 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
         child: SafeArea(
           child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow))
-            : OrientationBuilder(
-                builder: (context, orientation) {
-                  final isLandscape = orientation == Orientation.landscape;
-
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      const double timeColWidth = 50.0;
-                      const int numHours = 17; // 07:00 - 23:00
-                      const double headerHeight = 44.0;
-
-                      double colWidth;
-                      double rowHeight;
-
-                      if (isLandscape) {
-                        // Landscape: ekrana tam sığacak şekilde dinamik hesapla
-                        colWidth = (constraints.maxWidth - timeColWidth) / 7;
-                        rowHeight = (constraints.maxHeight - headerHeight) / numHours;
-                      } else {
-                        // Portrait: sabit boyutlar, scroll+zoom aktif
-                        colWidth = 100.0;
-                        rowHeight = 60.0;
-                      }
-
-                      Widget grid = Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Saat sütunu
-                          SizedBox(
-                            width: timeColWidth,
-                            child: Column(
-                              children: [
-                                Container(
-                                  height: headerHeight,
-                                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10))),
+            : Column(
+                children: [
+                  // Trainer Selection Tabs
+                  if (_trainers.length > 1 || _isTrainer)
+                    Container(
+                      height: isLandscape ? 35 : 60,
+                      padding: EdgeInsets.symmetric(vertical: isLandscape ? 2 : 10),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _trainers.length,
+                        itemBuilder: (context, index) {
+                          final trainer = _trainers[index];
+                          final isSelected = _selectedTrainerId == trainer['id'];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              visualDensity: isLandscape ? VisualDensity.compact : null,
+                              padding: isLandscape ? EdgeInsets.zero : null,
+                              labelPadding: isLandscape ? const EdgeInsets.symmetric(horizontal: 8) : null,
+                              label: Text(
+                                '${trainer['first_name']} ${trainer['last_name']}',
+                                style: AppTextStyles.caption1.copyWith(
+                                  color: isSelected ? Colors.black : Colors.white,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontSize: isLandscape ? 10 : null,
                                 ),
-                                for (int h = 7; h <= 23; h++)
-                                  Container(
-                                    height: rowHeight,
-                                    alignment: Alignment.center,
-                                    decoration: const BoxDecoration(
-                                      border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
-                                    ),
-                                    child: Text(
-                                      '${h.toString().padLeft(2, '0')}:00',
-                                      style: AppTextStyles.caption2.copyWith(
-                                        color: AppColors.textSecondary,
-                                        fontSize: isLandscape ? 9 : null,
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.primaryYellow,
+                              backgroundColor: AppColors.surfaceLight,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() {
+                                    _selectedTrainerId = trainer['id'];
+                                    _isLoading = true;
+                                  });
+                                  _fetchTemplateSessions().then((_) {
+                                    if (mounted) setState(() => _isLoading = false);
+                                  });
+                                }
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  Expanded(
+                    child: OrientationBuilder(
+                      builder: (context, orientation) {
+                        final isLandscape = orientation == Orientation.landscape;
+
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            const double timeColWidth = 50.0;
+                            const int numHours = 17; // 07:00 - 23:00
+                            final double headerHeight = isLandscape ? 30.0 : 44.0;
+
+                            double colWidth;
+                            double rowHeight;
+
+                            if (isLandscape) {
+                              colWidth = (constraints.maxWidth - timeColWidth) / 7;
+                              rowHeight = (constraints.maxHeight - headerHeight) / numHours;
+                            } else {
+                              colWidth = 100.0;
+                              rowHeight = 60.0;
+                            }
+
+                            Widget grid = Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: timeColWidth,
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        height: headerHeight,
+                                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10))),
                                       ),
+                                      for (int h = 7; h <= 23; h++)
+                                        Container(
+                                          height: rowHeight,
+                                          alignment: Alignment.center,
+                                          decoration: const BoxDecoration(
+                                            border: Border(bottom: BorderSide(color: Colors.white10), right: BorderSide(color: Colors.white10)),
+                                          ),
+                                          child: Text(
+                                            '${h.toString().padLeft(2, '0')}:00',
+                                            style: AppTextStyles.caption2.copyWith(
+                                              color: AppColors.textSecondary,
+                                              fontSize: isLandscape ? 9 : null,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                for (int dayIndex = 0; dayIndex < 7; dayIndex++)
+                                  SizedBox(
+                                    width: colWidth,
+                                    child: Column(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () => _showDayOptions(dayIndex),
+                                          child: Container(
+                                            width: colWidth,
+                                            height: headerHeight,
+                                            alignment: Alignment.center,
+                                            decoration: const BoxDecoration(
+                                              border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
+                                            ),
+                                            child: Text(
+                                              _days[dayIndex],
+                                              style: TextStyle(
+                                                color: AppColors.primaryYellow,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: isLandscape ? 10 : 13,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        for (int h = 7; h <= 23; h++)
+                                          _buildGridCell(dayIndex, h, rowHeight, colWidth),
+                                      ],
                                     ),
                                   ),
                               ],
-                            ),
-                          ),
-                          // Gün sütunları
-                          for (int dayIndex = 0; dayIndex < 7; dayIndex++)
-                            SizedBox(
-                              width: colWidth,
-                              child: Column(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => _showDayOptions(dayIndex),
-                                    child: Container(
-                                      width: colWidth,
-                                      height: headerHeight,
-                                      alignment: Alignment.center,
-                                      decoration: const BoxDecoration(
-                                        border: Border(bottom: BorderSide(color: Colors.white12), right: BorderSide(color: Colors.white12)),
-                                      ),
-                                      child: Text(
-                                        _days[dayIndex],
-                                        style: TextStyle(
-                                          color: AppColors.primaryYellow,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: isLandscape ? 10 : 13,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  for (int h = 7; h <= 23; h++)
-                                    _buildGridCell(dayIndex, h, rowHeight, colWidth),
-                                ],
-                              ),
-                            ),
-                        ],
-                      );
+                            );
 
-                      if (isLandscape) {
-                        // Landscape: tam ekran, kaydırma/zoom yok
-                        return SizedBox(
-                          width: constraints.maxWidth,
-                          height: constraints.maxHeight,
-                          child: grid,
+                            if (isLandscape) {
+                              return SizedBox(
+                                width: constraints.maxWidth,
+                                height: constraints.maxHeight,
+                                child: grid,
+                              );
+                            }
+
+                            return InteractiveViewer(
+                              transformationController: _transformController,
+                              constrained: false,
+                              minScale: 0.5,
+                              maxScale: 2.5,
+                              child: grid,
+                            );
+                          },
                         );
-                      }
-
-                      // Portrait: scroll + zoom
-                      return InteractiveViewer(
-                        constrained: false,
-                        scaleEnabled: true,
-                        minScale: 0.5,
-                        maxScale: 2.5,
-                        child: SingleChildScrollView(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: grid,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+                      },
+                    ),
+                  ),
+                ],
               ),
         ),
       ),
@@ -437,6 +503,8 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
         expand: false,
         builder: (context, scrollController) => _EditSessionForm(
           session: session,
+          isTrainer: _isTrainer,
+          scrollController: scrollController,
           onUpdate: (newData) async {
             await _handleUpdate(session, newData);
             _fetchTemplateSessions(); // Refresh grid
@@ -500,11 +568,15 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
 
 class _EditSessionForm extends StatefulWidget {
   final Map<String, dynamic> session;
+  final bool isTrainer;
+  final ScrollController? scrollController;
   final Function(Map<String, dynamic> newData) onUpdate;
   final Function() onDelete;
 
   const _EditSessionForm({
     required this.session,
+    required this.isTrainer,
+    this.scrollController,
     required this.onUpdate,
     required this.onDelete,
   });
@@ -520,6 +592,8 @@ class _EditSessionFormState extends State<_EditSessionForm> {
   List<Map<String, dynamic>> _trainers = [];
   List<Map<String, dynamic>> _members = [];
   List<String> _selectedMemberIds = [];
+  String _searchQuery = '';
+  String _initialNames = '';
   bool _isLoading = true;
 
   @override
@@ -541,7 +615,17 @@ class _EditSessionFormState extends State<_EditSessionForm> {
           .select('id, first_name, last_name')
           .eq('organization_id', orgId)
           .inFilter('role', ['trainer', 'admin', 'owner']);
-      final membersResponse = await supabase.from('members').select('id, name').eq('organization_id', orgId).eq('is_active', true);
+      
+      var membersQuery = supabase.from('members')
+          .select('id, name')
+          .eq('organization_id', orgId)
+          .eq('is_active', true);
+      
+      if (widget.isTrainer) {
+        membersQuery = membersQuery.eq('trainer_id', supabase.auth.currentUser!.id);
+      }
+
+      final membersResponse = await membersQuery.order('name');
       
       // Load current enrollments
       final enrollmentsResponse = await supabase.from('class_enrollments').select('member_id').eq('class_id', widget.session['id']);
@@ -552,6 +636,13 @@ class _EditSessionFormState extends State<_EditSessionForm> {
           _trainers = List<Map<String, dynamic>>.from(trainersResponse);
           _members = List<Map<String, dynamic>>.from(membersResponse);
           _selectedMemberIds = currentMemberIds;
+          
+          // Calculate initial names for title comparison
+          _initialNames = _members
+              .where((m) => _selectedMemberIds.contains(m['id'].toString()))
+              .map((m) => m['name'] as String)
+              .join(' - ');
+          
           _isLoading = false;
         });
       }
@@ -560,12 +651,97 @@ class _EditSessionFormState extends State<_EditSessionForm> {
     }
   }
 
+  void _showMultiSelect() {
+    String searchQuery = '';
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final filteredMembers = _members.where((m) => 
+              m['name'].toString().toLowerCase().contains(searchQuery.toLowerCase())
+            ).toList();
+
+            return AlertDialog(
+              backgroundColor: AppColors.surfaceDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text('Üyeleri Seç', style: AppTextStyles.title3.copyWith(color: Colors.white)),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Üye ara...',
+                        hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
+                        prefixIcon: const Icon(Icons.search, color: Colors.white54, size: 20),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          searchQuery = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filteredMembers.length,
+                        itemBuilder: (context, index) {
+                          final m = filteredMembers[index];
+                          final isChecked = _selectedMemberIds.contains(m['id'].toString());
+                          return CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(m['name'], style: const TextStyle(color: Colors.white, fontSize: 15)),
+                            value: isChecked,
+                            activeColor: AppColors.primaryYellow,
+                            checkColor: Colors.black,
+                            onChanged: (val) {
+                              setDialogState(() {
+                                 if (val == true) _selectedMemberIds.add(m['id'].toString());
+                                 else _selectedMemberIds.remove(m['id'].toString());
+                              });
+                              setState((){});
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Tamam', style: TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold)), 
+                  onPressed: () => Navigator.pop(context)
+                )
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primaryYellow));
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.only(
+        left: 24.0, 
+        right: 24.0, 
+        top: 24.0, 
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24.0
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -627,23 +803,17 @@ class _EditSessionFormState extends State<_EditSessionForm> {
           const SizedBox(height: 16),
           const Text('Üye Seçimi', style: TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 8),
-          Expanded(
-            child: ListView(
-              children: _members.map((member) {
-                final isSelected = _selectedMemberIds.contains(member['id']);
-                return CheckboxListTile(
-                  title: Text(member['name'], style: const TextStyle(color: Colors.white)),
-                  value: isSelected,
-                  activeColor: AppColors.primaryYellow,
-                  checkColor: Colors.black,
-                  onChanged: (val) {
-                    setState(() {
-                      if (val == true) _selectedMemberIds.add(member['id']);
-                      else _selectedMemberIds.remove(member['id']);
-                    });
-                  },
-                );
-              }).toList(),
+          InkWell(
+            onTap: _showMultiSelect,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  Expanded(child: Text(_selectedMemberIds.isEmpty ? 'Üye ara...' : '${_selectedMemberIds.length} Üye Seçildi', style: TextStyle(color: _selectedMemberIds.isEmpty ? AppColors.textSecondary : Colors.white))),
+                  const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -659,11 +829,11 @@ class _EditSessionFormState extends State<_EditSessionForm> {
   void _submit() {
     String finalTitle = _titleController.text;
     
-    // Auto-generate title if it's currently "Ders" or empty
-    if (finalTitle.isEmpty || finalTitle == 'Ders') {
+    // Auto-generate title if it matches initial names, or is default/empty
+    if (finalTitle.isEmpty || finalTitle == 'Ders' || finalTitle == _initialNames) {
       if (_selectedMemberIds.isNotEmpty) {
         final selectedNames = _members
-            .where((m) => _selectedMemberIds.contains(m['id']))
+            .where((m) => _selectedMemberIds.contains(m['id'].toString()))
             .map((m) => m['name'] as String)
             .toList();
         finalTitle = selectedNames.join(' - ');
@@ -708,6 +878,7 @@ class _AddSessionForm extends StatefulWidget {
   final int dayIndex;
   final int startHour;
   final String trainerId;
+  final bool isTrainer;
   final String orgId;
   final DateTime templateStart;
   final VoidCallback onSaved;
@@ -717,6 +888,7 @@ class _AddSessionForm extends StatefulWidget {
     required this.dayIndex,
     required this.startHour,
     required this.trainerId,
+    required this.isTrainer,
     required this.orgId,
     required this.templateStart,
     required this.onSaved,
@@ -759,11 +931,17 @@ class _AddSessionFormState extends State<_AddSessionForm> {
 
   Future<void> _fetchMembers() async {
     try {
-      final res = await _supabase
+      var query = _supabase
           .from('members')
           .select('id, name')
           .eq('organization_id', widget.orgId)
           .eq('is_active', true);
+      
+      if (widget.isTrainer) {
+        query = query.eq('trainer_id', _supabase.auth.currentUser!.id);
+      }
+
+      final res = await query.order('name');
       if (mounted) {
         setState(() { _members = List<Map<String, dynamic>>.from(res); });
       }
@@ -862,41 +1040,77 @@ class _AddSessionFormState extends State<_AddSessionForm> {
   }
 
   void _showMultiSelect() {
+    String searchQuery = '';
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final filteredMembers = _members.where((m) => 
+              m['name'].toString().toLowerCase().contains(searchQuery.toLowerCase())
+            ).toList();
+
             return AlertDialog(
               backgroundColor: AppColors.surfaceDark,
-              title: Text('Üyeleri Seç', style: AppTextStyles.title3),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text('Üyeleri Seç', style: AppTextStyles.title3.copyWith(color: Colors.white)),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 300,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _members.length,
-                  itemBuilder: (context, index) {
-                    final m = _members[index];
-                    final isChecked = _selectedMemberIds.contains(m['id']);
-                    return CheckboxListTile(
-                      title: Text(m['name'], style: const TextStyle(color: Colors.white)),
-                      value: isChecked,
-                      activeColor: AppColors.primaryYellow,
-                      checkColor: Colors.black,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Üye ara...',
+                        hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
+                        prefixIcon: const Icon(Icons.search, color: Colors.white54, size: 20),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
                       onChanged: (val) {
                         setDialogState(() {
-                           if (val == true) _selectedMemberIds.add(m['id']);
-                           else _selectedMemberIds.remove(m['id']);
+                          searchQuery = val;
                         });
-                        setState((){});
                       },
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filteredMembers.length,
+                        itemBuilder: (context, index) {
+                          final m = filteredMembers[index];
+                          final isChecked = _selectedMemberIds.contains(m['id']);
+                          return CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(m['name'], style: const TextStyle(color: Colors.white, fontSize: 15)),
+                            value: isChecked,
+                            activeColor: AppColors.primaryYellow,
+                            checkColor: Colors.black,
+                            onChanged: (val) {
+                              setDialogState(() {
+                                 if (val == true) _selectedMemberIds.add(m['id']);
+                                 else _selectedMemberIds.remove(m['id']);
+                              });
+                              setState((){});
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               actions: [
-                TextButton(child: Text('Tamam', style: TextStyle(color: AppColors.primaryYellow)), onPressed: () => Navigator.pop(context))
+                TextButton(
+                  child: const Text('Tamam', style: TextStyle(color: AppColors.primaryYellow, fontWeight: FontWeight.bold)), 
+                  onPressed: () => Navigator.pop(context)
+                )
               ],
             );
           }

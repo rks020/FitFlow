@@ -240,4 +240,43 @@ class GamificationRepository {
       return [];
     }
   }
+
+  Future<LeaderboardEntry?> getCurrentUserRank() async {
+    final uid = _userId;
+    if (uid == null) return null;
+
+    try {
+      // Find my points and org
+      final myData = await _supabase
+          .from('member_leaderboard')
+          .select('total_points, organization_id, display_name')
+          .eq('member_id', uid)
+          .maybeSingle();
+
+      if (myData == null) return null;
+
+      final myPoints = int.tryParse(myData['total_points'].toString()) ?? 0;
+      final orgId = myData['organization_id'] as String;
+
+      // Count how many people have more points in my org
+      final superiorCount = await _supabase
+          .from('member_leaderboard')
+          .count(CountOption.exact)
+          .eq('organization_id', orgId)
+          .gt('total_points', myPoints);
+
+      final rank = superiorCount + 1;
+
+      return LeaderboardEntry(
+        memberId: uid,
+        displayName: myData['display_name'] ?? '',
+        totalPoints: myPoints,
+        rank: rank,
+        isCurrentUser: true,
+      );
+    } catch (e) {
+      debugPrint('getCurrentUserRank error: $e');
+      return null;
+    }
+  }
 }

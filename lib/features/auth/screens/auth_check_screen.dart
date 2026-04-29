@@ -94,6 +94,9 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
       }
 
       // Valid User -> Navigate to Dashboard
+      // Also refresh water reminders on every launch (works for all roles)
+      NotificationService().refreshWaterReminders();
+
       // Notification handling is now done in NotificationService.initialize()
       // We use pushReplacement to remove this check screen from stack
       Navigator.of(context).pushReplacement(

@@ -51,13 +51,12 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
             await _repository.getCompletedHistoryWithDetails(trainerId: userId);
       } else {
         // Assume member
-        final memberData = await Supabase.instance.client
+        _memberData = await Supabase.instance.client
             .from('members')
-            .select('package_name, session_count, is_multisport, is_meditopia')
+            .select('subscription_package, session_count, is_multisport, is_meditopia')
             .eq('id', userId)
             .maybeSingle();
 
-        _memberData = memberData;
         _historySessions = await _repository.getMemberCompletedHistory(userId);
         _upcomingSessions = await _repository.getMemberUpcomingClasses(userId);
       }
@@ -205,7 +204,7 @@ class _SignatureLogScreenState extends State<SignatureLogScreen> {
       );
     }
 
-    final packageName = _memberData!['package_name'] ?? 'Bilinmiyor';
+    final packageName = _memberData!['subscription_package'] ?? 'Bilinmiyor';
     final sessionCount = _memberData!['session_count'] ?? 0;
 
     return GlassCard(

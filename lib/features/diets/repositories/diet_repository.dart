@@ -43,6 +43,7 @@ class DietRepository {
       'end_date': diet.endDate?.toIso8601String(),
       'notes': diet.notes,
       'status': diet.status,
+      'target_calories': diet.targetCalories,
     };
 
     // Eğer trainer id varsa ekle (hoca önerisi)
@@ -71,6 +72,7 @@ class DietRepository {
   Future<void> updateDiet(Diet diet, List<DietItem> newItems) async {
     await _supabase.from('diets').update({
       'notes': diet.notes,
+      'target_calories': diet.targetCalories,
     }).eq('id', diet.id);
 
     await _supabase.from('diet_items').delete().eq('diet_id', diet.id);

@@ -159,6 +159,14 @@ class _PTBodyChangeAppState extends State<PTBodyChangeApp>
     Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final user = data.session?.user;
 
+      // Start water reminders automatically on sign-in
+      if (data.event == AuthChangeEvent.signedIn && user != null) {
+        // Small delay so Supabase session is fully established
+        Future.delayed(const Duration(seconds: 2), () {
+          NotificationService().refreshWaterReminders();
+        });
+      }
+
       if (data.event == AuthChangeEvent.passwordRecovery) {
         debugPrint('Password recovery detected!'); // Debug log
 

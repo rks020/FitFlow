@@ -61,14 +61,32 @@ class _ManageDailyTipScreenState extends State<ManageDailyTipScreen> {
   }
 
   Future<void> _saveTip() async {
-    if (_orgId == null) return;
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null || _orgId == null) return;
 
     setState(() => _isSaving = true);
     try {
       final text = _controller.text.trim();
+      
+      String? authorName;
+      if (text.isNotEmpty) {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+            
+        if (profile != null) {
+          authorName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
+        }
+      }
+
       await Supabase.instance.client
           .from('organizations')
-          .update({'daily_tip': text.isEmpty ? null : text}).eq('id', _orgId!);
+          .update({
+            'daily_tip': text.isEmpty ? null : text,
+            'daily_tip_author': text.isEmpty ? null : authorName,
+          }).eq('id', _orgId!);
 
       if (mounted) {
         CustomSnackBar.showSuccess(context, 'Günün sözü başarıyla kaydedildi.');

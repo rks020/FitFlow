@@ -14,6 +14,7 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   final _repo = GamificationRepository();
   List<LeaderboardEntry> _entries = [];
+  LeaderboardEntry? _myEntry;
   bool _isLoading = true;
 
   @override
@@ -25,9 +26,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     final entries = await _repo.getLeaderboard();
+    final myEntry = await _repo.getCurrentUserRank();
     if (mounted)
       setState(() {
         _entries = entries;
+        _myEntry = myEntry;
         _isLoading = false;
       });
   }
@@ -86,6 +89,40 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                     ],
                   ),
                 ),
+      bottomNavigationBar: _myEntry != null && !_entries.any((e) => e.isCurrentUser)
+        ? Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDark,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: AppColors.primaryYellow.withOpacity(0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sıralamanız',
+                  style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                _buildRow(_myEntry!),
+              ],
+            ),
+          )
+        : null,
     );
   }
 

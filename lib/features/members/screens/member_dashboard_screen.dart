@@ -23,6 +23,7 @@ import '../../gamification/widgets/streak_banner_widget.dart';
 import '../../gamification/widgets/badge_collection_widget.dart';
 import '../../gamification/widgets/daily_tip_widget.dart';
 import '../../gamification/screens/leaderboard_screen.dart';
+import '../../profile/screens/signature_log_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({super.key});
@@ -55,11 +56,13 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     _loadUnreadCount();
     _setupRealtimeSubscription();
 
-    // Handle pending notification
+    // Handle pending notification & refresh water reminders
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handlePendingNotification();
+      NotificationService().refreshWaterReminders();
     });
   }
+
 
   @override
   void dispose() {
@@ -128,6 +131,11 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
             ),
           );
         }
+      } else if (type == 'water_reminder') {
+        debugPrint('🔔 MemberDashboardScreen: Navigating to Water Tracker (Diet Tab)');
+        NotificationService.clearPendingMessage();
+        // The Water Tracker is on the Diet screen (index 2)
+        _onTabTapped(2);
       }
     }
   }
@@ -462,76 +470,7 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
               ],
             ),
 
-            if (_memberData != null &&
-                _memberData!['is_multisport'] == false &&
-                _memberData!['is_meditopia'] == false) ...[
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryYellow.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: AppColors.primaryYellow.withOpacity(0.3)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        const Icon(Icons.star_rounded,
-                            color: AppColors.primaryYellow, size: 28),
-                        const SizedBox(height: 8),
-                        Text(
-                          _memberData!['subscription_package']?.toString() ??
-                              'Paket Yok',
-                          style: AppTextStyles.headline
-                              .copyWith(color: AppColors.primaryYellow),
-                        ),
-                        const SizedBox(height: 4),
-                        Text('Mevcut Paket',
-                            style: AppTextStyles.caption1
-                                .copyWith(color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    Container(
-                        width: 1, height: 40, color: AppColors.glassBorder),
-                    Column(
-                      children: [
-                        const Icon(Icons.bolt_rounded,
-                            color: AppColors.neonCyan, size: 28),
-                        const SizedBox(height: 8),
-                        Text(
-                          _memberData!['session_count']?.toString() ?? '0',
-                          style: AppTextStyles.headline.copyWith(
-                              color: AppColors.neonCyan, fontSize: 24),
-                        ),
-                        const SizedBox(height: 4),
-                        Text('Kalan Ders',
-                            style: AppTextStyles.caption1
-                                .copyWith(color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
 
-            const SizedBox(height: 32),
-            
-            // Gamification Section
-            if (_streak != null) ...[
-              StreakBannerWidget(streak: _streak!),
-              const SizedBox(height: 24),
-            ],
-            
-            if (_badges.isNotEmpty) ...[
-              BadgeCollectionWidget(badges: _badges),
-              const SizedBox(height: 24),
-            ],
-
-            DailyTipWidget(memberData: _memberData),
-            const SizedBox(height: 32),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -611,8 +550,96 @@ class _MemberHomeScreenState extends State<_MemberHomeScreen> {
                       'assets/images/pt_megaphone_announcement.png',
                   badgeCount: _unreadAnnouncementsCount,
                 ),
+
+                // Ders Kaydı Defteri
+                StatCard(
+                  title: 'Ders Kayıt Defteri',
+                  value: 'Geçmiş & Gelecek',
+                  icon: Icons.history_edu_rounded,
+                  color: const Color(0xFFF87171), // Red
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SignatureLogScreen()),
+                    );
+                  },
+                  backgroundImage:
+                      'https://images.unsplash.com/photo-1550009158-9ebf69173e03?q=80&w=1501&auto=format&fit=crop',
+                ),
               ],
             ),
+            const SizedBox(height: 32),
+            if (_memberData != null &&
+                _memberData!['is_multisport'] == false &&
+                _memberData!['is_meditopia'] == false) ...[
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryYellow.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.primaryYellow.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            color: AppColors.primaryYellow, size: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          _memberData!['subscription_package']?.toString() ??
+                              'Paket Yok',
+                          style: AppTextStyles.headline
+                              .copyWith(color: AppColors.primaryYellow),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Mevcut Paket',
+                            style: AppTextStyles.caption1
+                                .copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                    Container(
+                        width: 1, height: 40, color: AppColors.glassBorder),
+                    Column(
+                      children: [
+                        const Icon(Icons.bolt_rounded,
+                            color: AppColors.neonCyan, size: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          _memberData!['session_count']?.toString() ?? '0',
+                          style: AppTextStyles.headline.copyWith(
+                              color: AppColors.neonCyan, fontSize: 24),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Kalan Ders',
+                            style: AppTextStyles.caption1
+                                .copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 32),
+            
+            // Gamification Section
+            if (_streak != null) ...[
+              StreakBannerWidget(streak: _streak!),
+              const SizedBox(height: 24),
+            ],
+            
+            if (_badges.isNotEmpty) ...[
+              BadgeCollectionWidget(badges: _badges),
+              const SizedBox(height: 24),
+            ],
+
+            DailyTipWidget(memberData: _memberData),
+            const SizedBox(height: 32),
           ],
         ),
       ),

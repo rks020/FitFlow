@@ -146,8 +146,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _verifySession();
+      NotificationService().refreshWaterReminders();
     }
   }
+
 
   Future<void> _verifySession() async {
     final user = Supabase.instance.client.auth.currentUser;

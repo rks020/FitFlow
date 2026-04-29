@@ -35,6 +35,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
   bool _isLoading = false;
 
   final _notesController = TextEditingController();
+  final _targetCaloriesController = TextEditingController();
   final List<MealItemController> _mealControllers = [];
 
   @override
@@ -50,6 +51,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
   @override
   void dispose() {
     _notesController.dispose();
+    _targetCaloriesController.dispose();
     for (var c in _mealControllers) {
       c.dispose();
     }
@@ -58,6 +60,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
 
   void _loadExistingDiet() {
     _notesController.text = widget.existingDiet!.notes ?? '';
+    _targetCaloriesController.text = widget.existingDiet!.targetCalories?.toString() ?? '';
     for (var item in widget.existingDiet!.items) {
       final controller = MealItemController(initialName: item.mealName);
       controller.contentController.text = item.content;
@@ -129,6 +132,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
+        targetCalories: int.tryParse(_targetCaloriesController.text.trim()),
         createdAt: widget.existingDiet?.createdAt ?? DateTime.now(),
       );
 
@@ -232,6 +236,14 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                         label: 'Diyet Notları',
                         hint: 'Örn: Su tüketimine dikkat edilecek...',
                         maxLines: 2,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _targetCaloriesController,
+                        label: 'Günlük Hedef Kalori (Opsiyonel)',
+                        hint: 'Örn: 2000',
+                        keyboardType: TextInputType.number,
+                        prefixIcon: const Icon(Icons.bolt_rounded),
                       ),
                     ],
                   ),

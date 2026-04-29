@@ -9,6 +9,8 @@ import '../widgets/water_tracker_widget.dart';
 import 'create_diet_screen.dart';
 import 'dart:async';
 
+import '../../gamification/repositories/gamification_repository.dart';
+
 class MemberDietScreen extends StatefulWidget {
   const MemberDietScreen({super.key});
 
@@ -18,6 +20,7 @@ class MemberDietScreen extends StatefulWidget {
 
 class _MemberDietScreenState extends State<MemberDietScreen> {
   final _repository = DietRepository();
+  final _gamificationRepository = GamificationRepository();
   bool _isLoading = true;
   List<Diet> _diets = [];
 
@@ -60,10 +63,28 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
           _diets = diets;
           _isLoading = false;
         });
+        _checkDietPoints();
       }
     } catch (e) {
       debugPrint('Error loading diets: $e');
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _checkDietPoints() async {
+    if (_diets.isEmpty) return;
+    
+    // En güncel onaylı veya hoca önerisi diyeti bul
+    final currentDiet = _diets.firstWhere(
+      (d) => d.isApproved || d.isTrainerSuggestion,
+      orElse: () => _diets.first,
+    );
+
+    if (currentDiet.targetCalories != null && 
+        currentDiet.totalCalories > 0 &&
+        currentDiet.totalCalories <= currentDiet.targetCalories!) {
+      // Hedef tutturulmuş, puan ver (addPoints metodu zaten günlük limit kontrolü yapar)
+      await _gamificationRepository.addPoints('diet_target', 2);
     }
   }
 
@@ -331,10 +352,39 @@ class _MemberDietScreenState extends State<MemberDietScreen> {
             shape: Border.all(color: Colors.transparent),
             collapsedShape: Border.all(color: Colors.transparent),
             tilePadding: EdgeInsets.zero,
-            title: Text(
-              '${diet.items.length} Öğün  ·  ${diet.totalCalories} kcal',
-              style: AppTextStyles.caption1
-                  .copyWith(color: AppColors.textSecondary),
+            title: Row(
+              children: [
+                Text(
+                  '${diet.items.length} Öğün',
+                  style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+                ),
+                const SizedBox(width: 8),
+                Text('·', style: TextStyle(color: AppColors.textSecondary)),
+                const SizedBox(width: 8),
+                Text(
+                  '${diet.totalCalories} kcal',
+                  style: AppTextStyles.caption1.copyWith(
+                    color: diet.targetCalories != null
+                        ? (diet.totalCalories <= diet.targetCalories!
+                            ? AppColors.accentGreen
+                            : AppColors.accentRed)
+                        : AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (diet.targetCalories != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '(Hedef: ${diet.targetCalories} kcal)',
+                    style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary),
+                  ),
+                  if (diet.totalCalories <= diet.targetCalories!)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Icon(Icons.stars_rounded, color: AppColors.primaryYellow, size: 14),
+                    ),
+                ],
+              ],
             ),
             children: diet.items.map((item) => _buildMealRow(item)).toList(),
           ),

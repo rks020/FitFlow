@@ -145,6 +145,7 @@ class MeasurementComparisonScreen extends StatelessWidget {
              GlassCard(
               child: Column(
                 children: [
+                  _buildComparisonRow('Omuz', oldMeasurement.shoulders, newMeasurement.shoulders, 'cm', reverseLogic: false),
                   _buildComparisonRow('Göğüs', oldMeasurement.chest, newMeasurement.chest, 'cm', reverseLogic: false),
                   _buildComparisonRow('Bel', oldMeasurement.waist, newMeasurement.waist, 'cm', reverseLogic: true),
                   _buildComparisonRow('Kalça', oldMeasurement.hips, newMeasurement.hips, 'cm', reverseLogic: true),

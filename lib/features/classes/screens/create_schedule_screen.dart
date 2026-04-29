@@ -220,6 +220,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
     int trainerConflicts = 0;
     int memberConflicts = 0;
     bool userCancelled = false;
+    bool forceProceedAll = false;
 
     try {
       // Loop through PRE-CALCULATED sessions to create them
@@ -234,7 +235,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
             endDateTime,
           );
 
-          if (conflicts.isNotEmpty) {
+          if (conflicts.isNotEmpty && !forceProceedAll) {
             // Check if member has conflicting enrollment
             bool hasMemberConflict = false;
             for (final conflict in conflicts) {
@@ -299,7 +300,8 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
               }
               createdCount++;
               continue;
-            } else if (action == ConflictAction.proceedAnyway) {
+            } else if (action == ConflictAction.proceedAnyway || action == ConflictAction.proceedAll) {
+               if (action == ConflictAction.proceedAll) forceProceedAll = true;
                // User wants to proceed despite conflicts - create with original time
                final session = ClassSession(
                  title: _titleController.text,

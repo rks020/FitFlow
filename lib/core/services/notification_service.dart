@@ -11,11 +11,13 @@ import 'package:fitflow/main.dart';
 import 'package:fitflow/features/chat/screens/chat_screen.dart';
 import 'package:fitflow/features/dashboard/screens/announcements_screen.dart';
 import 'package:fitflow/data/models/profile.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../features/classes/screens/class_detail_screen.dart';
 import '../../features/classes/screens/class_schedule_screen.dart';
 import '../../data/models/class_session.dart';
 import '../../data/repositories/class_repository.dart';
+import '../../features/diets/screens/member_diet_screen.dart';
 
 class NotificationService {
   final _supabase = Supabase.instance.client;
@@ -104,6 +106,7 @@ class NotificationService {
         }
       } else if (data.event == AuthChangeEvent.signedOut) {
         // Logged Out
+        await cancelWaterReminders(); // Clear water reminders on logout
         final token = await FirebaseMessaging.instance.getToken();
         if (token != null) {
           await _deleteToken(token);
@@ -281,6 +284,33 @@ class NotificationService {
               });
            }
         }
+    } else if (type == 'water_reminder') {
+        NotificationService.clearPendingMessage();
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+           // Water tracker is in the Diet tab.
+           // Since we don't have direct access to the dashboard's PageController from here,
+           // we can push a new MemberDietScreen directly as a standalone page with an AppBar to go back.
+           navigatorKey.currentState?.push(
+             MaterialPageRoute(builder: (_) => Scaffold(
+               appBar: AppBar(
+                 title: const Text('Su ve Beslenme'),
+                 backgroundColor: Colors.transparent,
+                 elevation: 0,
+                 leading: IconButton(
+                   icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.amber),
+                   onPressed: () => Navigator.of(_).pop(),
+                 ),
+               ),
+               backgroundColor: const Color(0xFF121212),
+               body: const MemberDietScreen(),
+             )),
+           );
+        } else {
+          Future.delayed(const Duration(milliseconds: 500), () {
+              _handleMessageData(data);
+          });
+        }
     } else {
       // Unknown type
     }
@@ -400,9 +430,200 @@ class NotificationService {
     );
   }
 
+  Future<void> scheduleWaterReminders(int intervalHours) async {
+    await cancelWaterReminders();
+    final now = DateTime.now();
+
+    // Ensure water reminder channel exists on Android
+    if (Platform.isAndroid) {
+      final androidImpl = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      const waterChannel = AndroidNotificationChannel(
+        'water_reminders',
+        'Su Hatırlatıcıları',
+        description: 'Su içme hatırlatıcı bildirimleri',
+        importance: Importance.max,
+        playSound: true,
+      );
+      await androidImpl?.createNotificationChannel(waterChannel);
+    }
+    
+    // Schedule the next 48 reminders based on the interval (enough for 2 days)
+    for (int i = 1; i <= 48; i++) {
+        var scheduledDate = now.add(Duration(hours: intervalHours * i));
+        // Skip night hours (23:00 to 08:00) so we don't wake the user up
+        if (scheduledDate.hour >= 23 || scheduledDate.hour < 8) {
+           continue; 
+        }
+        await _localNotifications.zonedSchedule(
+          8800 + i,
+          'Su İçme Vakti 💧',
+          'Su hedefine ulaşmak için bir bardak su içmeyi unutma!',
+          tz.TZDateTime.from(scheduledDate, tz.local),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'water_reminders',
+              'Su Hatırlatıcıları',
+              channelDescription: 'Su içme hatırlatıcı bildirimleri',
+              importance: Importance.max,
+              priority: Priority.high,
+              icon: '@mipmap/launcher_icon',
+            ),
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentSound: true,
+            ),
+          ),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        );
+    }
+  }
+
+
+  Future<void> cancelWaterReminders() async {
+    // Cancel both ID ranges (2000+i used by scheduleWaterRemindersByMinutes, 8800+i legacy)
+    for (int i = 1; i <= 200; i++) {
+      await _localNotifications.cancel(2000 + i);
+      await _localNotifications.cancel(8800 + i);
+    }
+  }
+
+  /// Schedule water reminders by minute interval
+  Future<void> scheduleWaterRemindersByMinutes(int intervalMinutes) async {
+    await cancelWaterReminders();
+    
+    // For Android, we now rely entirely on Supabase Edge Function (FCM)
+    // because Android battery optimizations kill local background scheduled alarms.
+    // The FCM push bypasses these optimizations.
+    // So we just return early after cancelling old local notifications.
+    if (Platform.isAndroid) {
+      debugPrint('💧 Android detected: local scheduling skipped. Relying on Supabase FCM.');
+      return;
+    }
+
+    final now = DateTime.now();
+
+    // Plan 7 days ahead to avoid running out of notifications
+    // iOS has a limit of 64 pending notifications total, so we clamp to 60
+    // Android has no such limit but we cap to 200 to be safe
+    final int maxSlots = Platform.isIOS ? 60 : 200;
+    final slotsNeeded = (10080 / intervalMinutes).ceil().clamp(1, maxSlots);
+
+    for (int i = 1; i <= slotsNeeded; i++) {
+      var scheduledDate = now.add(Duration(minutes: intervalMinutes * i));
+      // Skip night hours (23:00 to 08:00)
+      if (scheduledDate.hour >= 23 || scheduledDate.hour < 8) {
+        continue;
+      }
+      debugPrint('💧 Scheduling water reminder $i for: ${scheduledDate.toString()}');
+      await _localNotifications.zonedSchedule(
+        2000 + i, // Different ID range to avoid any conflicts
+        'Su Vakti! 💧',
+        'Vücudunun suya ihtiyacı var, bir bardak su içmeyi unutma!',
+        tz.TZDateTime.from(scheduledDate, tz.local),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'high_importance_channel', // Use the same high priority channel as messages
+            'Önemli Bildirimler',
+            channelDescription: 'Mesajlar ve Hatırlatıcılar',
+            importance: Importance.max,
+            priority: Priority.high,
+            ticker: 'ticker',
+            icon: '@mipmap/launcher_icon',
+            playSound: true,
+            enableVibration: true,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: true,
+            presentBadge: true,
+            interruptionLevel: InterruptionLevel.active,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.alarmClock, // Bypasses Honor/Huawei battery optimization
+      );
+    }
+    debugPrint('✅ Scheduled $slotsNeeded water reminders successfully.');
+  }
+
+
   Future<void> cancelNotification(int id) async {
     await _localNotifications.cancel(id);
   }
+
+  /// Refreshes water reminders based on user preferences.
+  /// Uses SharedPreferences as primary source, Supabase as optional confirmation.
+  Future<void> refreshWaterReminders() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        debugPrint('💧 refreshWaterReminders: no user logged in, skipping.');
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Check if notifications are enabled (SharedPreferences is source of truth for all roles)
+      bool enabled = prefs.getBool('water_notifications_enabled') ?? true;
+
+      // 2. For members only: optionally sync with Supabase members table
+      //    For trainers/owners/admins: skip the DB lookup, use local prefs directly
+      try {
+        final profileRes = await _supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 5));
+
+        final role = profileRes?['role'];
+        debugPrint('💧 refreshWaterReminders: role=$role, enabled=$enabled');
+
+        if (role == 'member') {
+          // Members: cross-check with Supabase members table
+          final res = await _supabase
+              .from('members')
+              .select('water_notification_enabled')
+              .eq('id', user.id)
+              .maybeSingle()
+              .timeout(const Duration(seconds: 5));
+          if (res != null) {
+            // IMPORTANT: NULL means "not set" = treat as ENABLED (true)
+            // Only disable if explicitly set to false
+            final dbValue = res['water_notification_enabled'];
+            if (dbValue == false) {
+              // Explicitly disabled in DB
+              enabled = false;
+              await prefs.setBool('water_notifications_enabled', false);
+            } else {
+              // NULL or true → keep enabled
+              // Don't overwrite prefs with false based on null DB value
+              enabled = true;
+              await prefs.setBool('water_notifications_enabled', true);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Supabase check skipped, using local pref: $e');
+      }
+
+      if (!enabled) {
+        await cancelWaterReminders();
+        debugPrint('💧 Water reminders cancelled (disabled).');
+        return;
+      }
+
+      // 3. Get interval — canonical key is 'water_interval_minutes'
+      int intervalMinutes = prefs.getInt('water_interval_minutes') ?? 60;
+
+      // 4. Schedule
+      await scheduleWaterRemindersByMinutes(intervalMinutes);
+      debugPrint('✅ Water reminders refreshed. Interval: ${intervalMinutes}min, enabled: $enabled');
+    } catch (e) {
+      debugPrint('❌ Error refreshing water reminders: $e');
+    }
+  }
+
 
   Future<void> _saveToken(String token) async {
     final userId = _supabase.auth.currentUser?.id;
