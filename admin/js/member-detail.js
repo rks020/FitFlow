@@ -39,6 +39,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     setUpdateCallback(() => {
         loadHistory(); // Refresh history list on update/delete
     });
+
+    // Initialize Flatpickr for all date inputs
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr("input[type=date]", {
+            locale: "tr",
+            dateFormat: "Y-m-d"
+        });
+    }
 });
 
 async function loadCurrentUserProfile() {
@@ -537,10 +545,20 @@ async function openScheduleModal() {
     }
 
     const today = new Date();
-    document.getElementById('schedule-start-date').value = today.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
     const nextMonth = new Date();
     nextMonth.setDate(nextMonth.getDate() + 30);
-    document.getElementById('schedule-end-date').value = nextMonth.toISOString().split('T')[0];
+    const nextMonthStr = nextMonth.toISOString().split('T')[0];
+
+    const startDateEl = document.getElementById('schedule-start-date');
+    const endDateEl = document.getElementById('schedule-end-date');
+
+    if (startDateEl && startDateEl._flatpickr) startDateEl._flatpickr.setDate(todayStr);
+    else if (startDateEl) startDateEl.value = todayStr;
+
+    if (endDateEl && endDateEl._flatpickr) endDateEl._flatpickr.setDate(nextMonthStr);
+    else if (endDateEl) endDateEl.value = nextMonthStr;
+
     document.getElementById('schedule-modal').classList.add('active');
 }
 
@@ -649,7 +667,13 @@ function openMeasurementModal() {
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
-        dateInput.value = `${year}-${month}-${day}`;
+        const dateStr = `${year}-${month}-${day}`;
+        
+        if (dateInput._flatpickr) {
+            dateInput._flatpickr.setDate(dateStr);
+        } else {
+            dateInput.value = dateStr;
+        }
     }
     document.getElementById('measurement-modal').classList.add('active');
 }
