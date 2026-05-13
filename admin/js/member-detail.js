@@ -590,10 +590,19 @@ function setupMeasurementModal() {
         btn.disabled = true; btn.textContent = '...';
 
         try {
+            const dateVal = document.getElementById('meas-date').value;
+            // Create date at local noon to avoid timezone shift when saving as ISO
+            let measurementDate = new Date().toISOString();
+            if (dateVal) {
+                const [year, month, day] = dateVal.split('-');
+                const localDate = new Date(year, month - 1, day, 12, 0, 0);
+                measurementDate = localDate.toISOString();
+            }
+
             const formData = {
                 member_id: memberId,
                 // CORRECT FIELD: measurement_date, not date
-                measurement_date: new Date().toISOString(),
+                measurement_date: measurementDate,
                 weight: parseFloat(document.getElementById('meas-weight').value) || null,
                 height: parseFloat(document.getElementById('meas-height').value) || null,
                 body_fat_percentage: parseFloat(document.getElementById('meas-fat').value) || null,
@@ -634,6 +643,14 @@ function setupMeasurementModal() {
 }
 
 function openMeasurementModal() {
+    const dateInput = document.getElementById('meas-date');
+    if (dateInput) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+    }
     document.getElementById('measurement-modal').classList.add('active');
 }
 
