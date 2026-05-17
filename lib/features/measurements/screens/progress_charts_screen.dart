@@ -29,20 +29,12 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
   
   final Map<String, String> _metricLabels = {
     'Kilo': 'weight',
-    'Omuz': 'shoulders',
     'Yağ Oranı': 'bodyFat',
     'Su (%)': 'water',
     'Kemik (kg)': 'bone',
     'Visceral': 'visceral',
     'Metabolik Yaş': 'metabolicAge',
     'BMR': 'bmr',
-    'Göğüs': 'chest',
-    'Bel': 'waist',
-    'Kalça': 'hips',
-    'Sol Kol': 'leftArm',
-    'Sağ Kol': 'rightArm',
-    'Sol Bacak': 'leftThigh',
-    'Sağ Bacak': 'rightThigh',
   };
 
   @override
