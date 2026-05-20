@@ -623,8 +623,10 @@ function setupMeasurementModal() {
                 measurement_date: measurementDate,
                 weight: parseFloat(document.getElementById('meas-weight').value) || null,
                 height: parseFloat(document.getElementById('meas-height').value) || null,
+                age: parseInt(document.getElementById('meas-age').value) || null,
                 body_fat_percentage: parseFloat(document.getElementById('meas-fat').value) || null,
-                bone_mass: parseFloat(document.getElementById('meas-muscle').value) || null,
+                muscle_mass: parseFloat(document.getElementById('meas-muscle').value) || null,
+                bone_mass: parseFloat(document.getElementById('meas-bone').value) || null,
                 water_percentage: parseFloat(document.getElementById('meas-water').value) || null,
                 visceral_fat_rating: parseFloat(document.getElementById('meas-visceral').value) || null,
                 metabolic_age: parseInt(document.getElementById('meas-metabolic-age').value) || null,
@@ -705,7 +707,9 @@ async function loadMeasurements() {
         const columns = [
             { label: 'Kilo (kg)', field: 'weight' },
             { label: 'Yağ (%)', field: 'body_fat_percentage' },
-            { label: 'Kas (kg)', field: 'bone_mass' },
+            { label: 'Kas (kg)', field: 'muscle_mass' },
+            { label: 'Kemik (kg)', field: 'bone_mass' },
+            { label: 'Yaş', field: 'age' },
             { label: 'Bel (cm)', field: 'waist_cm' },
             { label: 'Kalça (cm)', field: 'hips_cm' },
         ];
@@ -747,8 +751,10 @@ let measurementsData = [];
 const metricConfig = {
     weight: { label: 'Kilo (kg)', unit: 'kg', color: '#FFD700', decreaseIsGood: true },
     body_fat_percentage: { label: 'Yağ Oranı (%)', unit: '%', color: '#EF4444', decreaseIsGood: true },
+    muscle_mass: { label: 'Kas Kütlesi (kg)', unit: 'kg', color: '#F87171', decreaseIsGood: false },
     water_percentage: { label: 'Su (%)', unit: '%', color: '#3B82F6', decreaseIsGood: false },
     bone_mass: { label: 'Kemik (kg)', unit: 'kg', color: '#8B5CF6', decreaseIsGood: false },
+    age: { label: 'Yaş', unit: 'yaş', color: '#10B981', decreaseIsGood: false },
     visceral_fat_rating: { label: 'Visceral Yağ', unit: '', color: '#F59E0B', decreaseIsGood: true },
     metabolic_age: { label: 'Metabolik Yaş', unit: 'yaş', color: '#EC4899', decreaseIsGood: true },
     basal_metabolic_rate: { label: 'BMR', unit: 'kcal', color: '#10B981', decreaseIsGood: false },
@@ -1011,8 +1017,10 @@ function showMeasurementComparison() {
         <h3 style="color: #FFD700; margin: 20px 0 12px;">Temel Bilgiler</h3>
         <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
             ${buildComparisonRow('Kilo', oldM.weight, newM.weight, 'kg', true)}
+            ${buildComparisonRow('Yaş', oldM.age, newM.age, '', false)}
             ${buildComparisonRow('Yağ Oranı', oldM.body_fat_percentage, newM.body_fat_percentage, '%', true)}
             ${buildComparisonRow('BMI', oldM.weight && oldM.height ? calcBMI(oldM) : null, newM.weight && newM.height ? calcBMI(newM) : null, '', true)}
+            ${buildComparisonRow('Kas', oldM.muscle_mass, newM.muscle_mass, 'kg', false)}
             ${buildComparisonRow('Su', oldM.water_percentage, newM.water_percentage, '%', false)}
             ${buildComparisonRow('Kemik', oldM.bone_mass, newM.bone_mass, 'kg', false)}
             ${buildComparisonRow('Visceral', oldM.visceral_fat_rating, newM.visceral_fat_rating, '', true)}

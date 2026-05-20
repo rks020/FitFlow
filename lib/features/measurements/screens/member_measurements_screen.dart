@@ -208,6 +208,60 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
             ]
           : null,
       ),
+      floatingActionButton: _isSelectionMode
+          ? (_selectedIndices.length == 2
+              ? FloatingActionButton.extended(
+                  onPressed: () {
+                    final indices = _selectedIndices.toList()..sort();
+                    final m1 = Measurement.fromSupabaseMap(_measurements[indices[0]]);
+                    final m2 = Measurement.fromSupabaseMap(_measurements[indices[1]]);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MeasurementComparisonScreen(
+                          oldMeasurement: m1,
+                          newMeasurement: m2,
+                        ),
+                      ),
+                    );
+                  },
+                  backgroundColor: AppColors.primaryYellow,
+                  icon: const Icon(Icons.compare_arrows, color: Colors.black),
+                  label: const Text('Karşılaştır', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                )
+              : null)
+          : (widget.memberId == null && widget.member == null
+              ? FloatingActionButton(
+                  onPressed: () async {
+                    // Current user is the member
+                    final user = _supabase.auth.currentUser;
+                    if (user == null) return;
+                    
+                    final member = _member ?? Member(
+                      id: user.id,
+                      name: 'Ben',
+                      email: user.email ?? '',
+                      phone: '',
+                      joinDate: DateTime.now(),
+                    );
+                    
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddMeasurementScreen(
+                          member: member,
+                        ),
+                      ),
+                    );
+
+                    if (result == true) {
+                      _loadMeasurements();
+                    }
+                  },
+                  backgroundColor: AppColors.primaryYellow,
+                  child: const Icon(Icons.add, color: Colors.black),
+                )
+              : null),
       body: SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -461,31 +515,7 @@ class _MemberMeasurementsScreenState extends State<MemberMeasurementsScreen> {
                       },
                     ),
                     
-                    // FAB for comparison
-                    if (_selectedIndices.length == 2)
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: FloatingActionButton.extended(
-                          onPressed: () {
-                            final indices = _selectedIndices.toList()..sort();
-                            final m1 = Measurement.fromSupabaseMap(_measurements[indices[0]]);
-                            final m2 = Measurement.fromSupabaseMap(_measurements[indices[1]]);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MeasurementComparisonScreen(
-                                  oldMeasurement: m1,
-                                  newMeasurement: m2,
-                                ),
-                              ),
-                            );
-                          },
-                          backgroundColor: AppColors.primaryYellow,
-                          icon: const Icon(Icons.compare_arrows, color: Colors.black),
-                          label: const Text('Karşılaştır', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
+                    // FAB for comparison moved to Scaffold
                   ],
                 ),
              ),

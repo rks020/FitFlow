@@ -37,6 +37,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
   final _bodyFatController = TextEditingController();
+  final _muscleMassController = TextEditingController();
   final _boneMassController = TextEditingController();
   final _waterPercentageController = TextEditingController();
   final _metabolicAgeController = TextEditingController();
@@ -87,6 +88,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     _heightController.text = m.height.toString();
     if (m.age != null) _ageController.text = m.age.toString();
     if (m.bodyFatPercentage != null) _bodyFatController.text = m.bodyFatPercentage.toString();
+    if (m.muscleMass != null) _muscleMassController.text = m.muscleMass.toString();
     if (m.boneMass != null) _boneMassController.text = m.boneMass.toString();
     if (m.waterPercentage != null) _waterPercentageController.text = m.waterPercentage.toString();
     if (m.metabolicAge != null) _metabolicAgeController.text = m.metabolicAge.toString();
@@ -115,6 +117,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     _heightController.dispose();
     _ageController.dispose();
     _bodyFatController.dispose();
+    _muscleMassController.dispose();
     _boneMassController.dispose();
     _waterPercentageController.dispose();
     _metabolicAgeController.dispose();
@@ -214,6 +217,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         height: _parseDouble(_heightController.text)!,
         age: _ageController.text.isNotEmpty ? int.parse(_ageController.text) : null,
         bodyFatPercentage: _parseDouble(_bodyFatController.text),
+        muscleMass: _parseDouble(_muscleMassController.text),
         boneMass: _parseDouble(_boneMassController.text),
         waterPercentage: _parseDouble(_waterPercentageController.text),
         metabolicAge: _metabolicAgeController.text.isNotEmpty ? int.parse(_metabolicAgeController.text) : null,
@@ -284,10 +288,18 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           date: measurement.date,
           weight: measurement.weight,
           height: measurement.height,
+          age: measurement.age,
           bodyFatPercentage: measurement.bodyFatPercentage,
+          muscleMass: measurement.muscleMass,
+          boneMass: measurement.boneMass,
+          waterPercentage: measurement.waterPercentage,
+          metabolicAge: measurement.metabolicAge,
+          visceralFatRating: measurement.visceralFatRating,
+          basalMetabolicRate: measurement.basalMetabolicRate,
           chest: measurement.chest,
           waist: measurement.waist,
           hips: measurement.hips,
+          shoulders: measurement.shoulders,
           leftArm: measurement.leftArm,
           rightArm: measurement.rightArm,
           leftThigh: measurement.leftThigh,
@@ -425,7 +437,15 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                         children: [
                           Expanded(child: _buildNumberInput(_waterPercentageController, 'Su (%)')),
                           const SizedBox(width: 12),
+                          Expanded(child: _buildNumberInput(_muscleMassController, 'Kas Kütlesi (kg)')),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
                           Expanded(child: _buildNumberInput(_boneMassController, 'Kemik (kg)')),
+                          const SizedBox(width: 12),
+                          const Spacer(),
                         ],
                       ),
                       const SizedBox(height: 12),

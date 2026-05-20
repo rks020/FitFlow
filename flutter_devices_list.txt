@@ -1,0 +1,29 @@
+Found 3 connected devices:
+  kerem’s iphone  (mobile) • 00008110-001151520252601E • ios            • iOS 26.4.2 23E261
+  macOS (desktop)          • macos                     • darwin-arm64   • macOS 26.2 25C56 darwin-arm64
+  Chrome (web)             • chrome                    • web-javascript • Google Chrome 148.0.7778.168
+
+Checking for wireless devices...
+
+No wireless devices were found.
+
+Error: Browsing on the local area network for Bilal Taha Apple Watch’u. Ensure the device is unlocked and discoverable via Bluetooth. (code -27)
+
+Error: Browsing on the local area network for MBYC. Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac.
+The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+Error: Browsing on the local area network for Bilal Taha iPhone’u. Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac.
+The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+Error: Browsing on the local area network for Anıl’s iPhone. Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac.
+The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+Error: Browsing on the local area network for Oğuzcan ASLAN. Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac.
+The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+Error: Browsing on the local area network for Onur iPhone’u. Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac.
+The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+Run "flutter emulators" to list and start any available device emulators.
+
+If you expected another device to be detected, please run "flutter doctor" to diagnose potential issues. You may also try increasing the time to wait for connected devices with the "--device-timeout" flag. Visit https://flutter.dev/setup/ for troubleshooting tips.

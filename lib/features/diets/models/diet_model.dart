@@ -76,6 +76,9 @@ class DietItem {
   final String mealName;
   final String content;
   final int? calories;
+  final int? proteinG;
+  final int? carbsG;
+  final int? fatG;
   final int orderIndex;
 
   DietItem({
@@ -84,6 +87,9 @@ class DietItem {
     required this.mealName,
     required this.content,
     this.calories,
+    this.proteinG,
+    this.carbsG,
+    this.fatG,
     required this.orderIndex,
   });
 
@@ -94,6 +100,9 @@ class DietItem {
       mealName: json['meal_name'],
       content: json['content'],
       calories: json['calories'],
+      proteinG: json['protein_g'],
+      carbsG: json['carbs_g'],
+      fatG: json['fat_g'],
       orderIndex: json['order_index'] ?? 0,
     );
   }
@@ -104,6 +113,9 @@ class DietItem {
       'meal_name': mealName,
       'content': content,
       'calories': calories,
+      'protein_g': proteinG,
+      'carbs_g': carbsG,
+      'fat_g': fatG,
       'order_index': orderIndex,
     };
   }

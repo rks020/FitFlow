@@ -380,8 +380,10 @@
                     <div id="metric-selector" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
                         <button class="metric-btn active" data-metric="weight">Kilo</button>
                         <button class="metric-btn" data-metric="body_fat_percentage">Yağ Oranı</button>
+                        <button class="metric-btn" data-metric="muscle_mass">Kas (kg)</button>
                         <button class="metric-btn" data-metric="water_percentage">Su (%)</button>
                         <button class="metric-btn" data-metric="bone_mass">Kemik (kg)</button>
+                        <button class="metric-btn" data-metric="age">Yaş</button>
                         <button class="metric-btn" data-metric="visceral_fat_rating">Visceral</button>
                         <button class="metric-btn" data-metric="metabolic_age">Metabolik Yaş</button>
                         <button class="metric-btn" data-metric="basal_metabolic_rate">BMR</button>
@@ -525,12 +527,20 @@
                         <input type="number" step="0.1" id="meas-height" required>
                     </div>
                     <div class="form-group">
+                        <label>Yaş</label>
+                        <input type="number" id="meas-age">
+                    </div>
+                    <div class="form-group">
                         <label>Yağ Oranı (%)</label>
                         <input type="number" step="0.1" id="meas-fat">
                     </div>
                     <div class="form-group">
                         <label>Kas Kütlesi (kg)</label>
                         <input type="number" step="0.1" id="meas-muscle">
+                    </div>
+                    <div class="form-group">
+                        <label>Kemik (kg)</label>
+                        <input type="number" step="0.1" id="meas-bone">
                     </div>
                     <div class="form-group">
                         <label>Su Oranı (%)</label>

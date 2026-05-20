@@ -113,31 +113,29 @@ class _ProgressChartsScreenState extends State<ProgressChartsScreen> {
                     children: [
                       const SizedBox(height: kToolbarHeight + 50),
                       // Metric Selector
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _metricLabels.keys.map((label) {
-                            final isSelected = _selectedMetric == label;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: ChoiceChip(
-                                label: Text(label),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  if (selected) {
-                                    setState(() => _selectedMetric = label);
-                                  }
-                                },
-                                selectedColor: AppColors.primaryYellow,
-                                backgroundColor: AppColors.surfaceDark,
-                                labelStyle: TextStyle(
-                                  color: isSelected ? Colors.black : Colors.white,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                      Wrap(
+                        spacing: 8.0,
+                        runSpacing: 8.0,
+                        alignment: WrapAlignment.center,
+                        children: _metricLabels.keys.map((label) {
+                          final isSelected = _selectedMetric == label;
+                          return ChoiceChip(
+                            label: Text(label),
+                            selected: isSelected,
+                            showCheckmark: false,
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() => _selectedMetric = label);
+                              }
+                            },
+                            selectedColor: AppColors.primaryYellow,
+                            backgroundColor: AppColors.surfaceDark,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.black : Colors.white,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          );
+                        }).toList(),
                       ),
                       
                       const SizedBox(height: 24),

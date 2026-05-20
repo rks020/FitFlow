@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -38,6 +40,27 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
   final _targetCaloriesController = TextEditingController();
   final List<MealItemController> _mealControllers = [];
 
+  int _totalCalories = 0;
+  int _totalProtein = 0;
+  int _totalCarbs = 0;
+  int _totalFat = 0;
+
+  void _updateTotals() {
+    int cal = 0, pro = 0, carb = 0, fat = 0;
+    for (var c in _mealControllers) {
+      cal += int.tryParse(c.caloriesController.text) ?? 0;
+      pro += int.tryParse(c.proteinController.text) ?? 0;
+      carb += int.tryParse(c.carbsController.text) ?? 0;
+      fat += int.tryParse(c.fatController.text) ?? 0;
+    }
+    setState(() {
+      _totalCalories = cal;
+      _totalProtein = pro;
+      _totalCarbs = carb;
+      _totalFat = fat;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,8 +88,12 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
       final controller = MealItemController(initialName: item.mealName);
       controller.contentController.text = item.content;
       controller.caloriesController.text = item.calories?.toString() ?? '';
+      controller.proteinController.text = item.proteinG?.toString() ?? '';
+      controller.carbsController.text = item.carbsG?.toString() ?? '';
+      controller.fatController.text = item.fatG?.toString() ?? '';
       _mealControllers.add(controller);
     }
+    _updateTotals();
   }
 
   void _addDefaultMeals() {
@@ -86,6 +113,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
     setState(() {
       _mealControllers[index].dispose();
       _mealControllers.removeAt(index);
+      _updateTotals();
     });
   }
 
@@ -106,6 +134,9 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
               mealName: controller.nameController.text.trim(),
               content: controller.contentController.text.trim(),
               calories: int.tryParse(controller.caloriesController.text.trim()),
+              proteinG: int.tryParse(controller.proteinController.text.trim()),
+              carbsG: int.tryParse(controller.carbsController.text.trim()),
+              fatG: int.tryParse(controller.fatController.text.trim()),
               orderIndex: index,
             );
           })
@@ -275,6 +306,32 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                   },
                 ),
 
+                const SizedBox(height: 24),
+                
+                // Toplam Özet
+                GlassCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Günlük Toplam Özet',
+                        style: AppTextStyles.title3.copyWith(color: AppColors.primaryYellow),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildSummaryItem('Kalori', '$_totalCalories', 'kcal'),
+                          _buildSummaryItem('Protein', '$_totalProtein', 'g'),
+                          _buildSummaryItem('Karb.', '$_totalCarbs', 'g'),
+                          _buildSummaryItem('Yağ', '$_totalFat', 'g'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 30),
                 CustomButton(
                   text: isEditing
@@ -334,6 +391,41 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
                     label: 'Kalori',
                     hint: 'kcal',
                     keyboardType: TextInputType.number,
+                    onChanged: (_) => _updateTotals(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomTextField(
+                    controller: controller.proteinController,
+                    label: 'Protein',
+                    hint: 'g',
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _updateTotals(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CustomTextField(
+                    controller: controller.carbsController,
+                    label: 'Karb.',
+                    hint: 'g',
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _updateTotals(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CustomTextField(
+                    controller: controller.fatController,
+                    label: 'Yağ',
+                    hint: 'g',
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _updateTotals(),
                   ),
                 ),
               ],
@@ -345,9 +437,107 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
               hint: '2 yumurta, 50gr yulaf...',
               maxLines: 3,
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: controller.isCalculating 
+                    ? null 
+                    : () => _calculateCalories(controller),
+                icon: controller.isCalculating 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryYellow))
+                    : const Icon(Icons.auto_awesome, color: AppColors.primaryYellow, size: 18),
+                label: Text(
+                  controller.isCalculating ? 'Hesaplanıyor...' : 'Otomatik Kalori Hesapla',
+                  style: const TextStyle(color: AppColors.primaryYellow, fontSize: 13),
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _calculateCalories(MealItemController controller) async {
+    final content = controller.contentController.text.trim();
+    if (content.isEmpty) {
+      CustomSnackBar.showError(context, 'Lütfen hesaplanacak öğün içeriğini girin.');
+      return;
+    }
+
+    setState(() {
+      controller.isCalculating = true;
+    });
+
+    try {
+      final prompt = 'Bana sadece JSON formatinda kalori, protein, karbonhidrat ve yag degerlerini sayi olarak dondur. Makrolari GRAM (g) cinsinden hesapla. Degisken isimleri: calories, protein, carbs, fat. Ornek: {"calories": 500, "protein": 30, "carbs": 40, "fat": 20}. Sadece saf JSON ciktisi ver, markdown kod blogu icine alma ve aciklama yazma. Icerik: $content';
+      final url = Uri.parse('https://text.pollinations.ai/${Uri.encodeComponent(prompt)}?json=true');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        String result = response.body.trim();
+        if (result.startsWith('```json')) {
+          result = result.replaceAll('```json', '').replaceAll('```', '').trim();
+        }
+        
+        try {
+          final data = jsonDecode(result);
+          controller.caloriesController.text = data['calories']?.toString() ?? '';
+          controller.proteinController.text = data['protein']?.toString() ?? '';
+          controller.carbsController.text = data['carbs']?.toString() ?? '';
+          controller.fatController.text = data['fat']?.toString() ?? '';
+          _updateTotals();
+          CustomSnackBar.showSuccess(context, 'Değerler otomatik olarak hesaplandı!');
+        } catch (e) {
+          // Fallback if JSON parse fails
+          final numericOnly = result.replaceAll(RegExp(r'[^0-9]'), '');
+          if (numericOnly.isNotEmpty && numericOnly.length < 5) {
+            controller.caloriesController.text = numericOnly;
+            _updateTotals();
+            CustomSnackBar.showSuccess(context, 'Sadece kalori bulunabildi.');
+          } else {
+             CustomSnackBar.showError(context, 'Değerler anlaşılamadı. Lütfen içeriği daha net yazın.');
+          }
+        }
+      } else {
+        CustomSnackBar.showError(context, 'Hesaplama servisi yanıt vermedi.');
+      }
+    } catch (e) {
+      CustomSnackBar.showError(context, 'Bağlantı hatası: Değerler hesaplanamadı.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          controller.isCalculating = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildSummaryItem(String label, String value, String unit) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption1.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              value,
+              style: AppTextStyles.title2.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 2),
+            Text(
+              unit,
+              style: AppTextStyles.caption2.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -356,16 +546,26 @@ class MealItemController {
   late TextEditingController nameController;
   late TextEditingController contentController;
   late TextEditingController caloriesController;
+  late TextEditingController proteinController;
+  late TextEditingController carbsController;
+  late TextEditingController fatController;
+  bool isCalculating = false;
 
   MealItemController({String? initialName}) {
     nameController = TextEditingController(text: initialName);
     contentController = TextEditingController();
     caloriesController = TextEditingController();
+    proteinController = TextEditingController();
+    carbsController = TextEditingController();
+    fatController = TextEditingController();
   }
 
   void dispose() {
     nameController.dispose();
     contentController.dispose();
     caloriesController.dispose();
+    proteinController.dispose();
+    carbsController.dispose();
+    fatController.dispose();
   }
 }

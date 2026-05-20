@@ -9,6 +9,7 @@ class Measurement {
   final int? age;
   final double? bodyFatPercentage;
   final double? boneMass; // kg
+  final double? muscleMass; // kg
   final double? waterPercentage; // %
   final int? metabolicAge;
   final double? visceralFatRating;
@@ -43,6 +44,7 @@ class Measurement {
     this.age,
     this.bodyFatPercentage,
     this.boneMass,
+    this.muscleMass,
     this.waterPercentage,
     this.metabolicAge,
     this.visceralFatRating,
@@ -75,6 +77,7 @@ class Measurement {
       'age': age,
       'body_fat_percentage': bodyFatPercentage,
       'bone_mass': boneMass,
+      'muscle_mass': muscleMass,
       'water_percentage': waterPercentage,
       'metabolic_age': metabolicAge,
       'visceral_fat_rating': visceralFatRating,
@@ -106,6 +109,7 @@ class Measurement {
           ? (map['body_fat_percentage'] as num).toDouble() 
           : null,
       boneMass: map['bone_mass'] != null ? (map['bone_mass'] as num).toDouble() : null,
+      muscleMass: map['muscle_mass'] != null ? (map['muscle_mass'] as num).toDouble() : null,
       waterPercentage: map['water_percentage'] != null ? (map['water_percentage'] as num).toDouble() : null,
       metabolicAge: map['metabolic_age'] != null ? (map['metabolic_age'] as num).toInt() : null,
       visceralFatRating: map['visceral_fat_rating'] != null ? (map['visceral_fat_rating'] as num).toDouble() : null,
