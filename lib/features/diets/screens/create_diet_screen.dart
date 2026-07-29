@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -471,14 +472,29 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
     });
 
     try {
-      final prompt = 'Bana sadece JSON formatinda kalori, protein, karbonhidrat ve yag degerlerini sayi olarak dondur. Makrolari GRAM (g) cinsinden hesapla. Degisken isimleri: calories, protein, carbs, fat. Ornek: {"calories": 500, "protein": 30, "carbs": 40, "fat": 20}. Sadece saf JSON ciktisi ver, markdown kod blogu icine alma ve aciklama yazma. Icerik: $content';
-      final url = Uri.parse('https://text.pollinations.ai/${Uri.encodeComponent(prompt)}?json=true');
-      final response = await http.get(url);
+      // TODO: Google AI Studio'dan (aistudio.google.com) ucretsiz API anahtarinizi alip buraya yapistirin.
+      const String apiKey = 'AIzaSyCO0QHX88C6tubPAnATReKHXbJr2mITmK4'; 
+      
+      if (apiKey.isEmpty) {
+        CustomSnackBar.showError(context, 'API Anahtarı eksik! Lütfen kodu güncelleyip kendi Gemini API anahtarınızı girin.');
+        return;
+      }
 
-      if (response.statusCode == 200) {
-        String result = response.body.trim();
+      final model = GenerativeModel(
+        model: 'gemini-flash-latest',
+        apiKey: apiKey,
+      );
+
+      final prompt = 'Bana sadece JSON formatinda kalori, protein, karbonhidrat ve yag degerlerini sayi olarak dondur. Makrolari GRAM (g) cinsinden hesapla. Degisken isimleri: calories, protein, carbs, fat. Ornek: {"calories": 500, "protein": 30, "carbs": 40, "fat": 20}. Sadece saf JSON ciktisi ver, markdown kod blogu icine alma ve aciklama yazma. Icerik: $content';
+      
+      final response = await model.generateContent([Content.text(prompt)]);
+      
+      if (response.text != null) {
+        String result = response.text!.trim();
         if (result.startsWith('```json')) {
           result = result.replaceAll('```json', '').replaceAll('```', '').trim();
+        } else if (result.startsWith('```')) {
+          result = result.replaceAll('```', '').trim();
         }
         
         try {
@@ -488,7 +504,7 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
           controller.carbsController.text = data['carbs']?.toString() ?? '';
           controller.fatController.text = data['fat']?.toString() ?? '';
           _updateTotals();
-          CustomSnackBar.showSuccess(context, 'Değerler otomatik olarak hesaplandı!');
+          CustomSnackBar.showSuccess(context, 'Değerler Gemini ile hesaplandı!');
         } catch (e) {
           // Fallback if JSON parse fails
           final numericOnly = result.replaceAll(RegExp(r'[^0-9]'), '');
@@ -501,10 +517,12 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
           }
         }
       } else {
-        CustomSnackBar.showError(context, 'Hesaplama servisi yanıt vermedi.');
+        CustomSnackBar.showError(context, 'Gemini servisi boş yanıt verdi.');
       }
+    } on GenerativeAIException catch (e) {
+      CustomSnackBar.showError(context, 'Gemini API Hatası: ${e.message}');
     } catch (e) {
-      CustomSnackBar.showError(context, 'Bağlantı hatası: Değerler hesaplanamadı.');
+      CustomSnackBar.showError(context, 'Hata: Değerler hesaplanamadı. Lütfen API anahtarınızı kontrol edin.');
     } finally {
       if (mounted) {
         setState(() {
