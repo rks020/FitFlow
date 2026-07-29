@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -472,8 +473,8 @@ class _CreateDietScreenState extends State<CreateDietScreen> {
     });
 
     try {
-      // TODO: Google AI Studio'dan (aistudio.google.com) ucretsiz API anahtarinizi alip buraya yapistirin.
-      const String apiKey = 'AIzaSyCO0QHX88C6tubPAnATReKHXbJr2mITmK4'; 
+      // Google AI Studio API Key'i artik .env dosyasindan okunuyor.
+      final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? ''; 
       
       if (apiKey.isEmpty) {
         CustomSnackBar.showError(context, 'API Anahtarı eksik! Lütfen kodu güncelleyip kendi Gemini API anahtarınızı girin.');
