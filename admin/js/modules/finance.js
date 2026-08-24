@@ -5,8 +5,11 @@ export async function loadFinance() {
     const contentArea = document.getElementById('content-area');
 
     contentArea.innerHTML = `
-        <div class="module-header">
+        <div class="module-header" style="display: flex; justify-content: space-between; align-items: center;">
             <h2>Finans & Ödemeler</h2>
+            <button onclick="exportFinanceToExcel()" class="btn" style="background: #10B981; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                <span>📊</span> Excel'e Aktar
+            </button>
         </div>
         <div class="filters-row" style="display: flex; gap: 20px; margin-bottom: 20px; align-items: flex-end;">
             <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
@@ -388,3 +391,89 @@ window.editPayment = async (id) => {
         showToast('Ödeme detayları alınamadı', 'error');
     }
 };
+
+window.exportFinanceToExcel = async () => {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile?.organization_id) {
+            showToast('Organizasyon bulunamadı', 'error');
+            return;
+        }
+
+        // Tüm ödemeleri getiriyoruz
+        const { data: payments, error } = await supabaseClient
+            .from('payments')
+            .select('*, members(name, organization_id)')
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        const orgPayments = payments.filter(p => p.members && p.members.organization_id === profile.organization_id);
+
+        if (orgPayments.length === 0) {
+            showToast('Dışa aktarılacak ödeme bulunamadı', 'info');
+            return;
+        }
+
+        const grouped = {};
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+        orgPayments.forEach(p => {
+            const d = new Date(p.date);
+            const year = d.getFullYear();
+            const month = d.getMonth();
+            const sheetName = `${monthNames[month]} ${year}`;
+            
+            if (!grouped[sheetName]) {
+                grouped[sheetName] = [];
+            }
+            grouped[sheetName].push({
+                'Tarih': d.toLocaleDateString('tr-TR'),
+                'Üye': p.members.name,
+                'Kategori': formatPaymentCategory(p.category),
+                'Yöntem': formatPaymentType(p.type),
+                'Tutar': p.amount === 0 ? 'Ödeme alındı' : p.amount + ' TL',
+                'Not': p.description || ''
+            });
+        });
+
+        // SheetJS (XLSX) workbook oluştur
+        if (typeof XLSX === 'undefined') {
+            showToast('Excel kütüphanesi yüklenemedi', 'error');
+            return;
+        }
+        
+        const wb = XLSX.utils.book_new();
+
+        Object.keys(grouped).forEach(sheetName => {
+            const ws = XLSX.utils.json_to_sheet(grouped[sheetName]);
+            
+            // Sütun genişliklerini ayarla
+            const wscols = [
+                {wch: 15}, // Tarih
+                {wch: 25}, // Üye
+                {wch: 20}, // Kategori
+                {wch: 15}, // Yöntem
+                {wch: 15}, // Tutar
+                {wch: 35}  // Not
+            ];
+            ws['!cols'] = wscols;
+            
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        });
+
+        XLSX.writeFile(wb, 'Finans_Raporu.xlsx');
+        showToast('Excel dosyası indiriliyor', 'success');
+
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Dışa aktarılırken hata oluştu', 'error');
+    }
+};
+
