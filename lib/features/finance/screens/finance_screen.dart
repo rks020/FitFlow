@@ -93,25 +93,17 @@ class _FinanceScreenState extends State<FinanceScreen> {
       var query = _supabase
           .from('members')
           .select('id, name, phone, email, subscription_package, session_count, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
-          .eq('organization_id', orgId)
-          .not('session_count', 'is', null)
-          .lte('session_count', 3);
+          .eq('organization_id', orgId);
 
       if (role == 'trainer') {
         query = query.eq('trainer_id', user.id);
       }
 
-      final response = await query.order('session_count', ascending: true);
-      final filtered = List<Map<String, dynamic>>.from(response).where((m) {
-        final count = m['session_count'] as int? ?? 0;
-        if (count >= 1 && count <= 3) return true;
-        return (m['is_active'] == true) &&
-            (m['is_multisport'] != true) &&
-            (m['is_meditopia'] != true);
-      }).toList();
+      final response = await query.order('session_count', ascending: true, nullsFirst: false);
+      final allMembers = List<Map<String, dynamic>>.from(response);
       if (mounted) {
         setState(() {
-          _upcomingMembers = filtered;
+          _upcomingMembers = allMembers;
           _isLoadingUpcoming = false;
         });
       }
@@ -367,7 +359,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                if (_upcomingMembers.isNotEmpty) ...[
+                                if (_lowSessionBadgeCount > 0) ...[
                                   const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -381,7 +373,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
-                                      '${_upcomingMembers.length}',
+                                      '$_lowSessionBadgeCount',
                                       style: TextStyle(
                                         color: _activeTabIndex == 1
                                             ? AppColors.primaryYellow
@@ -474,6 +466,20 @@ class _FinanceScreenState extends State<FinanceScreen> {
         ],
       ),
     );
+  }
+
+  int get _lowSessionBadgeCount {
+    return _upcomingMembers.where((m) {
+      final rawCount = m['session_count'] as int?;
+      if (rawCount == null) return false;
+      if (rawCount >= 1 && rawCount <= 3) return true;
+      if (rawCount == 0) {
+        return (m['is_active'] == true) &&
+            (m['is_multisport'] != true) &&
+            (m['is_meditopia'] != true);
+      }
+      return false;
+    }).length;
   }
 
   Widget _buildUpcomingPaymentsTab() {
@@ -590,6 +596,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
       statusColor = AppColors.accentBlue;
       iconStr = '⏳';
       statusMsg = 'Son 3 dersi kaldı';
+    } else if (count > 3) {
+      statusColor = AppColors.accentGreen;
+      iconStr = '✅';
+      statusMsg = '$count dersi kaldı';
     }
 
     return Padding(

@@ -109,9 +109,9 @@ export async function loadFinance() {
             <div style="background: rgba(255, 215, 0, 0.06); border: 1px solid rgba(255, 215, 0, 0.2); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px; color: #ddd; font-size: 14px;">
                     <span style="font-size: 18px;">🔔</span>
-                    <span>Kalan dersi <strong>3, 2, 1 veya 0</strong> olan ve paket yenilemesi / ödemesi yaklaşan aktif üyeler listelenmektedir.</span>
+                    <span>Üyelerin kalan ders haklarını görüntüleyebilir, kalan ders sayısına göre filtreleyebilir ve ödeme / paket yenilemesi yapabilirsiniz.</span>
                 </div>
-                <div id="upcoming-filter-pills" style="display: flex; gap: 6px;">
+                <div id="upcoming-filter-pills" style="display: flex; gap: 6px; flex-wrap: wrap;">
                     <button class="upcoming-pill active" data-sessions="all" onclick="filterUpcomingBySession('all')" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #FFD700; background: #FFD700; color: #000; font-weight: 700; font-size: 12px; cursor: pointer;">Tümü</button>
                     <button class="upcoming-pill" data-sessions="0" onclick="filterUpcomingBySession(0)" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: #EF4444; font-weight: 700; font-size: 12px; cursor: pointer;">Bitti (0)</button>
                     <button class="upcoming-pill" data-sessions="1" onclick="filterUpcomingBySession(1)" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: #F59E0B; font-weight: 700; font-size: 12px; cursor: pointer;">Son 1 Ders</button>
@@ -627,9 +627,7 @@ async function loadUpcomingPaymentsList() {
             .from('members')
             .select('id, name, phone, email, subscription_package, session_count, trainer_id, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
             .eq('organization_id', profile.organization_id)
-            .not('session_count', 'is', null)
-            .lte('session_count', 3)
-            .order('session_count', { ascending: true });
+            .order('session_count', { ascending: true, nullsFirst: false });
 
         if (profile.role === 'trainer') {
             query = query.eq('trainer_id', user.id);
@@ -638,19 +636,21 @@ async function loadUpcomingPaymentsList() {
         const { data: rawMembers, error } = await query;
         if (error) throw error;
 
-        // Kalan dersi 1, 2 veya 3 olan tüm üyeleri (veya 0 olup aktif & normal paketli olanları) göster
-        const members = (rawMembers || []).filter(m => {
-            if (m.session_count >= 1 && m.session_count <= 3) return true;
-            return m.is_active && !m.is_multisport && !m.is_meditopia;
-        });
+        upcomingMembersCache = rawMembers || [];
 
-        upcomingMembersCache = members || [];
+        // Sekme rozetinde (badge) ödemesi yaklaşan (<= 3 ders) üye sayısını göster
+        const lowSessionCount = upcomingMembersCache.filter(m => {
+            if (m.session_count === null || m.session_count === undefined) return false;
+            if (m.session_count >= 1 && m.session_count <= 3) return true;
+            if (m.session_count === 0) return m.is_active && !m.is_multisport && !m.is_meditopia;
+            return false;
+        }).length;
 
         const badge = document.getElementById('upcoming-count-badge');
         if (badge) {
-            if (upcomingMembersCache.length > 0) {
+            if (lowSessionCount > 0) {
                 badge.style.display = 'inline-block';
-                badge.textContent = upcomingMembersCache.length;
+                badge.textContent = lowSessionCount;
             } else {
                 badge.style.display = 'none';
             }
@@ -677,7 +677,7 @@ function renderUpcomingTable() {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center; color: #888;">Ödemesi yaklaşan üye bulunmuyor.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center; color: #888;">Bu filtreye uygun üye bulunmuyor.</td></tr>';
         return;
     }
 
@@ -699,6 +699,10 @@ function renderUpcomingTable() {
             badgeBg = 'rgba(56, 189, 248, 0.15)';
             badgeColor = '#38BDF8';
             statusText = '⏳ Son 3 Ders Kaldı';
+        } else if (count > 3) {
+            badgeBg = 'rgba(16, 185, 129, 0.15)';
+            badgeColor = '#10B981';
+            statusText = `✅ ${count} Ders Kaldı`;
         }
 
         const trainerName = m.profiles
