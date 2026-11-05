@@ -625,11 +625,9 @@ async function loadUpcomingPaymentsList() {
 
         let query = supabaseClient
             .from('members')
-            .select('id, name, phone, email, subscription_package, session_count, trainer_id, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
+            .select('id, name, phone, email, subscription_package, session_count, trainer_id, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
             .eq('organization_id', profile.organization_id)
-            .eq('is_active', true)
-            .eq('is_multisport', false)
-            .eq('is_meditopia', false)
+            .not('session_count', 'is', null)
             .lte('session_count', 3)
             .order('session_count', { ascending: true });
 
@@ -637,8 +635,14 @@ async function loadUpcomingPaymentsList() {
             query = query.eq('trainer_id', user.id);
         }
 
-        const { data: members, error } = await query;
+        const { data: rawMembers, error } = await query;
         if (error) throw error;
+
+        // Kalan dersi 1, 2 veya 3 olan tüm üyeleri (veya 0 olup aktif & normal paketli olanları) göster
+        const members = (rawMembers || []).filter(m => {
+            if (m.session_count >= 1 && m.session_count <= 3) return true;
+            return m.is_active && !m.is_multisport && !m.is_meditopia;
+        });
 
         upcomingMembersCache = members || [];
 

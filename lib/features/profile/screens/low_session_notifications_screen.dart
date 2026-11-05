@@ -44,11 +44,9 @@ class _LowSessionNotificationsScreenState extends State<LowSessionNotificationsS
 
       var query = _supabase
           .from('members')
-          .select('id, name, session_count, is_multisport, is_meditopia')
+          .select('id, name, session_count, is_active, is_multisport, is_meditopia')
           .eq('organization_id', orgId)
-          .eq('is_active', true)
-          .eq('is_multisport', false)
-          .eq('is_meditopia', false)
+          .not('session_count', 'is', null)
           .lte('session_count', 3);
 
       if (role == 'trainer') {
@@ -56,9 +54,16 @@ class _LowSessionNotificationsScreenState extends State<LowSessionNotificationsS
       }
 
       final response = await query.order('session_count', ascending: true);
+      final filtered = List<Map<String, dynamic>>.from(response).where((m) {
+        final count = m['session_count'] as int? ?? 0;
+        if (count >= 1 && count <= 3) return true;
+        return (m['is_active'] == true) &&
+            (m['is_multisport'] != true) &&
+            (m['is_meditopia'] != true);
+      }).toList();
       if (mounted) {
         setState(() {
-          _members = List<Map<String, dynamic>>.from(response);
+          _members = filtered;
           _isLoading = false;
         });
       }

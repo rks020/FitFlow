@@ -303,13 +303,11 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
         // Eğer kalan ders 3, 2, 1 veya 0'a düştüyse bildirim gönder
         final oldSessions = widget.member!.sessionCount;
         final newSessions = updatedMember.sessionCount;
-        if (!updatedMember.isMultisport &&
-            !updatedMember.isMeditopia &&
-            updatedMember.isActive &&
-            newSessions != null &&
+        if (newSessions != null &&
             newSessions <= 3 &&
             newSessions >= 0 &&
-            oldSessions != newSessions) {
+            oldSessions != newSessions &&
+            (newSessions >= 1 || (!updatedMember.isMultisport && !updatedMember.isMeditopia && updatedMember.isActive))) {
           _sendLowSessionPushNotification(updatedMember, newSessions);
         }
         
@@ -533,6 +531,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                       final match = RegExp(r'^(\d+)\s+Ders').firstMatch(value);
                       if (match != null) {
                          _sessionCountController.text = match.group(1)!;
+                         _isActive = true;
                       }
                     }
                   });

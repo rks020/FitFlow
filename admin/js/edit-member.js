@@ -45,21 +45,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Package Change Listener
+        // Package Change Listener
     const packageSelect = document.getElementById('member-package');
-    packageSelect.addEventListener('change', (e) => {
-        const sessionInput = document.getElementById('member-sessions');
+    const sessionInput = document.getElementById('member-sessions');
+    const activeCheckbox = document.getElementById('member-active');
 
+    packageSelect.addEventListener('change', (e) => {
         if (e.target.value === 'Manuel') {
-            // Keep current value or clear? Maybe keep current but allow edit.
-            // If they switch TO Manuel, they likely want to edit.
             if (sessionInput.value === '0') sessionInput.value = '';
         } else {
             // Support both "8 Ders Paketi" and old "Standard (8 Ders)"
             const match = e.target.value.match(/^(\d+)\s+Ders/) || e.target.value.match(/\((\d+)\s+Ders\)/);
             if (match) {
                 sessionInput.value = match[1];
+                if (activeCheckbox && parseInt(match[1]) > 0) {
+                    activeCheckbox.checked = true;
+                }
             }
+        }
+    });
+
+    sessionInput.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        if (activeCheckbox && !isNaN(val) && val > 0) {
+            activeCheckbox.checked = true;
         }
     });
 
