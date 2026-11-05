@@ -127,8 +127,8 @@ export async function loadFinance() {
                             <th style="padding: 12px;">Üye</th>
                             <th style="padding: 12px;">Eğitmen</th>
                             <th style="padding: 12px;">Mevcut Paket</th>
-                            <th style="padding: 12px;">Son Ödeme Tarihi</th>
                             <th style="padding: 12px;">Kalan Ders / Durum</th>
+                            <th style="padding: 12px;">Son Ödeme Tarihi</th>
                             <th style="padding: 12px;">Telefon</th>
                             <th style="padding: 12px; text-align: right;">İşlemler</th>
                         </tr>
@@ -758,12 +758,12 @@ function renderUpcomingTable() {
                     </span>
                 </td>
                 <td style="padding: 12px;">
-                    ${lastPaymentDisplay}
-                </td>
-                <td style="padding: 12px;">
                     <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-block;">
                         ${statusText}
                     </span>
+                </td>
+                <td style="padding: 12px;">
+                    ${lastPaymentDisplay}
                 </td>
                 <td style="padding: 12px; color: #aaa; font-size: 13px;">${m.phone || '-'}</td>
                 <td style="padding: 12px; text-align: right;">

@@ -1,14 +1,14 @@
-import { initAuth, logout } from './auth.js';
-import { loadDashboard } from './modules/dashboard.js';
-import { loadTrainers } from './modules/trainers.js';
-import { loadMembers } from './modules/members.js';
-import { loadClasses } from './modules/classes.js';
-import { loadAnnouncements } from './modules/announcements.js';
-import { loadProfile } from './modules/profile.js';
-import { loadFinance } from './modules/finance.js';
-import { loadWorkouts } from './modules/workouts.js';
-import { loadWeeklySchedule } from './modules/schedule-grid.js';
-import { initNotifications, setupNotificationListeners } from './modules/notifications.js';
+import { initAuth, logout } from './auth.js?v=4';
+import { loadDashboard } from './modules/dashboard.js?v=4';
+import { loadTrainers } from './modules/trainers.js?v=4';
+import { loadMembers } from './modules/members.js?v=4';
+import { loadClasses } from './modules/classes.js?v=4';
+import { loadAnnouncements } from './modules/announcements.js?v=4';
+import { loadProfile } from './modules/profile.js?v=4';
+import { loadFinance } from './modules/finance.js?v=4';
+import { loadWorkouts } from './modules/workouts.js?v=4';
+import { loadWeeklySchedule } from './modules/schedule-grid.js?v=4';
+import { initNotifications, setupNotificationListeners } from './modules/notifications.js?v=4';
 
 // Page Mappings
 const pageLoaders = {
