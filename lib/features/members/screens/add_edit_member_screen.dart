@@ -303,11 +303,12 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
         // Eğer kalan ders 3, 2, 1 veya 0'a düştüyse bildirim gönder
         final oldSessions = widget.member!.sessionCount;
         final newSessions = updatedMember.sessionCount;
-        if (newSessions != null &&
+        if (!updatedMember.isMultisport &&
+            !updatedMember.isMeditopia &&
+            newSessions != null &&
             newSessions <= 3 &&
             newSessions >= 0 &&
-            oldSessions != newSessions &&
-            (newSessions >= 1 || (!updatedMember.isMultisport && !updatedMember.isMeditopia && updatedMember.isActive))) {
+            oldSessions != newSessions) {
           _sendLowSessionPushNotification(updatedMember, newSessions);
         }
         

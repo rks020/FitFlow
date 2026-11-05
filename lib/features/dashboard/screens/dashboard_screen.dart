@@ -603,21 +603,17 @@ class _DashboardHomeState extends State<_DashboardHome> {
           if (prof != null && prof['organization_id'] != null) {
             var q = Supabase.instance.client
                 .from('members')
-                .select('id, session_count, is_active, is_multisport, is_meditopia')
+                .select('id')
                 .eq('organization_id', prof['organization_id'])
+                .eq('is_multisport', false)
+                .eq('is_meditopia', false)
                 .not('session_count', 'is', null)
                 .lte('session_count', 3);
             if (prof['role'] == 'trainer') {
               q = q.eq('trainer_id', user.id);
             }
             final res = await q;
-            upcomingCount = (res as List).where((m) {
-              final count = m['session_count'] as int? ?? 0;
-              if (count >= 1 && count <= 3) return true;
-              return (m['is_active'] == true) &&
-                  (m['is_multisport'] != true) &&
-                  (m['is_meditopia'] != true);
-            }).length;
+            upcomingCount = (res as List).length;
           }
         }
       } catch (e) {

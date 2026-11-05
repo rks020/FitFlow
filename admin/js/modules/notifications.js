@@ -20,21 +20,18 @@ export async function initNotifications() {
             .from('members')
             .select('id, name, session_count, is_active, is_multisport, is_meditopia')
             .eq('organization_id', profile.organization_id)
+            .eq('is_multisport', false)
+            .eq('is_meditopia', false)
             .not('session_count', 'is', null)
             .lte('session_count', 3)
             .order('session_count', { ascending: true }); // 0 comes first
 
         if (profile.role === 'trainer') {
-            query = query.or(`trainer_id.eq.${user.id},is_meditopia.eq.true`);
+            query = query.eq('trainer_id', user.id);
         }
 
-        const { data: rawMembers, error } = await query;
+        const { data: lowSessionMembers, error } = await query;
         if (error) throw error;
-
-        const lowSessionMembers = (rawMembers || []).filter(m => {
-            if (m.session_count >= 1 && m.session_count <= 3) return true;
-            return m.is_active && !m.is_multisport && !m.is_meditopia;
-        });
 
         console.log(`[Notifications] Found ${lowSessionMembers?.length || 0} low session members`);
         updateNotificationUI(lowSessionMembers || [], storageKey);

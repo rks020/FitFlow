@@ -627,6 +627,8 @@ async function loadUpcomingPaymentsList() {
             .from('members')
             .select('id, name, phone, email, subscription_package, session_count, trainer_id, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
             .eq('organization_id', profile.organization_id)
+            .eq('is_multisport', false)
+            .eq('is_meditopia', false)
             .order('session_count', { ascending: true, nullsFirst: false });
 
         if (profile.role === 'trainer') {
@@ -641,9 +643,7 @@ async function loadUpcomingPaymentsList() {
         // Sekme rozetinde (badge) ödemesi yaklaşan (<= 3 ders) üye sayısını göster
         const lowSessionCount = upcomingMembersCache.filter(m => {
             if (m.session_count === null || m.session_count === undefined) return false;
-            if (m.session_count >= 1 && m.session_count <= 3) return true;
-            if (m.session_count === 0) return m.is_active && !m.is_multisport && !m.is_meditopia;
-            return false;
+            return m.session_count >= 0 && m.session_count <= 3;
         }).length;
 
         const badge = document.getElementById('upcoming-count-badge');

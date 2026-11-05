@@ -93,7 +93,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
       var query = _supabase
           .from('members')
           .select('id, name, phone, email, subscription_package, session_count, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
-          .eq('organization_id', orgId);
+          .eq('organization_id', orgId)
+          .eq('is_multisport', false)
+          .eq('is_meditopia', false);
 
       if (role == 'trainer') {
         query = query.eq('trainer_id', user.id);
@@ -472,13 +474,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     return _upcomingMembers.where((m) {
       final rawCount = m['session_count'] as int?;
       if (rawCount == null) return false;
-      if (rawCount >= 1 && rawCount <= 3) return true;
-      if (rawCount == 0) {
-        return (m['is_active'] == true) &&
-            (m['is_multisport'] != true) &&
-            (m['is_meditopia'] != true);
-      }
-      return false;
+      return rawCount >= 0 && rawCount <= 3;
     }).length;
   }
 
