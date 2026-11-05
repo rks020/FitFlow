@@ -581,7 +581,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
           .maybeSingle();
       if (mounted) Navigator.pop(context);
       if (response != null) {
-        final payment = Payment.fromSupabase(response);
+        final payment = Payment.fromSupabaseMap(response);
         await _handleEdit(payment);
       }
     } catch (e) {
