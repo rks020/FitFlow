@@ -1,5 +1,6 @@
 import { supabaseClient } from '../supabase-config.js';
 import { showToast } from '../utils.js';
+import { initNotifications } from './notifications.js';
 
 let currentSessionId = null;
 let originalData = {};
@@ -300,20 +301,22 @@ async function completeClass() {
         if (memberId) {
             const { data: member } = await supabaseClient
                 .from('members')
-                .select('used_session_count, is_multisport, is_meditopia')
+                .select('session_count, is_multisport, is_meditopia')
                 .eq('id', memberId)
                 .single();
 
             if (member && !member.is_multisport && !member.is_meditopia) {
+                const newCount = Math.max(0, (member?.session_count || 0) - 1);
                 await supabaseClient
                     .from('members')
-                    .update({ used_session_count: (member?.used_session_count || 0) + 1 })
+                    .update({ session_count: newCount })
                     .eq('id', memberId);
             }
         }
 
         showToast('Ders tamamlandı', 'success');
         document.getElementById('class-detail-modal').classList.remove('active');
+        initNotifications();
         if (currentCallback) currentCallback();
 
     } catch (err) {

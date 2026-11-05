@@ -6,6 +6,7 @@ import '../../../data/models/member.dart';
 import '../../../data/models/profile.dart'; // Added
 import '../../../data/repositories/member_repository.dart';
 import '../../../data/repositories/profile_repository.dart'; // Added
+import '../../../core/services/push_notification_sender.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Added
@@ -298,6 +299,19 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
         );
 
         await repository.update(updatedMember);
+
+        // Eğer kalan ders 3, 2, 1 veya 0'a düştüyse bildirim gönder
+        final oldSessions = widget.member!.sessionCount;
+        final newSessions = updatedMember.sessionCount;
+        if (!updatedMember.isMultisport &&
+            !updatedMember.isMeditopia &&
+            updatedMember.isActive &&
+            newSessions != null &&
+            newSessions <= 3 &&
+            newSessions >= 0 &&
+            oldSessions != newSessions) {
+          _sendLowSessionPushNotification(updatedMember, newSessions);
+        }
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -329,6 +343,46 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _sendLowSessionPushNotification(Member member, int count) async {
+    try {
+      final currentProfile = await _profileRepository.getProfile();
+      final orgId = currentProfile?.organizationId ?? member.organizationId;
+      final targetUserIds = <String>{};
+
+      if (member.trainerId != null) {
+        targetUserIds.add(member.trainerId!);
+      }
+      if (orgId != null) {
+        final managers = await Supabase.instance.client
+            .from('profiles')
+            .select('id')
+            .eq('organization_id', orgId)
+            .or('role.eq.owner,role.eq.admin');
+        for (final mgr in (managers as List)) {
+          final id = mgr['id'] as String?;
+          if (id != null) targetUserIds.add(id);
+        }
+      }
+      if (targetUserIds.isEmpty) return;
+
+      final bodyText = count == 0
+          ? '${member.name} adlı üyenin ders paketi bitti (0 ders kaldı). Ödeme alınması gerekiyor.'
+          : '${member.name} adlı üyenin son $count dersi kaldı. Ödemesi yaklaşıyor.';
+
+      await PushNotificationSender().sendToMultipleUsers(
+        userIds: targetUserIds.toList(),
+        title: 'Ödeme Yaklaşıyor 🔔',
+        body: bodyText,
+        data: {
+          'type': 'low_session_payment',
+          'member_id': member.id,
+        },
+      );
+    } catch (e) {
+      debugPrint('Low session push error: $e');
     }
   }
 

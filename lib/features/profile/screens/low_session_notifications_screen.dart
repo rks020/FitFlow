@@ -49,7 +49,7 @@ class _LowSessionNotificationsScreenState extends State<LowSessionNotificationsS
           .eq('is_active', true)
           .eq('is_multisport', false)
           .eq('is_meditopia', false)
-          .lte('session_count', 2);
+          .lte('session_count', 3);
 
       if (role == 'trainer') {
         query = query.eq('trainer_id', user.id);
@@ -126,16 +126,20 @@ class _LowSessionNotificationsScreenState extends State<LowSessionNotificationsS
 
                         Color color = AppColors.accentRed;
                         String iconStr = '❌';
-                        String msg = 'Dersi kalmadı!';
+                        String msg = 'Dersi kalmadı! (Ödeme Bekliyor)';
 
                         if (sessionCount == 1) {
                           color = AppColors.accentOrange; 
                           iconStr = '⚠️';
-                          msg = 'Sadece 1 dersi kaldı';
+                          msg = 'Son 1 dersi kaldı (Ödeme Yaklaşıyor)';
                         } else if (sessionCount == 2) {
                           color = AppColors.primaryYellow;
                           iconStr = '🔔';
-                          msg = 'Sadece 2 dersi kaldı';
+                          msg = 'Son 2 dersi kaldı (Ödeme Yaklaşıyor)';
+                        } else if (sessionCount == 3) {
+                          color = AppColors.accentBlue;
+                          iconStr = '⏳';
+                          msg = 'Son 3 dersi kaldı (Ödeme Yaklaşıyor)';
                         }
 
                         return InkWell(

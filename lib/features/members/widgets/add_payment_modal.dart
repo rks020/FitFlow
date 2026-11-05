@@ -6,6 +6,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/payment.dart';
 import '../../../data/repositories/payment_repository.dart';
+import '../../../data/repositories/member_repository.dart';
 import '../../../shared/widgets/custom_button.dart';
 
 class AddPaymentModal extends StatefulWidget {
@@ -29,6 +30,8 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
   late DateTime _selectedDate;
   late PaymentType _selectedType;
   late PaymentCategory _selectedCategory;
+  String _selectedPackage = '8 Ders Paketi';
+  final _manualSessionsController = TextEditingController();
   bool _isLoading = false;
 
   bool get _isEditing => widget.paymentToEdit != null;
@@ -46,12 +49,16 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
       _selectedDate = DateTime.now();
       _selectedType = PaymentType.cash;
       _selectedCategory = PaymentCategory.packageRenewal;
+      if (widget.member.subscriptionPackage == '12 Ders Paketi') {
+        _selectedPackage = '12 Ders Paketi';
+      }
     }
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
+    _manualSessionsController.dispose();
     super.dispose();
   }
 
@@ -88,6 +95,46 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
         await PaymentRepository().update(payment);
       } else {
         await PaymentRepository().create(payment);
+
+        // Yeni ödeme alındığında üyenin kalan ders hakkını da güncelle (Web ile birebir uyumlu)
+        if (_selectedCategory == PaymentCategory.packageRenewal) {
+          int sessionsToAdd = 0;
+          String packageName = _selectedPackage;
+          if (_selectedPackage == '8 Ders Paketi') {
+            sessionsToAdd = 8;
+          } else if (_selectedPackage == '12 Ders Paketi') {
+            sessionsToAdd = 12;
+          } else if (_selectedPackage == 'Manuel') {
+            sessionsToAdd = int.tryParse(_manualSessionsController.text.trim()) ?? 0;
+            if (sessionsToAdd > 0) {
+              packageName = '$sessionsToAdd Ders Paketi';
+            }
+          }
+
+          if (sessionsToAdd > 0) {
+            final currentMember = await MemberRepository().getById(widget.member.id);
+            if (currentMember != null) {
+              final newCount = (currentMember.sessionCount ?? 0) + sessionsToAdd;
+              await MemberRepository().update(
+                currentMember.copyWith(
+                  subscriptionPackage: packageName,
+                  sessionCount: newCount,
+                  isActive: true,
+                ),
+              );
+            }
+          }
+        } else if (_selectedCategory == PaymentCategory.singleSession) {
+          final currentMember = await MemberRepository().getById(widget.member.id);
+          if (currentMember != null) {
+            await MemberRepository().update(
+              currentMember.copyWith(
+                sessionCount: (currentMember.sessionCount ?? 0) + 1,
+                isActive: true,
+              ),
+            );
+          }
+        }
       }
 
       if (mounted) {
@@ -218,6 +265,52 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              if (!_isEditing && _selectedCategory == PaymentCategory.packageRenewal) ...[
+                Text('Yenilenecek Paket', style: AppTextStyles.subheadline),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: ['8 Ders Paketi', '12 Ders Paketi', 'Manuel'].map((pkg) {
+                      final isSelected = _selectedPackage == pkg;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(pkg),
+                          selected: isSelected,
+                          onSelected: (_) => setState(() => _selectedPackage = pkg),
+                          selectedColor: AppColors.primaryYellow,
+                          backgroundColor: AppColors.surfaceDark,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.black : Colors.white,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                if (_selectedPackage == 'Manuel') ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _manualSessionsController,
+                    keyboardType: TextInputType.number,
+                    style: AppTextStyles.body,
+                    decoration: InputDecoration(
+                      labelText: 'Eklenecek Ders Sayısı',
+                      labelStyle: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.glassBorder),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+              ],
 
               // Description
               TextFormField(

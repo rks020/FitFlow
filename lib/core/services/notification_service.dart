@@ -18,6 +18,7 @@ import '../../features/classes/screens/class_schedule_screen.dart';
 import '../../data/models/class_session.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../features/diets/screens/member_diet_screen.dart';
+import '../../features/finance/screens/finance_screen.dart';
 
 class NotificationService {
   final _supabase = Supabase.instance.client;
@@ -309,6 +310,20 @@ class NotificationService {
         } else {
           Future.delayed(const Duration(milliseconds: 500), () {
               _handleMessageData(data);
+          });
+        }
+    } else if (type == 'low_session_payment') {
+        NotificationService.clearPendingMessage();
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => const FinanceScreen(initialTabIndex: 1),
+            ),
+          );
+        } else {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _handleMessageData(data);
           });
         }
     } else {

@@ -99,6 +99,11 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
         );
+      } else if (type == 'low_session_payment') {
+        NotificationService.clearPendingMessage();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const FinanceScreen(initialTabIndex: 1)),
+        );
       } else if (type == 'new_class') {
          final classId = data['classId'];
          debugPrint('🔔 DashboardScreen: new_class notification: $classId');
@@ -380,6 +385,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
   int _onlineTrainersCount = 0;
   int _unreadMessageCount = 0;
   int _unreadAnnouncementsCount = 0;
+  int _upcomingPaymentsCount = 0;
   bool _isLoading = true;
   bool _isOnline = false;
   String _userInitials = 'PT';
@@ -584,6 +590,36 @@ class _DashboardHomeState extends State<_DashboardHome> {
           .count(CountOption.exact)
           .or('role.eq.trainer,role.eq.admin,role.eq.owner,role.eq.manager');
 
+      // Count upcoming payments (members with session_count <= 3)
+      int upcomingCount = 0;
+      try {
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          final prof = await Supabase.instance.client
+              .from('profiles')
+              .select('organization_id, role')
+              .eq('id', user.id)
+              .maybeSingle();
+          if (prof != null && prof['organization_id'] != null) {
+            var q = Supabase.instance.client
+                .from('members')
+                .select('id')
+                .eq('organization_id', prof['organization_id'])
+                .eq('is_active', true)
+                .eq('is_multisport', false)
+                .eq('is_meditopia', false)
+                .lte('session_count', 3);
+            if (prof['role'] == 'trainer') {
+              q = q.eq('trainer_id', user.id);
+            }
+            final res = await q;
+            upcomingCount = (res as List).length;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error counting upcoming payments: $e');
+      }
+
       if (mounted) {
         setState(() {
           _totalMembers = totalMembers;
@@ -592,6 +628,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
           // _totalMeasurements = totalMeasurements;
           _todayClasses = todayClasses;
           _onlineTrainersCount = trainersCount;
+          _upcomingPaymentsCount = upcomingCount;
           _isLoading = false;
         });
       }
@@ -664,6 +701,64 @@ class _DashboardHomeState extends State<_DashboardHome> {
                                   // Stats icons remain unchanged
                                   Row(
                                     children: [
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => const FinanceScreen(initialTabIndex: 1),
+                                                ),
+                                              ).then((_) => _loadStats());
+                                            },
+                                            child: GlassCard(
+                                              padding: const EdgeInsets.all(8),
+                                              borderRadius: BorderRadius.circular(50),
+                                              backgroundColor: AppColors.primaryYellow.withOpacity(0.2),
+                                              border: Border.all(color: AppColors.primaryYellow, width: 2),
+                                              child: const SizedBox(
+                                                width: 26,
+                                                height: 26,
+                                                child: Center(
+                                                  child: Icon(
+                                                    Icons.notifications_none_rounded,
+                                                    color: Colors.white,
+                                                    size: 22,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (_upcomingPaymentsCount > 0)
+                                            Positioned(
+                                              right: -4,
+                                              top: -4,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.red,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                constraints: const BoxConstraints(
+                                                  minWidth: 18,
+                                                  minHeight: 18,
+                                                ),
+                                                child: Text(
+                                                  '$_upcomingPaymentsCount',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 8),
                                       Stack(
                                         clipBehavior: Clip.none,
                                         children: [
@@ -869,7 +964,6 @@ class _DashboardHomeState extends State<_DashboardHome> {
                           physics: const NeverScrollableScrollPhysics(),
                           onReorder: _onReorder,
                           children: _actionOrder
-                              .where((id) => id != 'finance' || widget.userRole == 'owner')
                               .map((id) {
                             if (id == 'add_member') {
                               return Padding(

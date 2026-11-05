@@ -1,5 +1,6 @@
 import { supabaseClient } from '../supabase-config.js';
 import { showToast, turkishToLower } from '../utils.js';
+import { initNotifications } from './notifications.js';
 
 let currentFilter = 'my_members'; // my_members, multisport, meditopia, all
 
@@ -342,6 +343,7 @@ async function handleCreatePayment(e) {
         setTimeout(async () => {
              const searchInput = document.getElementById('member-search');
              await loadMembersList(searchInput ? searchInput.value : '');
+             await initNotifications();
         }, 500);
 
     } catch (error) {

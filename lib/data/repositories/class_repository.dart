@@ -248,6 +248,79 @@ class ClassRepository {
 
     // 2. Deduct sessions for attended members
     await _client.rpc('deduct_sessions_for_class', params: {'session_id': id});
+
+    // 3. Check attended members for low session count (3, 2, 1, 0) and send push notification to owners/trainers
+    await _notifyLowSessionsAfterClass(id);
+  }
+
+  Future<void> _notifyLowSessionsAfterClass(String sessionId) async {
+    try {
+      final enrollments = await _client
+          .from('class_enrollments')
+          .select('member_id, status')
+          .eq('class_id', sessionId)
+          .eq('status', 'attended');
+
+      final memberIds = (enrollments as List)
+          .map((e) => e['member_id'] as String?)
+          .whereType<String>()
+          .toList();
+
+      if (memberIds.isEmpty) return;
+
+      final members = await _client
+          .from('members')
+          .select('id, name, session_count, trainer_id, organization_id, is_multisport, is_meditopia, is_active')
+          .inFilter('id', memberIds);
+
+      for (final m in (members as List)) {
+        if (m['is_active'] != true || m['is_multisport'] == true || m['is_meditopia'] == true) {
+          continue;
+        }
+        final count = m['session_count'] as int?;
+        if (count == null || count < 0 || count > 3) continue;
+
+        final orgId = m['organization_id'] as String?;
+        final trainerId = m['trainer_id'] as String?;
+        final memberName = m['name'] as String? ?? 'Üye';
+
+        final targetUserIds = <String>{};
+        if (trainerId != null) targetUserIds.add(trainerId);
+
+        if (orgId != null) {
+          final managers = await _client
+              .from('profiles')
+              .select('id')
+              .eq('organization_id', orgId)
+              .or('role.eq.owner,role.eq.admin');
+          for (final mgr in (managers as List)) {
+            final mgrId = mgr['id'] as String?;
+            if (mgrId != null) targetUserIds.add(mgrId);
+          }
+        }
+
+        if (targetUserIds.isEmpty) continue;
+
+        String bodyText;
+        if (count == 0) {
+          bodyText = '$memberName adlı üyenin ders paketi bitti (0 ders kaldı). Ödeme alınması gerekiyor.';
+        } else {
+          bodyText = '$memberName adlı üyenin son $count dersi kaldı. Ödemesi yaklaşıyor.';
+        }
+
+        await PushNotificationSender().sendToMultipleUsers(
+          userIds: targetUserIds.toList(),
+          title: 'Ödeme Yaklaşıyor 🔔',
+          body: bodyText,
+          data: {
+            'type': 'low_session_payment',
+            'member_id': m['id'].toString(),
+          },
+        );
+      }
+    } catch (e) {
+      // Ignore notification errors so class completion is not blocked
+    }
   }
 
   // Update session time (Delay)
