@@ -187,6 +187,8 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
               const SizedBox(height: 24),
 
               // Date Picker
+              Text('Ödeme Tarihi', style: AppTextStyles.subheadline),
+              const SizedBox(height: 8),
               InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(12),
@@ -197,13 +199,19 @@ class _AddPaymentModalState extends State<AddPaymentModal> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.calendar_today, color: AppColors.primaryYellow),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat('dd MMMM yyyy', 'tr_TR').format(_selectedDate),
-                        style: AppTextStyles.body,
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today, color: AppColors.primaryYellow),
+                          const SizedBox(width: 12),
+                          Text(
+                            DateFormat('dd MMMM yyyy', 'tr_TR').format(_selectedDate),
+                            style: AppTextStyles.body,
+                          ),
+                        ],
                       ),
+                      const Icon(Icons.edit_calendar_rounded, color: AppColors.textSecondary, size: 18),
                     ],
                   ),
                 ),

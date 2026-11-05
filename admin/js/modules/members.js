@@ -246,6 +246,8 @@ async function handleCreatePayment(e) {
     try {
         const memberId = document.getElementById('payment-member-id').value;
         const amount = 0; // Tutar artık kaydedilmiyor, varsayılan 0
+        const dateVal = document.getElementById('payment-date')?.value;
+        const paymentDate = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
         const methodRaw = document.getElementById('payment-method').value;
         const categoryRaw = document.getElementById('payment-category').value;
         const description = document.getElementById('payment-description').value;
@@ -270,7 +272,7 @@ async function handleCreatePayment(e) {
                 type: method, // DB column is 'type'
                 category: category,
                 description: description,
-                date: new Date()
+                date: paymentDate
             });
 
         if (error) throw error;
@@ -370,6 +372,12 @@ window.showPaymentModal = (id, name) => {
     // Reset Form for clean state
     document.getElementById('payment-form').reset();
     document.querySelector('#payment-modal h2').textContent = 'Ödeme Al';
+
+    const dateInput = document.getElementById('payment-date');
+    if (dateInput) {
+        const now = new Date();
+        dateInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
 
     // UI resets for new dynamically added fields
     const catSelect = document.getElementById('payment-category');

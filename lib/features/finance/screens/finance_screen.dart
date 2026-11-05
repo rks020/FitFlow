@@ -92,7 +92,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
       var query = _supabase
           .from('members')
-          .select('id, name, phone, email, subscription_package, session_count, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
+          .select('id, name, phone, email, subscription_package, session_count, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name), payments(id, date)')
           .eq('organization_id', orgId)
           .eq('is_multisport', false)
           .eq('is_meditopia', false);
@@ -214,6 +214,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
         if (result == true) {
           _loadData();
+          _loadUpcomingMembers();
         }
       } else {
         if (mounted) {
@@ -566,6 +567,29 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
+  Future<void> _editLastPaymentById(String paymentId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final response = await _supabase
+          .from('payments')
+          .select('*, members(name)')
+          .eq('id', paymentId)
+          .maybeSingle();
+      if (mounted) Navigator.pop(context);
+      if (response != null) {
+        final payment = Payment.fromSupabase(response);
+        await _handleEdit(payment);
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) CustomSnackBar.showError(context, 'Hata: $e');
+    }
+  }
+
   Widget _buildUpcomingMemberCard(Map<String, dynamic> m) {
     final id = m['id'] as String;
     final name = m['name'] as String? ?? 'İsimsiz';
@@ -575,6 +599,24 @@ class _FinanceScreenState extends State<FinanceScreen> {
     final trainerName = profileMap != null
         ? '${profileMap['first_name'] ?? ''} ${profileMap['last_name'] ?? ''}'.trim()
         : '';
+
+    String? lastPaymentId;
+    String? lastPaymentDateStr;
+    final rawPayments = m['payments'];
+    if (rawPayments is List && rawPayments.isNotEmpty) {
+      final sorted = List<Map<String, dynamic>>.from(rawPayments);
+      sorted.sort((a, b) {
+        final dA = DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(1970);
+        final dB = DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(1970);
+        return dB.compareTo(dA);
+      });
+      final latest = sorted.first;
+      lastPaymentId = latest['id']?.toString();
+      final parsedDate = DateTime.tryParse(latest['date']?.toString() ?? '');
+      if (parsedDate != null) {
+        lastPaymentDateStr = DateFormat('dd.MM.yyyy').format(parsedDate);
+      }
+    }
 
     Color statusColor = AppColors.accentRed;
     String iconStr = '❌';
@@ -647,6 +689,41 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           color: Colors.white54,
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      if (lastPaymentDateStr != null && lastPaymentId != null)
+                        GestureDetector(
+                          onTap: () => _editLastPaymentById(lastPaymentId!),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryYellow.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.primaryYellow.withOpacity(0.35)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.calendar_month_rounded, size: 13, color: AppColors.primaryYellow),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Son Ödeme: $lastPaymentDateStr',
+                                  style: const TextStyle(
+                                    color: AppColors.primaryYellow,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.edit_rounded, size: 12, color: AppColors.primaryYellow),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          'Son Ödeme: -',
+                          style: AppTextStyles.caption2.copyWith(color: Colors.white38),
+                        ),
                     ],
                   ),
                 ),

@@ -127,13 +127,14 @@ export async function loadFinance() {
                             <th style="padding: 12px;">Üye</th>
                             <th style="padding: 12px;">Eğitmen</th>
                             <th style="padding: 12px;">Mevcut Paket</th>
+                            <th style="padding: 12px;">Son Ödeme Tarihi</th>
                             <th style="padding: 12px;">Kalan Ders / Durum</th>
                             <th style="padding: 12px;">Telefon</th>
                             <th style="padding: 12px; text-align: right;">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="upcoming-payments-table-body">
-                        <tr><td colspan="6" style="padding: 20px; text-align: center;">Yükleniyor...</td></tr>
+                        <tr><td colspan="7" style="padding: 20px; text-align: center;">Yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -397,12 +398,26 @@ window.editPayment = async (id) => {
         // Tutar alanı kaldırıldı
         document.getElementById('payment-description').value = payment.description || '';
 
+        const dateInput = document.getElementById('payment-date');
+        if (dateInput && payment.date) {
+            const d = new Date(payment.date);
+            if (!isNaN(d.getTime())) {
+                dateInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+        }
+
         // Map Types back to UI
         const typeMap = { 'cash': 'Nakit', 'credit_card': 'Kredi Kartı', 'transfer': 'Havale/EFT' };
         document.getElementById('payment-method').value = typeMap[payment.type] || 'Nakit';
 
         const catMap = { 'package_renewal': 'Paket Yenileme', 'single_session': 'Tek Ders', 'extra': 'Ekstra', 'other': 'Diğer' };
         document.getElementById('payment-category').value = catMap[payment.category] || 'Diğer';
+
+        // Düzenleme modunda paket seçimini gizle (sadece yeni ödeme alınırken paket eklenir)
+        const packGroup = document.getElementById('payment-package-group');
+        if (packGroup) packGroup.style.display = 'none';
+        const manualGroup = document.getElementById('payment-manual-sessions-group');
+        if (manualGroup) manualGroup.style.display = 'none';
 
         // UI Updates
         document.querySelector('#payment-modal h2').textContent = 'Ödemeyi Düzenle';
@@ -416,6 +431,8 @@ window.editPayment = async (id) => {
 
             try {
                 const amount = 0; // Tutar artık kaydedilmiyor, varsayılan 0
+                const dateVal = document.getElementById('payment-date')?.value;
+                const paymentDate = dateVal ? new Date(dateVal + 'T12:00:00') : new Date(payment.date);
                 const methodRaw = document.getElementById('payment-method').value;
                 const categoryRaw = document.getElementById('payment-category').value;
                 const description = document.getElementById('payment-description').value;
@@ -432,6 +449,7 @@ window.editPayment = async (id) => {
                     .from('payments')
                     .update({
                         amount,
+                        date: paymentDate,
                         type: method,
                         category,
                         description
@@ -443,6 +461,7 @@ window.editPayment = async (id) => {
                 showToast('Ödeme güncellendi', 'success');
                 modal.classList.remove('active');
                 loadPaymentsList();
+                loadUpcomingPaymentsList();
 
             } catch (err) {
                 console.error(err);
@@ -625,7 +644,7 @@ async function loadUpcomingPaymentsList() {
 
         let query = supabaseClient
             .from('members')
-            .select('id, name, phone, email, subscription_package, session_count, trainer_id, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name)')
+            .select('id, name, phone, email, subscription_package, session_count, trainer_id, is_active, is_multisport, is_meditopia, profiles:trainer_id(first_name, last_name), payments(id, date)')
             .eq('organization_id', profile.organization_id)
             .eq('is_multisport', false)
             .eq('is_meditopia', false)
@@ -661,7 +680,7 @@ async function loadUpcomingPaymentsList() {
         console.error('Error loading upcoming payments:', e);
         const tbody = document.getElementById('upcoming-payments-table-body');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #ef4444;">Liste yüklenirken hata oluştu.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #ef4444;">Liste yüklenirken hata oluştu.</td></tr>';
         }
     }
 }
@@ -677,7 +696,7 @@ function renderUpcomingTable() {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center; color: #888;">Bu filtreye uygun üye bulunmuyor.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: #888;">Bu filtreye uygun üye bulunmuyor.</td></tr>';
         return;
     }
 
@@ -709,6 +728,20 @@ function renderUpcomingTable() {
             ? `${m.profiles.first_name || ''} ${m.profiles.last_name || ''}`.trim()
             : '-';
 
+        let lastPaymentDisplay = '<span style="color: #666;">-</span>';
+        if (Array.isArray(m.payments) && m.payments.length > 0) {
+            const sortedPayments = [...m.payments].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const latest = sortedPayments[0];
+            if (latest && latest.date) {
+                const formattedDate = new Date(latest.date).toLocaleDateString('tr-TR');
+                lastPaymentDisplay = `
+                    <span onclick="editPayment('${latest.id}')" title="Tarihi / Ödemeyi düzenlemek için tıklayın" style="cursor: pointer; color: #FFD700; background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.2); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                        📅 ${formattedDate} <span style="font-size: 11px; opacity: 0.8;">✏️</span>
+                    </span>
+                `;
+            }
+        }
+
         const safeName = (m.name || '').replace(/'/g, "\\'");
 
         return `
@@ -723,6 +756,9 @@ function renderUpcomingTable() {
                     <span style="background: rgba(255, 255, 255, 0.06); color: #ccc; padding: 4px 10px; border-radius: 6px; font-size: 12px;">
                         ${m.subscription_package || 'Belirtilmemiş'}
                     </span>
+                </td>
+                <td style="padding: 12px;">
+                    ${lastPaymentDisplay}
                 </td>
                 <td style="padding: 12px;">
                     <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-block;">
@@ -793,6 +829,12 @@ window.openFinancePaymentModal = (memberId, memberName) => {
     form.reset();
     document.querySelector('#payment-modal h2').textContent = `${memberName} - Ödeme Al`;
 
+    const dateInput = document.getElementById('payment-date');
+    if (dateInput) {
+        const now = new Date();
+        dateInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
     const catSelect = document.getElementById('payment-category');
     if (catSelect) catSelect.value = 'Paket Yenileme';
     const packGroup = document.getElementById('payment-package-group');
@@ -808,6 +850,8 @@ window.openFinancePaymentModal = (memberId, memberName) => {
 
         try {
             const amount = 0;
+            const dateVal = document.getElementById('payment-date')?.value;
+            const paymentDate = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
             const methodRaw = document.getElementById('payment-method').value;
             const categoryRaw = document.getElementById('payment-category').value;
             const description = document.getElementById('payment-description').value;
@@ -828,7 +872,7 @@ window.openFinancePaymentModal = (memberId, memberName) => {
                     type: method,
                     category: category,
                     description: description,
-                    date: new Date()
+                    date: paymentDate
                 });
 
             if (error) throw error;
